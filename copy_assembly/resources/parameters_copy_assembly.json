@@ -1,0 +1,9 @@
+{
+  "filters": ["\\\\PDM\\PKODocs\\Inventor Project\\Библиотека оборудования ALS", "\\\\pdm\\PKODocs\\R2017 PKO\\ru-RU"],
+  "path_tmp": "C:\\tmp\\temp assembly",
+  "project_inventor_filename": "ForCopyAssembly.ipj",
+  "default_path_dialog_window": "\\\\pdm\\PKODocs\\Inventor Project",
+  "path_pdm_resources": "\\\\pdm\\PKODocs\\Programs\\Constructor\\resources\\CopyAssembly",
+  "url_instruction_online": "https://disk.yandex.ru/i/KHHfrqsrHyPgOQ",
+  "url_instruction_offline": "resources/Instruction CopyAssembly.pdf"
+}
