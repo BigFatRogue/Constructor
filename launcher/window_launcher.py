@@ -6,47 +6,8 @@ from threading import Thread
 from time import sleep
 from tkinter import ttk, Tk, Canvas, ARC, PhotoImage
 
-from launcher_sitting import ROOT
+from launcher_sitting import ROOT, PATH_SRC
 from launcher_function import download_programm, check_and_create_new_app_runner, update_appliction, run_application, check_actual_version
-from launcher_sitting import PATH_SRC
-
-
-class PBRing:
-    def __init__(self, root, canvas: Canvas, x:float, y:float, width: float, height: float, border_width: float):
-        self.root = root
-        self.canvas = canvas
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.border_width = border_width
-
-        self.start_angle = 0
-        self.len_arc = 90
-        self.len_arc = self.start_angle - self.len_arc
-        self.sign_direction = 1
-
-        self.arc = None
-        # self.draw_arc()
-        self.rotate()
-
-    def draw_arc(self) -> None:
-        if self.arc:
-            self.canvas.delete(self.arc)
-
-        self.arc = self.canvas.create_arc(self.x + self.border_width, self.y + self.border_width, self.width - self.border_width, self.height - self.border_width, 
-                                          start=self.start_angle, 
-                                          extent=self.len_arc,
-                                          width=self.border_width, 
-                                          outline="green", 
-                                          style=ARC)
-
-    def rotate(self) -> None:
-        self.draw_arc()
-        self.start_angle += 5
-        self.len_arc += 1
-        
-        self.root.after(30, self.rotate)
 
 
 class WaitProcessBar(Canvas):
