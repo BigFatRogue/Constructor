@@ -6,8 +6,9 @@ from threading import Thread
 from time import sleep
 from tkinter import ttk, Tk, Canvas, ARC, PhotoImage
 
-from launcher_sitting import ROOT, PATH_SRC
+from launcher_sitting import ROOT
 from launcher_function import download_programm, check_and_create_new_app_runner, update_appliction, run_application, check_actual_version
+from launcher_sitting import PATH_SRC
 
 
 class WaitProcessBar(Canvas):
@@ -70,51 +71,152 @@ class WaitProcessBar(Canvas):
     def plus_value(self, value: float) -> None:
         self.set_value(self.current_value + value)
 
-        
-class LLabel(ttk.Label):
-    def __init__(self, parent):
+
+class MyLabel(ttk.Label):
+    def __init__(self, parent, text=''):
         super().__init__(parent)
-        self.setFont()
-        self.configure(justify='left')
+
+        self.text = text
+        self.color = 'black'
+        self.backgorund = '#fff'
+        self.border = None
+
+        self.setBackground(self.backgorund)
+        self.setText(text)
 
     def setText(self, text: str) -> None:
-        self.config({'text': text})
-
+        self.text = text
+        self.config(text=text)
+    
     def setFont(self, family='Segoe UI Variable', size=10) -> None:
         self.config({'font': (family, size)})
+
+    def setColor(self, color: str) -> None:
+        self.color = color
+        self.config(color=color)
+
+    def setBackground(self, color: str) -> None:
+        self.backgorund = color
+        self.config(background=color)
     
+    def setWidth(self, value:float=3) -> None:
+        self.width = value
+        self.config(width=value)
+
+    def setHeight(self, value: float):
+        self.height = value
+        self.config(height=value)
+
+    def setAlignText(self, align='center') -> None:
+        self.config(anchor=align)
+
+    def setJustify(self, justify: str) -> None:
+        self.config(justify=justify)
+
+
+class CustomButton(MyLabel):
+    def __init__(self, parent, text=''):
+        super().__init__(parent, text)
+
+        self.backgorund_leave = '#999'
+        self.setWidth()
+        self.setAlignText()
+
+        self.__command_clicked = None
+        self.__initEvent()
+
+    def __initEvent(self) -> None:
+        self.bind('<Enter>', self.eventEnter)
+        self.bind('<Leave>', self.eventLeave)
+        self.bind('<ButtonPress>', self.__clicked)
+
+    def eventEnter(self, event) -> None:
+        self.config(background=self.backgorund_leave, cursor='hand2')
+
+    def eventLeave(self, event) -> None:
+        self.config(background=self.backgorund)
+    
+    def setBackgroundLeave(self, color):
+        self.backgorund_leave = color
+
+    def setClicked(self, command) -> None:
+        self.__command_clicked = command
+    
+    def __clicked(self, event) -> None:
+        if self.__command_clicked is not None:
+            self.__command_clicked()
+
 class WindowLauncher(Tk):
     def __init__(self):
         super().__init__()
 
         self.width, self.height = 350, 70
-
+    
         self.initWindow()
         self.initWidgets()
 
+        self.bind("<Configure>", self.on_state_change)
+
     def initWindow(self) -> None:
-        self.title('launcher')
+        self.title('Constructor launcher')
         self.geometry(f'{self.width}x{self.height}+{self.winfo_screenwidth()//2}+{self.winfo_screenheight()//2}')
         self.resizable(False, False)
-        self.overrideredirect(True)
+        # self.overrideredirect(True)
+        
         photo = PhotoImage(file=os.path.join(ROOT, r'resources\icon', 'icon_launcher.png'))
-        self.iconphoto(False, photo, photo)
+        self.iconbitmap(os.path.join(ROOT, r'resources\icon', 'icon_launcher.ico'))
+        self.iconphoto(True, photo)
+
+        self.config(background='#fff')
 
         self.bind('<Escape>', lambda event: sys.exit())
 
     def initWidgets(self) -> None:
-        btnClose = ttk.Style()
-        btnClose.configure('ButtonClose.TButton', background='red', foreground='red', cursor='hand2')
+        main_style = ttk.Style()
+        main_style.configure('TFrame', background='#fff')
+        self.main_frame = ttk.Frame(self, style='TMain.TFrame', borderwidth=2, relief='solid')
+        self.main_frame.pack(fill='both')
 
-        self.btn_close = ttk.Button(text='x', width=5, style='ButtonClose.TButton', command=lambda: sys.exit())
-        self.btn_close.grid(row=0, column=1, sticky='e')
+        self.ico_title = ttk.Label(self.main_frame, image=PhotoImage(file=os.path.join(ROOT, r'resources\icon', 'icon_launcher.png')))
+        self.ico_title.grid(row=0, sticky='w')
+    
+        self.label_title = MyLabel(self.main_frame )
+        self.label_title.setText('Constructor launcher')
+        self.label_title.grid(row=0, sticky='w')
 
-        self.pb = WaitProcessBar(self, width=self.width, height=20)
-        self.pb.grid(row=1, column=0, columnspan=2)
+        self.frame_hide_close = ttk.Frame(self.main_frame )
+        self.frame_hide_close.grid(row=0, sticky='e', ipadx=5)
+
+        self.btn_hide = CustomButton(self.frame_hide_close)
+        self.btn_hide.setText('_')
+        self.btn_hide.setClicked(self.minimize)
+        self.btn_hide.grid(row=0, column=0, ipady=1)
+
+        self.btn_close = CustomButton(self.frame_hide_close)
+        self.btn_close.setBackgroundLeave('red')
+        self.btn_close.setText('x')
+        self.btn_close.setClicked(lambda: sys.exit())
+        self.btn_close.grid(row=0, column=1, ipady=1)
+
+        self.pb = WaitProcessBar(self.main_frame , width=self.width, height=20)
+        self.pb.grid(row=1, column=0)
         
-        self.label_info = LLabel(self)
+        self.label_info = MyLabel(self.main_frame )
         self.label_info.setText('Запуск приложения...')
-        self.label_info.grid(row=2, column=0, columnspan=2)
+        # self.label_info.setFont()
+        self.label_info.setJustify(justify='left')
+        self.label_info.grid(row=2, column=0, sticky='w')
+
+    def on_state_change(self, event) -> None:
+        state = self.state()
+        if state == 'normal':
+            self.overrideredirect(True)
+        elif state == 'iconic':
+            self.overrideredirect(False)
+
+    def minimize(self) -> None:
+        self.overrideredirect(False)
+        self.iconify() 
 
     def __run2(self) -> None:
         sleep(1)

@@ -1,0 +1,63 @@
+QTreeView {
+    show-decoration-selected: 1;
+    alternate-background-color: #f5f5f5;
+}
+QTreeView::item {
+    border-bottom: 1px solid #e0e0e0;
+}
+               
+QTreeView::item:selected {
+    background-color: #93d1ff; 
+    color: black;
+}              
+
+QTreeView::item:selected:!active {
+    background-color: #e0e0e0;  
+    color: black;
+}
+
+#frame_load {
+    border-top: 1px solid gray;
+}
+
+#frame_btn_control {
+    max-height: 25px;
+}
+
+#btn_all_return_back,
+#btn_return_back,
+#btn_return_forward,
+#btn_return_all_forward {
+    background-color: rgba(0, 0, 0, 0);
+    border: 1px solid gray;
+}
+
+#btn_all_return_back:hover,
+#btn_return_back:hover,
+#btn_return_forward:hover,
+#btn_return_all_forward:hover {
+    background-color: #CEEAF8;
+    border: 1px solid #2B5881;
+}
+
+#btn_update_tree,
+#btn_open_tmp_folder {
+    background-color: rgba(0, 0, 0, 0);
+    border: 1px solid gray;
+}
+
+#btn_update_tree {
+    margin-left: 15px;
+}
+    
+
+#btn_update_tree:hover,
+#btn_open_tmp_folder:hover {
+    background-color: #CEEAF8;
+}
+
+#btn_rules {
+    color: blue;
+    text-decoration: underline;
+    border: none;
+}

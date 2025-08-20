@@ -2,6 +2,7 @@ import shutil
 import sys
 import ctypes
 import os
+from itertools import count
 from typing import Optional, Any
 from PyQt5 import QtCore, QtGui, QtWidgets
 from Widgets import MessegeBoxQuestion
@@ -13,7 +14,7 @@ from my_logging import loging_sys, loging_try
 from mode_code import Mode
 from preprocess_inventor import get_app_inventor, kill_process_for_pid
 from copy_and_rename_assembly import move_file_inventor_project, copy_file_assembly, get_tree_assembly, get_rules_assembly, copy_and_rename_file_assembly, replace_reference_file, rename_display_name_file, rename_component_name_in_assembly, create_folder_rename_assembly, set_rulse
-from my_function import strip_path
+from my_function import strip_path, RowCounter
 
 
 class IThread(QtCore.QObject):
@@ -360,6 +361,7 @@ class Tree(QtWidgets.QTreeView):
         super().__init__(parent)
 
         self.dict_change = {}
+        self.setObjectName('Tree')
 
         self.model = model
         self.model.itemChanged.connect(self.on_item_changed)
@@ -373,26 +375,6 @@ class Tree(QtWidgets.QTreeView):
         # self.chekboxHeader = CheckBoxHeader(QtCore.Qt.Horizontal, self)
         # self.setHeader(self.chekboxHeader)
         # self.chekboxHeader.stateChanged.connect(self.toggle_items)
-
-        self.setStyleSheet("""
-            QTreeView {
-                show-decoration-selected: 1;
-                alternate-background-color: #f5f5f5;
-            }
-            QTreeView::item {
-                border-bottom: 1px solid #e0e0e0;
-            }
-                           
-            QTreeView::item:selected {
-                background-color: #93d1ff; 
-                color: black;              
-            }
-
-            QTreeView::item:selected:!active {
-                background-color: #e0e0e0;  
-                color: black;              
-                }
-            """)
 
     def on_item_changed(self, item, rec=False) -> None:
         # if item.rowCount() and not self.flag_change_range:
@@ -655,41 +637,65 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.init()
 
     def init(self):
+        counter_row = RowCounter()
+
         self.grid = QtWidgets.QGridLayout(self)
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setSpacing(5)
         # ------------------------------------------------------------------------------------------------#
         self.label_search_to = QtWidgets.QLabel(self)
         self.label_search_to.setText('Искать в')
-        self.grid.addWidget(self.label_search_to, 0, 0, 1, 1)
+        self.grid.addWidget(self.label_search_to, counter_row.value, 0, 1, 1)
 
         self.textedit_search_to = LineEdit(self)
-        self.grid.addWidget(self.textedit_search_to, 0, 1, 1, 1)
+        self.grid.addWidget(self.textedit_search_to, counter_row.value, 1, 1, 1)
+
+        self.check_box_register = QtWidgets.QCheckBox(self)
+        self.check_box_register.setText('С учётом регистра')
+        self.grid.addWidget(self.check_box_register, counter_row.value, 2, 1, 1)
+
+        self.label_replace_to = QtWidgets.QLabel(self)
+        self.label_replace_to.setText('Заменить на')
+        self.grid.addWidget(self.label_replace_to, counter_row.next(), 0, 1, 1)
+
+        self.textedit_replace_to = LineEdit(self)
+        self.textedit_replace_to.returnPressed.connect(self.__click_rename_item)
+        self.grid.addWidget(self.textedit_replace_to, counter_row.value, 1, 1, 1)
 
         self.btn_replace_ok = QtWidgets.QPushButton(self)
         self.btn_replace_ok.setText('Заменить')
         self.btn_replace_ok.clicked.connect(self.__click_rename_item)
-        self.grid.addWidget(self.btn_replace_ok, 0, 2, 1, 1)
-
-        self.label_replace_to = QtWidgets.QLabel(self)
-        self.label_replace_to.setText('Заменить на')
-        self.grid.addWidget(self.label_replace_to, 1, 0, 1, 1)
-
-        self.textedit_replace_to = LineEdit(self)
-        self.textedit_replace_to.returnPressed.connect(self.__click_rename_item)
-        self.grid.addWidget(self.textedit_replace_to, 1, 1, 1, 1)
+        self.grid.addWidget(self.btn_replace_ok, counter_row.value, 2, 1, 1)
 
         self.btn_replace_all = QtWidgets.QPushButton(self)
         self.btn_replace_all.setText('Заменить всё')
         self.btn_replace_all.clicked.connect(self.__click_rename_all_in_rules)
-        self.grid.addWidget(self.btn_replace_all, 1, 2, 1, 1)
+        self.grid.addWidget(self.btn_replace_all, counter_row.next(), 2, 1, 1)
         self.btn_replace_all.hide()
+
+        # ------------------------------------------------------------------------------------------------#
+        self.frame_check_box = QtWidgets.QFrame(self)
+        self.grid.addWidget(self.frame_check_box, counter_row.value, 1, 1, 3)
+
+        self.hl_frame_check_box = QtWidgets.QHBoxLayout(self.frame_check_box)
+        self.hl_frame_check_box.setSpacing(1)
+        self.hl_frame_check_box.setContentsMargins(1, 1, 1, 1)
+        
+        self.check_box_suffix = QtWidgets.QCheckBox(self.frame_check_box)
+        self.check_box_suffix.setText('Добавить вначале')
+        self.hl_frame_check_box.addWidget(self.check_box_suffix)
+
+        self.check_box_preffix = QtWidgets.QCheckBox(self.frame_check_box)
+        self.check_box_preffix.setText('Добавить в конец')
+        self.hl_frame_check_box.addWidget(self.check_box_preffix)
+
+        self.frame_check_box_horizont_spacer = QtWidgets.QSpacerItem(20, 15, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.hl_frame_check_box.addItem(self.frame_check_box_horizont_spacer)
 
         # ------------------------------------------------------------------------------------------------#
         self.frame_btn_control =  QtWidgets.QFrame(self)
         self.frame_btn_control.setObjectName("frame_btn_control")
-        self.frame_btn_control.setStyleSheet("#frame_btn_control {max-height: 25px;}")
-        self.grid.addWidget(self.frame_btn_control, 2, 0, 1, 3)
+        self.grid.addWidget(self.frame_btn_control, counter_row.next(), 0, 1, 3)
 
         self.hl_frame_frame_btn_control = QtWidgets.QHBoxLayout(self.frame_btn_control)
         self.hl_frame_frame_btn_control.setSpacing(1)
@@ -710,16 +716,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.btn_all_return_back.setIcon(icon)
         self.btn_all_return_back.setToolTip('Отменить все изменения')
         self.btn_all_return_back.setObjectName('btn_all_return_back')
-        self.btn_all_return_back.setStyleSheet("""
-        #btn_all_return_back {
-        background-color: rgba(0, 0, 0, 0);
-        border: 1px solid gray;
-        }
-        #btn_all_return_back:hover {
-        background-color: #CEEAF8;
-        border: 1px solid #2B5881;
-        }
-        """)
         self.hl_frame_forward_return.addWidget(self.btn_all_return_back)
 
         self.btn_return_back = QtWidgets.QPushButton(self.frame_forward_return)
@@ -730,17 +726,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.btn_return_back.setIconSize(QtCore.QSize(12, 12))
         self.btn_return_back.setIcon(icon)
         self.btn_return_back.setToolTip('Отменить изменения выбранного  элемента\nCtr + Z')
-        self.btn_return_back.setObjectName('btn_r')
-        self.btn_return_back.setStyleSheet("""
-        #btn_r {
-        background-color: rgba(0, 0, 0, 0);
-        border: 1px solid gray;
-        }
-        #btn_r:hover {
-        background-color: #CEEAF8;
-        border: 1px solid #2B5881;
-        }
-        """)
+        self.btn_return_back.setObjectName('btn_return_back')
         self.hl_frame_forward_return.addWidget(self.btn_return_back)
 
         self.btn_return_forward = QtWidgets.QPushButton(self.frame_forward_return)
@@ -751,17 +737,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.btn_return_forward.setIconSize(QtCore.QSize(12, 12))
         self.btn_return_forward.setIcon(icon)
         self.btn_return_forward.setToolTip('Вернуть изменения выбранного  элемента\nShift + Z')
-        self.btn_return_forward.setObjectName('btn_f')
-        self.btn_return_forward.setStyleSheet("""
-        #btn_f {
-        background-color: rgba(0, 0, 0, 0);
-        border: 1px solid gray;
-        }
-        #btn_f:hover {
-        background-color: #CEEAF8;
-        border: 1px solid #2B5881;
-        }
-        """)
+        self.btn_return_forward.setObjectName('btn_return_forward')
         self.hl_frame_forward_return.addWidget(self.btn_return_forward)
 
         self.btn_return_all_forward = QtWidgets.QPushButton(self.frame_forward_return)
@@ -772,17 +748,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_return_all_forward.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_return_all_forward.setIcon(icon)
         self.btn_return_all_forward.setToolTip('Вернуть все изменения')
-        self.btn_return_all_forward.setObjectName('btn_af')
-        self.btn_return_all_forward.setStyleSheet("""
-        #btn_af {
-        background-color: rgba(0, 0, 0, 0);
-        border: 1px solid gray;
-        }
-        #btn_af:hover {
-        background-color: #CEEAF8;
-        border: 1px solid #2B5881;
-        }
-        """)
+        self.btn_return_all_forward.setObjectName('btn_return_all_forward')
         self.hl_frame_forward_return.addWidget(self.btn_return_all_forward)
         # ------------------------------------------------------------------------------------------------#
         self.btn_update_tree = QtWidgets.QPushButton(self)
@@ -793,17 +759,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_update.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_update_tree.setIcon(icon)
         self.btn_update_tree.setIconSize(QtCore.QSize(17, 17))
-        self.btn_update_tree.setStyleSheet("""
-        #btn_update_tree {
-        background-color: rgba(0, 0, 0, 0);
-        border: 1px solid gray;
-        margin-left: 15px;
-        
-        }
-        #btn_update_tree:hover {
-        background-color: #CEEAF8;
-        }
-        """)
         self.btn_update_tree.setToolTip('Обновить дерево файлов')
         self.btn_update_tree.clicked.connect(self.update_tree)
         self.hl_frame_frame_btn_control.addWidget(self.btn_update_tree)
@@ -816,15 +771,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_folder.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_open_tmp_folder.setIcon(icon)
         self.btn_open_tmp_folder.setIconSize(QtCore.QSize(19, 19))
-        self.btn_open_tmp_folder.setStyleSheet("""
-        #btn_open_tmp_folder {
-        background-color: rgba(0, 0, 0, 0);
-        border: 1px solid gray;
-        }
-        #btn_open_tmp_folder:hover {
-        background-color: #CEEAF8;
-        }
-        """)
         self.btn_open_tmp_folder.setToolTip('Открыть папку с временными сборками')
         self.btn_open_tmp_folder.clicked.connect(self.open_tmp_folder)
         self.hl_frame_frame_btn_control.addWidget(self.btn_open_tmp_folder)
@@ -836,13 +782,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.btn_rules.setText('Правила')
         self.btn_rules.setObjectName('btn_rules')
         self.btn_rules.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        self.btn_rules.setStyleSheet("""
-        #btn_rules {
-            color: blue;
-            text-decoration: underline;
-            border: none;
-        }
-        """)
         self.btn_rules.clicked.connect(self.switch_rule_tree)
         self.hl_frame_frame_btn_control.addWidget(self.btn_rules)
 
@@ -850,11 +789,11 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.model = QtGui.QStandardItemModel()
 
         self.tree = Tree(self, self.model)
-        self.grid.addWidget(self.tree, 3, 0, 1, 4)
+        self.grid.addWidget(self.tree, counter_row.next(), 0, 1, 4)
 
         self.viewer_rules = ViewerRules(self)
         self.viewer_rules.hide()
-        self.grid.addWidget(self.viewer_rules, 3, 0, 1, 4)
+        self.grid.addWidget(self.viewer_rules, counter_row.value, 0, 1, 4)
         # ------------------------------------------------------------------------------------------------#
         self.btn_return_back.clicked.connect(self.tree.return_text)
         self.btn_return_forward.clicked.connect(self.tree.forward_text)
@@ -1063,6 +1002,9 @@ class Window(QtWidgets.QMainWindow):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.setWindowIcon(QtGui.QIcon(os.path.join(ICO_FOLDER, 'CopyAssembly.png')))
 
+        with open(os.path.join(PROJECT_ROOT, r'resources\\style.qss')) as style: 
+            self.setStyleSheet(style.read())
+
         # self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
         self.resize(600, 500)
         self.setWindowTitle('CopyAssembly')
@@ -1088,6 +1030,9 @@ class Window(QtWidgets.QMainWindow):
         menuBar.addAction(help_action)
         
         menuBar.addMenu(fileMenu)
+
+        self.shortcut_search_focus = QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+F'), self)
+        self.shortcut_search_focus.activated.connect(self.set_focus_search_line_edit)
 
     def initWidgets(self):
         # ------------------------------------------------------------------------------------------------#
@@ -1120,11 +1065,6 @@ class Window(QtWidgets.QMainWindow):
         self.frame_load = QtWidgets.QFrame(self)
         self.frame_load.setMaximumSize(160000, 25)
         self.frame_load.setObjectName('frame_load')
-        self.frame_load.setStyleSheet("""
-        #frame_load {
-            border-top: 1px solid gray;
-        }
-        """)
         self.grid.addWidget(self.frame_load, 5, 0, 1, 3)
 
         self.layout_frame_load = QtWidgets.QHBoxLayout(self.frame_load)
@@ -1238,15 +1178,17 @@ class Window(QtWidgets.QMainWindow):
             dct_assembly = self.frame_tree_assembly.get_dict()
             dct_rules = self.frame_tree_assembly.get_rules()
             
+            if not dct_assembly:
+                return
+
             if self.textedit_choose_assembly.text() == dct_assembly['name_assembly']:
-                def func_return():
+                def func_return_style():
                     self.btn_ok.setText('ОК')
                     self.textedit_choose_assembly.setStyleSheet("#textedit_choose_assembly {border: 1px solid gray;}")
-                
                 self.textedit_choose_assembly.setStyleSheet("#textedit_choose_assembly {border: 2px solid red;}")
 
                 self.btn_ok.setText('Переименуйте сборку')
-                QtCore.QTimer.singleShot(1000, lambda: func_return) 
+                QtCore.QTimer.singleShot(1000, lambda: func_return_style) 
                 return
 
             self.btn_ok.setText('Процесс копирования...')
@@ -1282,6 +1224,9 @@ class Window(QtWidgets.QMainWindow):
                     if isinstance(w, QtWidgets.QPushButton) or isinstance(w, QtWidgets.QLineEdit):
                         w.setEnabled(value)
 
+    def set_focus_search_line_edit(self) -> None:
+        self.frame_tree_assembly.textedit_search_to.setFocus()
+
     def del_tmp_copy_assembly(self) -> None:
         if os.path.exists(PATH_TMP):
             for folder in os.listdir(PATH_TMP):
@@ -1315,6 +1260,7 @@ class Window(QtWidgets.QMainWindow):
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.end_application()
         super().closeEvent(event)
+
 
 
 def my_excepthook(type, value, tback):

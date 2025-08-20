@@ -627,12 +627,18 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.full_viewer.hide()
 
     def load_parameters(self) -> dict:
-        with open(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json'), 'r', encoding='utf-8') as file:
-            return json.load(file)
+        try:
+            with open(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json'), 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except FileNotFoundError:
+            return {}
 
-    def update_parameters(self) -> None:
-        with open(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json'), 'w', encoding='utf-8') as file:
-            return json.dump(self.parameters, file, ensure_ascii=False)
+    def update_parameters(self) -> dict:
+        try:
+            with open(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json'), 'w', encoding='utf-8') as file:
+                json.dump(self.parameters, file, ensure_ascii=False)
+        except FileNotFoundError:
+            ...
 
     def fill_list_box(self) -> None:
         if self.parameters is None:
@@ -686,7 +692,9 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.setFixedSize(500, 500)
         self.frame_main.hide()
         self.full_viewer.show()
-        self.full_viewer.set_image(self.parameters[self.list_box.currentItem().text()]['name_assembly'] + '.png')
+        key = self.parameters.get(self.list_box.currentItem().text())
+        if key:
+            self.full_viewer.set_image(self.parameters[key]['name_assembly'] + '.png')
         
     def zoom_out_viewer(self) -> None:
         self.setFixedSize(500, 300)
