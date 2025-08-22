@@ -19,3 +19,5 @@ src
 *.exe
 *.ini
 *.spec
+_CopyAssembly
+build

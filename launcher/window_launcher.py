@@ -4,10 +4,10 @@ import sys
 import pythoncom
 from threading import Thread
 from time import sleep
-from tkinter import ttk, Tk, Canvas, ARC, PhotoImage
+from tkinter import ttk, Tk, Canvas, PhotoImage
 
 from launcher_sitting import ROOT
-from launcher_function import download_programm, check_and_create_new_app_runner, update_appliction, run_application, check_actual_version
+from launcher_function import download_programm, run_application, check_actual_version, create_shortcut_for_exe, del_scr
 from launcher_sitting import PATH_SRC
 
 
@@ -146,6 +146,7 @@ class CustomButton(MyLabel):
         if self.__command_clicked is not None:
             self.__command_clicked()
 
+
 class WindowLauncher(Tk):
     def __init__(self):
         super().__init__()
@@ -231,26 +232,36 @@ class WindowLauncher(Tk):
     def __run(self) -> None:
         pythoncom.CoInitialize()
         if not os.path.exists(PATH_SRC):
-            self.label_info.setText('Скачивание компонентов...')
+            self.label_info.setText('Загрузка и распакова файлов...')
+            self.pb.plus_value(0.5)
             download_programm()
 
-        argv = sys.argv
-        if len(argv) == 1:
             self.label_info.setText('Настройка приложения...')
-            check_and_create_new_app_runner()
-        if len(argv) == 2:
-            self.label_info.setText('Проверка обновлений...')
-            if not check_actual_version():
-                self.label_info.setText('Обновление...')
-                update_appliction()
-                self.label_info.setText('Настройка приложения...')
-                check_and_create_new_app_runner()
-            self.label_info.setText('Запуск приложения...')
-            run_application(argv[1])
+            self.pb.plus_value(0.5)
+            create_shortcut_for_exe()
+        else:
+            argv = sys.argv
+            if len(argv) == 2:
+                if not check_actual_version():
+                    self.label_info.setText('Процесс обновление. Удаление старой версии...')
+                    self.pb.plus_value(0.33)
+                    del_scr()
+
+                    self.label_info.setText('Загрузка и распакова файлов...')
+                    self.pb.plus_value(0.33)
+                    download_programm()
+                    
+                    self.label_info.setText('Настройка приложения...')
+                    self.pb.plus_value(0.33)
+                    create_shortcut_for_exe()
+                
+                self.label_info.setText('Запуск приложения...')
+                run_application(argv[1])
         self.quit()
+        sys.exit()
 
     def run(self) -> None:
-        Thread(target=self.__run2, daemon=True).start()
+        Thread(target=self.__run, daemon=True).start()
         self.mainloop()
 
 

@@ -5,14 +5,12 @@ import shutil
 import pathlib
 import subprocess
 import zipfile
-import json
 import winshell
 from win32com.client import Dispatch
-import PyInstaller.__main__
-from launcher_sitting import ROOT, PATH_UPDATE_RESOURCES, LIST_APPLICATION, DICT_CONFIG, PATH_TEPM, PATH_SRC, CODE_RUNNER_PY
+from launcher_sitting import ROOT, PATH_UPDATE_RESOURCES, PATH_TEPM, PATH_SRC
 
 
-def create_shortcut(name, filepath, dirpath):
+def create_shortcut_in_desktop(name, filepath, dirpath):
     desktop = winshell.desktop()
     path = os.path.join(desktop, f"{name}.lnk")
     icon = filepath
@@ -32,8 +30,7 @@ def download_programm() -> None:
     """
     Скачка архива программы и его распоковки в папке src
     """
-    actual_version = get_actual_version()
-    name_zip = f'Constructor v{actual_version}.zip'
+    name_zip = f'Constructor v{get_actual_version()}.zip'
 
     if not os.path.exists(PATH_TEPM):
         os.mkdir(PATH_TEPM)
@@ -43,100 +40,61 @@ def download_programm() -> None:
     with zipfile.ZipFile(os.path.join(PATH_TEPM, name_zip)) as zip:
         zip.extractall(PATH_SRC)
     
-def update_list_app_in_config_file(list_application: list) -> None:
-    global LIST_APPLICATION
-    LIST_APPLICATION = list_application
-    DICT_CONFIG['application'] = LIST_APPLICATION
-    with open(os.path.join(ROOT, 'launcher_config.json'), 'w') as file_config:
-        json.dump(DICT_CONFIG, file_config)
-
-def get_list_new_application() -> list[str]:
+def create_shortcut_for_exe() -> None:
     """
-    Проверка новых приложение _app.exe, ...\n
-    return: [app.exe, ...]
+    Проверка новых приложение app.exe, ...
     """
     list_application = []
     for file in os.listdir(PATH_SRC):
         path_file = pathlib.Path(file)
-        if str(path_file)[0] == '_' and path_file.suffix == '.exe':
-            name_application = path_file.name
-            if name_application not in LIST_APPLICATION:
-                list_application.append(name_application)
+        if path_file.suffix == '.exe' and str(path_file)[0] != '_':
+            path_from_ = os.path.join(PATH_SRC, file)
+            path_to = os.path.join(ROOT, file)
+            shutil.move(path_from_, path_to)
+            create_shortcut_in_desktop(path_file.stem, path_to, ROOT)
     return list_application
-
-def create_runner_py(name_application: str) -> str:
-    full_file_path_name_application = os.path.join(ROOT, f'{name_application}.py')
-    with open(full_file_path_name_application, 'w', encoding='utf-8') as code:
-        for line in CODE_RUNNER_PY:
-            code.write(line + '\n')
-    return full_file_path_name_application
-
-def check_and_create_new_app_runner() -> None:
-    """
-    Проверки и создание новых exe лаунчеров для приложений
-    ['_app.exe', ...] -> [app.py, ...] -> [app.exe, ...]
-    """
-    list_new_appliction = get_list_new_application()
-    print(list_new_appliction)
-    for filename_application in list_new_appliction:
-        name_application = filename_application.replace('.exe', '')
-        full_file_path_py_runner_app = create_runner_py(name_application)
-
-        path_icon = os.path.join(PATH_SRC, 'resources\\icon', f'{name_application[1:]}.png')
-        workpath = os.path.join(ROOT, 'build')
-
-        PyInstaller.__main__.run(["-F", "--noconsole", f"--name={name_application[1:]}", f"--distpath={ROOT}", f"--workpath={workpath}", f"--icon={path_icon}", full_file_path_py_runner_app])
-
-        os.remove(full_file_path_py_runner_app)
-        os.remove(os.path.join(ROOT, f'{name_application[1:]}.spec'))
-        shutil.rmtree(workpath)
-        create_shortcut(name=name_application[1:], filepath=os.path.join(ROOT, f'{name_application[1:]}.exe'), dirpath=ROOT)
-
-    update_list_app_in_config_file(list_new_appliction)
 
 def del_scr() -> None:
     """
     Удаление папки src с основной программой и все сгенерированных exe файлов
     """
-    global LIST_APPLICATION
     if os.path.exists(PATH_SRC):
-        shutil.rmtree(PATH_SRC)
-    
-    for file_exe in LIST_APPLICATION:
-        os.remove(os.path.join(ROOT, file_exe[1:]))    
-    update_list_app_in_config_file([])
+        shutil.rmtree(PATH_SRC) 
+
+    for file in os.listdir(ROOT):
+        if '.exe' in file and 'launcehr' not in file:
+            try:
+                os.remove(os.join(ROOT, file))
+            except Exception:
+                ...
 
 def check_actual_version() -> bool:
     with open(os.path.join(PATH_SRC, 'version'), 'r', encoding='utf-8') as file_version:
         version = float(file_version.read())
-    
     return version == get_actual_version()
-
-def update_appliction() -> None:
-    del_scr()
-    if not os.path.exists(PATH_SRC):
-        download_programm()
 
 def run_application(full_file_name_application: str) -> None:
     try:
-        subprocess.Popen([full_file_name_application])
+        if os.path.exists(full_file_name_application):
+            subprocess.Popen([full_file_name_application])
     except Exception as error:
         print(error)
 
 def main() -> None:
-    if not os.path.exists(PATH_TEPM):
-        os.mkdir(PATH_TEPM)
-    
     if not os.path.exists(PATH_SRC):
         download_programm()
+        create_shortcut_for_exe()
+        return
 
     argv = sys.argv
-    if len(argv) == 1:
-        check_and_create_new_app_runner()
+    # argv = [1, 2]
     if len(argv) == 2:
-        update_appliction()
-        check_and_create_new_app_runner()
+        if not check_actual_version():
+            del_scr()
+            download_programm()
+            create_shortcut_for_exe()
         run_application(argv[1])
+
 
 if __name__ == '__main__':
     main()
