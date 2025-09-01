@@ -116,9 +116,9 @@ def _get_tree_assembly_recursive(document, root_assembly: str, dct=None, is_recu
 
                 if '.iam' in full_filename:
                     sub_dct = _get_tree_assembly_recursive(document=component, root_assembly=root_assembly, is_recursion=True)
-                    value = {'component_name': component_name, 'display_name': display_name, 'short_filename': short_filename, 'image': 'iam_image.png', 'item': sub_dct}
+                    value = {'component_name': component_name, 'display_name': display_name, 'short_filename': short_filename, 'image': 'iam_image.png', 'item': sub_dct, 'type_file': '.iam'}
                 else:
-                    value = {'component_name': component_name, 'display_name': display_name, 'short_filename': short_filename, 'image': 'ipt_image.png', 'item': {}}
+                    value = {'component_name': component_name, 'display_name': display_name, 'short_filename': short_filename, 'image': 'ipt_image.png', 'item': {},'type_file': '.ipt'}
                 
                 if full_filename not in dct:
                     dct[full_filename] = value
@@ -175,9 +175,15 @@ def rename_display_name_file(application: Any, options_open_document: Any, dict_
     """ Открытие каждого файла входящего в сборку и переименования его имени в браузере (DisplayName) """
     for old_short_filename, new_short_filename in dict_data_assembly['short_filename'].items():
         new_full_filename = dict_data_assembly['new_root_assembly'] + new_short_filename
+
         if os.path.exists(new_full_filename):
             sub_doc = application.Documents.OpenWithOptions(new_full_filename, options_open_document, False)
+            
             new_display_name = dict_data_assembly['display_name'].get(sub_doc.DisplayName)
+            if new_display_name is None:
+                # Инвентор может добавить в displayName расширение файла 
+                new_display_name = dict_data_assembly['display_name'].get(pathlib.Path(sub_doc.DisplayName).stem)
+
             try:
                 if new_display_name:
                     sub_doc.DisplayName = new_display_name.replace('.ipt', '').replace('.iam', '')

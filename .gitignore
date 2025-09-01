@@ -21,3 +21,4 @@ src
 *.spec
 _CopyAssembly
 build
+/launcher/launcher
