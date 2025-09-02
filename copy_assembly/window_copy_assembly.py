@@ -31,6 +31,7 @@ class IThread(QtCore.QObject):
     signal_is_prepared = QtCore.pyqtSignal(bool)
     signal_error = QtCore.pyqtSignal(ErrorCode)
     signal_complite_thread = QtCore.pyqtSignal()
+    signal_close = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -46,6 +47,7 @@ class IThread(QtCore.QObject):
         self.__app: Optional[Any] = None
         self.pid: Optional[int] = None
         self.__options_open_document: Optional[Any] = None
+        self.__current_path_project: Optional[str] = None
     
     def __init_app(self) -> None:
         if self.__app is None:
@@ -70,6 +72,8 @@ class IThread(QtCore.QObject):
             if path_project is None:
                 path_project = os.path.join(PATH_TMP, PROJECT_INVENTOR_FILENAME)
             try:
+                self.__current_path_project = self.__app.DesignProjectManager.ActiveDesignProject.fullFileName
+                print(self.__current_path_project)
                 self.__app.DesignProjectManager.DesignProjects.AddExisting(path_project).Activate()
             except Exception:
                 loging_try()
@@ -175,6 +179,16 @@ class IThread(QtCore.QObject):
             self.__copy_assembly()
         self.signal_pb.emit(False)
 
+    @QtCore.pyqtSlot()
+    def close(self) -> None:
+        if self.__current_path_project:
+            try:
+                self.__app.Documents.CloseAll()
+                self.__app.DesignProjectManager.DesignProjects.AddExisting(self.__current_path_project).Activate()
+            except Exception as error:
+                print(error)
+                loging_try()
+        self.signal_close.emit()
 
 class LoadRingWidget(QtWidgets.QWidget):
     def __init__(self, parent, color, ring_offset_x, ring_offset_y, max_size):
@@ -1088,7 +1102,7 @@ class Window(QtWidgets.QMainWindow):
         self.change_text_pb('Готово')
         
         if error_code == ErrorCode.OPEN_INVENTOR_APPLICATION or error_code == ErrorCode.OPEN_INVENTOR_PROJECT:
-            self.end_application()
+            self.close_application()
 
         msg = QtWidgets.QMessageBox(self)
         msg.setIcon(QtWidgets.QMessageBox.Information)
@@ -1246,7 +1260,10 @@ class Window(QtWidgets.QMainWindow):
                                         loging_try()
                             loging_try()
 
-    def end_application(self) -> None:
+    def inventor_application_close(self) -> None:
+        self.close_application()
+
+    def close_application(self) -> None:
         if self.thread_inventor.pid:
             kill_process_for_pid(self.thread_inventor.pid)
             self.thread_inventor.pid = None
@@ -1254,7 +1271,11 @@ class Window(QtWidgets.QMainWindow):
         self.thread_inventor.deleteLater()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        self.end_application()
+        loop = QtCore.QEventLoop()
+        self.thread_inventor.signal_close.connect(loop.quit)
+        QtCore.QMetaObject.invokeMethod(self.thread_inventor, "close", QtCore.Qt.QueuedConnection)
+        loop.exec_()
+        self.close_application()
         super().closeEvent(event)
 
 
@@ -1262,7 +1283,7 @@ def my_excepthook(type, value, tback):
     global window, app
 
     loging_sys(type, value, tback)
-    window.end_application()
+    window.close_application()
     
     msg = QtWidgets.QMessageBox(window)
     msg.setIcon(QtWidgets.QMessageBox.Information)

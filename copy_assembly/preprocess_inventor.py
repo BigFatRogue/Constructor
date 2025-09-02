@@ -29,16 +29,7 @@ def kill_process_for_pid(pid: int) -> None:
 
 def get_app_inventor(is_CoInitialize=False) -> Union[Any, int, ErrorCode]:
     if is_CoInitialize:
-        # ...
         pythoncom.CoInitialize()
-
-    # gen_py_path = os.path.join(os.environ["TEMP"], "gen_py")
-    # if os.path.exists(gen_py_path):
-    #     shutil.rmtree(gen_py_path)
-
-    # cache_path = os.path.join(os.environ["LOCALAPPDATA"], "Temp", "gen_py")
-    # if os.path.exists(cache_path):
-    #     shutil.rmtree(cache_path)
 
     process_name = 'Inventor.exe'
     before_pids = {p.pid for p in psutil.process_iter(['pid', 'name']) if p.name() == process_name}
