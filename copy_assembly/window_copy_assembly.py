@@ -25,7 +25,6 @@ class IThread(QtCore.QObject):
         return cls.__instance        
 
     signal_dict_assembly = QtCore.pyqtSignal(dict)
-    signal_dict_rules = QtCore.pyqtSignal(dict)
     signal_text_pb = QtCore.pyqtSignal(str)
     signal_pb = QtCore.pyqtSignal(bool)
     signal_is_prepared = QtCore.pyqtSignal(bool)
@@ -73,7 +72,6 @@ class IThread(QtCore.QObject):
                 path_project = os.path.join(PATH_TMP, PROJECT_INVENTOR_FILENAME)
             try:
                 self.__current_path_project = self.__app.DesignProjectManager.ActiveDesignProject.fullFileName
-                print(self.__current_path_project)
                 self.__app.DesignProjectManager.DesignProjects.AddExisting(path_project).Activate()
             except Exception:
                 loging_try()
@@ -117,26 +115,25 @@ class IThread(QtCore.QObject):
             dict_assembly, document = get_tree_assembly(application=self.__app, options_open_document=self.__options_open_document, full_filename_assembly=tmp_assembly_path)
             
             self.signal_text_pb.emit('Чтение правил...')
-            dct_rules = get_rules_assembly(application=self.__app, document=document)
             document.Close()
 
+            with open(r'DEBUG\data_assembly.txt', 'w', encoding='utf-8') as file_data_assembly: 
+                file_data_assembly.write(str(dict_assembly))
+        
             self.signal_dict_assembly.emit(dict_assembly)
-            self.signal_dict_rules.emit(dct_rules)
             self.signal_is_prepared.emit(self.__is_prepared)
         else:
             self.signal_error.emit(ErrorCode.OPEN_INVENTOR_APPLICATION)
         self.__clear_variable_open()
         self.signal_complite_thread.emit()
 
-    @QtCore.pyqtSlot(dict, dict)
-    def init_copy_assembly(self, dict_assembly: dict, dict_rules: Optional[dict]=None) -> None:
+    @QtCore.pyqtSlot(dict)
+    def init_copy_assembly(self, dict_assembly: dict) -> None:
         self.__mode = Mode.COPY_ASSEMBLY
         self.__dict_assembly = dict_assembly
-        self.__dict_rules = dict_rules
 
     def __claer_variable_copy(self) -> None:
         self.__dict_assembly = None
-        self.__dict_rules = None
 
     def __copy_assembly(self) -> None:
         if not self.__dict_assembly:
@@ -155,10 +152,6 @@ class IThread(QtCore.QObject):
             self.signal_text_pb.emit(f'Переименовывание названий компонентов...')
             rename_display_name_file(application=self.__app, options_open_document=self.__options_open_document, dict_from_application=self.__dict_assembly)
             rename_component_name_in_assembly(document=doc, dict_from_application=self.__dict_assembly)
-
-            if self.__dict_rules:
-                self.signal_text_pb.emit(f'Обновление правил iLogic...')
-                set_rulse(aplication=self.__app, document=doc, dict_rules=self.__dict_rules)
 
             doc.Save()
             doc.Close()
@@ -186,7 +179,6 @@ class IThread(QtCore.QObject):
                 self.__app.Documents.CloseAll()
                 self.__app.DesignProjectManager.DesignProjects.AddExisting(self.__current_path_project).Activate()
             except Exception as error:
-                print(error)
                 loging_try()
         self.signal_close.emit()
 
@@ -298,31 +290,29 @@ class HighlightDelegate(QtWidgets.QStyledItemDelegate):
         text_current: str = index.data()
         text_search: str = self.search_text
 
-        text_search_lower = text_search
-        text_lower = text_current
+        if text_current and text_current:
+            if not self.mode_register:
+                text_search = text_search.lower()
+                text_current = text_current.lower()
 
-        if not self.mode_register:
-            text_search_lower = text_search_lower.lower()
-            text_lower = text_lower.lower()
+            if text_search and text_current and text_search in text_current:
+                start = 0
+                l = len(text_search)
+                indxs = []
+                for _ in range(text_current.count(text_search)):
+                    indx = text_current[start:].find(text_search)
+                    indxs.append((indx + start, indx + l + start))
+                    start += indx + 1
 
-        if text_search_lower and text_search_lower in text_lower:
-            start = 0
-            l = len(text_search_lower)
-            indxs = []
-            for _ in range(text_lower.count(text_search_lower)):
-                indx = text_lower[start:].find(text_search_lower)
-                indxs.append((indx + start, indx + l + start))
-                start += indx + 1
+                for idx_start, idx_end in indxs:
+                    x_offset = option.rect.x() + option.fontMetrics.horizontalAdvance(text_current[: idx_start])
+                    width = option.fontMetrics.horizontalAdvance(text_current[idx_start: idx_end + 1])
+                    
+                    icon_width = option.decorationSize.width() * 1.5 if index.data(QtCore.Qt.DecorationRole) else 0
 
-            for idx_start, idx_end in indxs:
-                x_offset = option.rect.x() + option.fontMetrics.horizontalAdvance(text_lower[: idx_start])
-                width = option.fontMetrics.horizontalAdvance(text_current[idx_start: idx_end + 1])
-                
-                icon_width = option.decorationSize.width() * 1.5 if index.data(QtCore.Qt.DecorationRole) else 0
-
-                x_offset += icon_width + self.parent.style().pixelMetric(QtWidgets.QStyle.PM_FocusFrameHMargin)
-                rect = QtCore.QRect(x_offset, option.rect.y(), width,  option.rect.height())
-                painter.fillRect(rect, QtGui.QBrush(QtGui.QColor(255, 255, 0)))
+                    x_offset += icon_width + self.parent.style().pixelMetric(QtWidgets.QStyle.PM_FocusFrameHMargin)
+                    rect = QtCore.QRect(x_offset, option.rect.y(), width,  option.rect.height())
+                    painter.fillRect(rect, QtGui.QBrush(QtGui.QColor(255, 255, 0)))
         
         super().paint(painter, option, index)
 
@@ -348,7 +338,6 @@ class Tree(QtWidgets.QTreeView):
     def __init__(self, parent, model: QtGui.QStandardItemModel, *args, **kwargs):
         super().__init__(parent)
 
-        self.dict_change = {}
         self.setObjectName('Tree')
 
         self.model = model
@@ -359,14 +348,8 @@ class Tree(QtWidgets.QTreeView):
 
     def init(self):
         self.setModel(self.model)
-        # self.selectionModel().selectionChanged.connect(self.handle_selection_change)
-        # self.chekboxHeader = CheckBoxHeader(QtCore.Qt.Horizontal, self)
-        # self.setHeader(self.chekboxHeader)
-        # self.chekboxHeader.stateChanged.connect(self.toggle_items)
 
-    def on_item_changed(self, item, rec=False) -> None:
-        # if item.rowCount() and not self.flag_change_range:
-        #     self.toggle_items(state=item.checkState(), item=item)        
+    def on_item_changed(self, item, rec=False) -> None:      
         if item.text() not in item.names:
             item.names.append(item.text())
 
@@ -400,12 +383,22 @@ class Tree(QtWidgets.QTreeView):
             setattr(item_short_filename, 'names', [short_filename])
             setattr(item_short_filename, 'type_file', value['type_file'])
 
-            list_item = [item_component_name, item_display_name, item_short_filename]
+            item_rules_ilogic = QtGui.QStandardItem()
+            item_rules_ilogic.setEditable(False)
+            setattr(item_rules_ilogic, 'rules', value['rules'])
+            
+            list_item = [item_component_name, item_display_name, item_short_filename, item_rules_ilogic]
             for item in list_item:
                 item.setData(QtGui.QColor(255, 255, 255), QtCore.Qt.BackgroundRole)
-   
+
             parent.appendRow(list_item)
             count += 1
+            
+            if value['rules']:
+                btn = QtWidgets.QPushButton("Правила")
+                btn.clicked.connect(lambda event: print(value['rules']))
+                index = self.model.indexFromItem(item_rules_ilogic)
+                self.setIndexWidget(index, btn)
 
             if value['item']:
                 count = self.populatet_tree(children=value['item'], parent=item_component_name, count=count)
@@ -586,7 +579,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         super().__init__(parent, *args, **kwargs)
 
         self.dct_rename = None
-        self.dct_rules = None
         # True - Активно дерево, False - активно textbox с правилами 
         self.flag_switch_tree = True
         self.init()
@@ -642,12 +634,17 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.check_box_preffix.clicked.connect(self.click_check_box_preffix)
         self.hl_frame_check_box.addWidget(self.check_box_preffix)
 
+        self.check_box_change_in_rules = QtWidgets.QCheckBox(self.frame_check_box)
+        self.check_box_change_in_rules.setText('Изменять в правилах автоматически')
+        self.check_box_change_in_rules.setCheckState(QtCore.Qt.CheckState(2))
+        # self.check_box_change_in_rules.clicked.connect(self.click_check_box_preffix)
+        self.hl_frame_check_box.addWidget(self.check_box_change_in_rules)
+
         self.frame_check_box_horizont_spacer = QtWidgets.QSpacerItem(20, 15, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.hl_frame_check_box.addItem(self.frame_check_box_horizont_spacer)
         
         self.btn_replace_all = QtWidgets.QPushButton(self)
         self.btn_replace_all.setText('Заменить всё')
-        self.btn_replace_all.clicked.connect(self.__click_rename_all_in_rules)
         self.grid.addWidget(self.btn_replace_all, counter_row.value, 2, 1, 1)
         self.btn_replace_all.hide()
         # ------------------------------------------------------------------------------------------------#
@@ -736,22 +733,10 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.horizont_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.hl_frame_frame_btn_control.addItem(self.horizont_spacer)
         # ------------------------------------------------------------------------------------------------#
-        self.btn_rules = QtWidgets.QPushButton(self)
-        self.btn_rules.setText('Правила')
-        self.btn_rules.setObjectName('btn_rules')
-        self.btn_rules.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        self.btn_rules.clicked.connect(self.switch_rule_tree)
-        self.hl_frame_frame_btn_control.addWidget(self.btn_rules)
-        self.btn_rules.hide()
-        # ------------------------------------------------------------------------------------------------#
         self.model = QtGui.QStandardItemModel()
-
         self.tree = Tree(self, self.model)
         self.grid.addWidget(self.tree, counter_row.next(), 0, 1, 4)
 
-        self.viewer_rules = ViewerRules(self)
-        self.viewer_rules.hide()
-        self.grid.addWidget(self.viewer_rules, counter_row.value, 0, 1, 4)
         # ------------------------------------------------------------------------------------------------#
         self.btn_return_back.clicked.connect(self.tree.return_text)
         self.btn_return_forward.clicked.connect(self.tree.forward_text)
@@ -765,18 +750,8 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
     def fill_tree(self, dict_from_assembly: dict):
         self.model.clear()
-        self.model.setHorizontalHeaderLabels(['Имя компонента', 'Имя детали', 'Относительный путь'])
+        self.model.setHorizontalHeaderLabels(['Имя компонента в сборке', 'Имя фалйа', 'Относительный путь', 'Правила Ilogic'])
         
-        # self.dct_rename = {
-        #     'root_assembly': data['root_assembly'],
-        #     'name_assembly': data['name_assembly'],
-        #     'new_root_assembly': '',
-        #     'new_name_assembly': '',
-        #     'display_name': {},
-        #     'component_name': {},
-        #     'short_filename': {}
-        # }
-
         self.dct_rename = {
             'root_assembly': dict_from_assembly['root_assembly'],
             'name_assembly': dict_from_assembly['name_assembly'],
@@ -795,28 +770,13 @@ class FrameTreeFromDict(QtWidgets.QFrame):
             self.tree.header().setSectionResizeMode(col, self.tree.header().Interactive)
         
         self.tree.setModel(self.model)
-
-    def fill_rules(self, data):
-        self.viewer_rules.fill_data(data)
-        if data:
-            self.btn_rules.show()
-        else:
-            self.btn_rules.hide()
-
-    def __rename_text_box_rules(self):
-        search = self.textedit_search_to.text()
-        to = self.textedit_replace_to.text()
-        self.viewer_rules.rename_text_box(search=search, to=to)
     
     def __click_btn_replace(self) -> None:
         if self.textedit_search_to.text():
-            if self.flag_switch_tree:
-                if self.btn_replace.text() == 'Заменить':
-                    self.__rename_one_item(item=self.model.invisibleRootItem())
-                else:
-                    self.__item_add_text_preffix_or_suffix()
+            if self.btn_replace.text() == 'Заменить':
+                self.__rename_one_item(item=self.model.invisibleRootItem())
             else:
-                self.__rename_text_box_rules()
+                self.__item_add_text_preffix_or_suffix()
 
     def __item_add_text_preffix_or_suffix(self, item=None, text=None) -> None:
         if item is None:
@@ -849,16 +809,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
             self.__item_add_text_preffix_or_suffix(item=item.child(i, 0), text=text) 
 
-    def __rename_text_box_all_in_rules(self):
-        search = self.textedit_search_to.text()
-        to = self.textedit_replace_to.text()
-        self.viewer_rules.all_rename_text_box(search=search, to=to)
-
-    def __click_rename_all_in_rules(self) -> None:
-        if self.textedit_search_to.text():
-            if not self.flag_switch_tree:
-                self.__rename_text_box_all_in_rules()
-    
     def rename_item_from_dict(self, data: dict) -> None:
         """
         Переименование из словаря компонентов сборки, а также в правилах. Для подготовленных сборок из окна PreparedAssemblyWindow
@@ -870,7 +820,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.textedit_replace_to.setText(replace_to)
         
         self.__rename_one_item(item=self.model.invisibleRootItem())
-        self.viewer_rules.all_rename_text_box(search_to, replace_to)
     
     def __rename_one_item(self, item) -> None:
         for i in range(item.rowCount()):
@@ -883,6 +832,9 @@ class FrameTreeFromDict(QtWidgets.QFrame):
             item_short_filename = item.child(i, 2)
             text_short_filename = item_short_filename.text()
             
+            item_rules = item.child(i, 3)
+            dict_rules: dict = item_rules.rules
+
             text_search_to = self.textedit_search_to.text()
             text_replace_to = self.textedit_replace_to.text()
 
@@ -896,6 +848,10 @@ class FrameTreeFromDict(QtWidgets.QFrame):
             item_component_name.setText(text_component.replace(text_search_to, text_replace_to))
             item_display_name.setText(text_display_name.replace(text_search_to, text_replace_to))
             item_short_filename.setText(text_short_filename.replace(text_search_to, text_replace_to))
+
+            if dict_rules:
+                for name, text_rules in dict_rules.items():
+                    dict_rules[name] = text_rules.replace(text_search_to, text_replace_to)
 
             self.__rename_one_item(item=item.child(i, 0)) 
     
@@ -937,9 +893,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
     def get_dict(self) -> dict:
         if self.dct_rename:
-            # self.dct_rename['component_name'].clear()
-            # self.dct_rename['display_name'].clear()
-            # self.dct_rename['short_filename'].clear()
             self.dct_rename['item'].clear()
             self.__get_dict(self.model.invisibleRootItem())
             return self.dct_rename
@@ -949,29 +902,26 @@ class FrameTreeFromDict(QtWidgets.QFrame):
             item_component_name = item.child(i, 0)
             item_display_name = item.child(i, 1)
             item_short_filename = item.child(i, 2)
+            item_rules = item.child(i, 3)
 
-            # item_short_filename.name --> '\dir1\dir2\file1.ipt' --> [1:] убирает слэш вначале
-            full_file_path = os.path.join(self.dct_rename['root_assembly'], item_short_filename.name[1:] + item_short_filename.type_file)
+            if not self.dct_rename['new_name_assembly']:
+                self.dct_rename['new_name_assembly'] = item_component_name.text() + '.iam'
+                self.dct_rename['rules'] = item_rules.rules
+            else:
+                # item_short_filename.name --> '\dir1\dir2\file1.ipt' --> [1:] убирает слэш вначале
+                full_file_path = os.path.join(self.dct_rename['root_assembly'], item_short_filename.name[1:] + item_short_filename.type_file)
 
-            self.dct_rename['item'][full_file_path] = {
-                'component_name': (item_component_name.name, item_component_name.text()),
-                'display_name': (item_display_name.name, item_display_name.text()),
-                'short_filename': (item_short_filename.name + item_short_filename.type_file, strip_path(item_short_filename.text()) + item_short_filename.type_file)
-            }
-            # self.dct_rename['component_name'][item_component_name.name] = item_component_name.text()
-            # self.dct_rename['display_name'][item_display_name.name] = item_display_name.text()
-            # self.dct_rename['short_filename'][item_short_filename.name + item_short_filename.type_file] = strip_path(item_short_filename.text()) + item_short_filename.type_file
-
+                self.dct_rename['item'][full_file_path] = {
+                    'component_name': (item_component_name.name, item_component_name.text()),
+                    'display_name': (item_display_name.name, item_display_name.text()),
+                    'short_filename': (item_short_filename.name + item_short_filename.type_file, strip_path(item_short_filename.text()) + item_short_filename.type_file),
+                    'rules': item_rules.rules
+                }
             self.__get_dict(item_component_name)
-
-    def get_rules(self) -> dict:
-        return self.viewer_rules.get_rules()
 
     def switch_rule_tree(self, event: bool):
         if self.flag_switch_tree:
-            self.btn_rules.setText('Дерево файлов')
             self.tree.hide()
-            self.viewer_rules.show()
             self.btn_replace_all.show()
             self.btn_return_back.hide()
             self.btn_return_forward.hide()
@@ -981,9 +931,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
             self.btn_update_tree.hide()
 
         else:
-            self.btn_rules.setText('Правила')
             self.tree.show()
-            self.viewer_rules.hide()
             self.btn_replace_all.hide()
             self.btn_return_back.show()
             self.btn_return_forward.show()
@@ -996,15 +944,10 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
     def update_tree(self) -> None:
         if self.dct_rename:
-            self.viewer_rules.clear_rules_data()
             self.signal_update_tree.emit(os.path.join(self.dct_rename['root_assembly'], self.dct_rename['name_assembly']))
 
     def clear_date_dict(self) -> None:
         self.dct_rename = None
-
-    def clear_rules_data(self):
-        self.dct_rules = None
-        self.viewer_rules.clear_rules_data()
 
     def switch_enabled_widgets(self, value: bool) -> None:
         for widgets in self.children():
@@ -1040,9 +983,6 @@ class Window(QtWidgets.QMainWindow):
         with open(r'DEBUG\data_assembly.txt', 'r', encoding='utf-8') as file_data_assembly: 
             self.fill_trees(eval(file_data_assembly.read()))
         
-        with open(r'DEBUG\data_rules.txt', 'r', encoding='utf-8') as file_data_rules: 
-            self.fill_rules(eval(file_data_rules.read()))
-
     def initWindow(self):
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -1090,6 +1030,7 @@ class Window(QtWidgets.QMainWindow):
         self.textedit_choose_assembly.setObjectName('textedit_choose_assembly')
         self.textedit_choose_assembly.textChanged.connect(lambda event: self.textedit_choose_assembly.setStyleSheet("#textedit_choose_assembly {border: 1px solid gray;}"))
         self.grid.addWidget(self.textedit_choose_assembly, 0, 1, 1, 1)
+        self.textedit_choose_assembly.setEnabled(False)
 
         self.btn_choose_path_assembly = QtWidgets.QPushButton(self)
         self.btn_choose_path_assembly.setText('Выбрать')
@@ -1128,7 +1069,6 @@ class Window(QtWidgets.QMainWindow):
         self.thread_inventor.signal_text_pb.connect(self.change_text_pb)
         self.thread_inventor.signal_pb.connect(self.set_state_pb)
         self.thread_inventor.signal_dict_assembly.connect(self.fill_trees)
-        self.thread_inventor.signal_dict_rules.connect(self.fill_rules)
         self.thread_inventor.signal_error.connect(self.thread_inventor_error)
         self.thread_inventor.signal_complite_thread.connect(self.thread_inventor_complite)
         self.thread_inventor.signal_is_prepared.connect(self.__full_rename_assembly)
@@ -1206,13 +1146,10 @@ class Window(QtWidgets.QMainWindow):
     def fill_trees(self, data: dict) -> None:
         self.switch_enabled_widgets(True)
         self.frame_tree_assembly.switch_enabled_widgets(True)
-        if data is not None:
-            self.textedit_choose_assembly.setText(data['name_assembly'])
+        if data is not None: 
+            self.textedit_choose_assembly.setText(tuple(data['item'].keys())[0])
             self.frame_tree_assembly.fill_tree(data)
-        
-    def fill_rules(self, dct: dict) -> None:
-        self.frame_tree_assembly.fill_rules(dct)
-    
+            
     def change_text_pb(self, string: str):
         self.label_load_ring.setText(string)
 
@@ -1225,30 +1162,15 @@ class Window(QtWidgets.QMainWindow):
     def click_ok(self) -> None:
         if self.frame_tree_assembly.flag_switch_tree:
             dct_assembly = self.frame_tree_assembly.get_dict()
-            dct_rules = self.frame_tree_assembly.get_rules()
-            
+            print(dct_assembly)
+            return
             if not dct_assembly:
-                return
-
-            if self.textedit_choose_assembly.text() == dct_assembly['name_assembly']:
-                def func_return_style():
-                    self.btn_ok.setText('ОК')
-                    self.textedit_choose_assembly.setStyleSheet("#textedit_choose_assembly {border: 1px solid gray;}")
-                self.textedit_choose_assembly.setStyleSheet("#textedit_choose_assembly {border: 2px solid red;}")
-
-                self.btn_ok.setText('Переименуйте сборку')
-                QtCore.QTimer.singleShot(1000, lambda: func_return_style) 
                 return
 
             self.btn_ok.setText('Процесс копирования...')
             self.switch_enabled_widgets(False)
             self.frame_tree_assembly.switch_enabled_widgets(False)
-                
-            new_name_assembly = self.textedit_choose_assembly.text()
-            if self.textedit_choose_assembly.text().split('.')[-1] != 'iam':
-                new_name_assembly += '.iam'
-            
-            dct_assembly['new_name_assembly'] = new_name_assembly
+
             dct_assembly['new_root_assembly'] = create_folder_rename_assembly(assembly_name=dct_assembly['new_name_assembly'])
             
             QtCore.QMetaObject.invokeMethod(
@@ -1256,7 +1178,6 @@ class Window(QtWidgets.QMainWindow):
                 "init_copy_assembly", 
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(dict, dct_assembly),
-                QtCore.Q_ARG(dict, dct_rules if dct_rules else dict())
             )
             QtCore.QMetaObject.invokeMethod(self.thread_inventor, "run", QtCore.Qt.QueuedConnection)
          
@@ -1271,7 +1192,8 @@ class Window(QtWidgets.QMainWindow):
             if widgets.objectName() == 'centralwidget':
                 for w in widgets.children():
                     if isinstance(w, QtWidgets.QPushButton) or isinstance(w, QtWidgets.QLineEdit) or isinstance(w, QtWidgets.QCheckBox):
-                        w.setEnabled(value)
+                        if w.objectName() != 'textedit_choose_assembly':
+                            w.setEnabled(value)
 
     def set_focus_search_line_edit(self) -> None:
         self.frame_tree_assembly.textedit_search_to.setFocus()

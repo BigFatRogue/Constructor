@@ -22,7 +22,7 @@
 
 import os
 import shutil
-from typing import Any
+from typing import Any, Optional
 from pathlib import Path
 from datetime import datetime
 
@@ -74,6 +74,8 @@ def copy_file_assembly(full_filename: str) -> str:
 
 def get_tree_assembly(application, options_open_document, full_filename_assembly: str) -> tuple:
     document = application.Documents.OpenWithOptions(full_filename_assembly, options_open_document, False)
+    
+    display_name = document.DisplayName.replace('.iam', '')
 
     path_assemlby_full_filename = Path(full_filename_assembly)
     root_assembly = str(path_assemlby_full_filename.parent)
@@ -82,14 +84,27 @@ def get_tree_assembly(application, options_open_document, full_filename_assembly
         'name_assembly': path_assemlby_full_filename.name,
         'new_root_assembly': '',
         'new_name_assembly': '',
-        'item': {}
+        'item': {
+            full_filename_assembly: {
+                'component_name': display_name, 
+                'display_name': display_name, 
+                'short_filename': "\\", 
+                'image': 'iam_image.png',
+                'type_file': '.iam' ,
+                'rules': get_rules_assembly(application=application, document=document),
+                'item': {}, 
+            }
+        }
     }
 
-    main_dct['item'] = _get_tree_assembly_recursive(document=document, root_assembly=root_assembly)
+    main_dct['item'][full_filename_assembly]['item'] = _get_tree_assembly_recursive(application=application, 
+                                                                                    document=document, 
+                                                                                    root_assembly=root_assembly, 
+                                                                                    options_open_document=options_open_document)
     
     return main_dct, document
 
-def _get_tree_assembly_recursive(document, root_assembly: str, dct=None, is_recursion=False) -> dict:
+def _get_tree_assembly_recursive(application, document, root_assembly: str, dct=None, is_recursion=False, options_open_document: Optional[Any]=None) -> dict:
     if dct is None:
         dct = {}
     
@@ -117,22 +132,28 @@ def _get_tree_assembly_recursive(document, root_assembly: str, dct=None, is_recu
                     component_name = ':'.join(component_name.split(':')[:-1])
 
                 if '.iam' in full_filename:
-                    sub_dct = _get_tree_assembly_recursive(document=component, root_assembly=root_assembly, is_recursion=True)
+                    sub_dct = _get_tree_assembly_recursive(application, 
+                                                           document=component, 
+                                                           root_assembly=root_assembly, 
+                                                           is_recursion=True, 
+                                                           options_open_document=options_open_document)
                     value = {
                         'component_name': component_name, 
                         'display_name': display_name, 
                         'short_filename': short_filename, 
                         'image': 'iam_image.png', 
-                        'item': sub_dct, 
-                        'type_file': '.iam'}
+                        'rules': get_rules_assembly(application=application, filepath=full_filename, options_open_document=options_open_document), 
+                        'type_file': '.iam',
+                        'item': sub_dct}
                 else:
                     value = {
                         'component_name': component_name,
                         'display_name': display_name,
                         'short_filename': short_filename,
-                        'image': 'ipt_image.png', 
-                        'item': {},
-                        'type_file': '.ipt'}
+                        'image': 'ipt_image.png',
+                        'rules': get_rules_assembly(application=application, filepath=full_filename, options_open_document=options_open_document),
+                        'type_file': '.ipt',
+                        'item': {}}
                 
                 if full_filename not in dct:
                     dct[full_filename] = value
@@ -193,18 +214,18 @@ def replace_reference_file(application: Any, document: Any, options_open_documen
 
 def rename_display_name_file(application: Any, options_open_document: Any, dict_from_application: dict):
     """ Открытие каждого файла входящего в сборку и переименования его имени в браузере (DisplayName) """
-    for old_full_filename, value in dict_from_application['item'].items():
-        old_short_filename, new_short_filename = value['short_filename']
+    for _, value in dict_from_application['item'].items():
+        _, new_short_filename = value['short_filename']
         new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
 
         if os.path.exists(new_full_filename):
             sub_doc = application.Documents.OpenWithOptions(new_full_filename, options_open_document, False)
-            old_display_name, new_display_name = value['display_name']
+            _, new_display_name = value['display_name']
             if new_display_name:
                 try:
                     sub_doc.DisplayName = new_display_name.replace('.ipt', '').replace('.iam', '')
                     sub_doc.Save()
-                except Exception as error:
+                except Exception:
                     loging_try()
             sub_doc.Close()
 
@@ -246,10 +267,12 @@ def rename_component_name_in_assembly(document: Any, dict_from_application: dict
             loging_try()        
             pass
 
-def get_rules_assembly(application: Any, document: Any) -> dict:
+def get_rules_assembly(application: Any, document: Optional[Any]=None, filepath: Optional[str]=None, options_open_document: Optional[Any]=None) -> dict:
     """ Получение правил из сборки """
     rules_dict = {}
     try:
+        if filepath:
+            document = application.Documents.OpenWithOptions(filepath, options_open_document, False)
         iLogic = application.ApplicationAddIns.ItemById("{3bdd8d79-2179-4b11-8a5a-257b1c0263ac}").Automation
         rules = iLogic.Rules(document)
 
