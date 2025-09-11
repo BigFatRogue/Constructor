@@ -1,5 +1,5 @@
 {
-  "filters": ["\\\\PDM\\PKODocs\\Inventor Project\\Библиотека оборудования ALS", "\\\\pdm\\PKODocs\\R2017 PKO\\ru-RU"],
+  "filters": ["\\\\PDM\\PKODocs\\Inventor Project\\Библиотека оборудования ALS", "\\\\pdm\\PKODocs\\R2017 PKO\\ru-RU", "Z:\\PKODocs\\Inventor Project\\Библиотека оборудования ALS", "Z:\\PKODocs\\R2017 PKO\\ru-RU"],
   "path_tmp": "C:\\tmp\\temp assembly",
   "project_inventor_filename": "ForCopyAssembly.ipj",
   "default_path_dialog_window": "\\\\pdm\\PKODocs\\Inventor Project",

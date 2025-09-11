@@ -2,7 +2,6 @@ import json
 import os
 import sys
 
-
 def get_root_path() -> str:
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)

@@ -18,6 +18,8 @@
 #   }
 #
 
+
+
 import os
 import shutil
 from typing import Any
@@ -105,20 +107,32 @@ def _get_tree_assembly_recursive(document, root_assembly: str, dct=None, is_recu
     for component in list_component:
         try:
             referenced_document_descriptor = component.ReferencedDocumentDescriptor
-            full_filename: str = referenced_document_descriptor.FullDocumentName.replace(root_assembly, '')
-            short_filename = full_filename.replace(root_assembly, '')
-            display_name: str = referenced_document_descriptor.DisplayName
-            component_name: str = component.Name
+            full_filename: str = referenced_document_descriptor.FullDocumentName
+            if root_assembly in full_filename:
+                short_filename = full_filename.replace(root_assembly, '')
+                display_name: str = referenced_document_descriptor.DisplayName
+                component_name: str = component.Name
 
-            if all([i.lower() not in full_filename.lower() for i in FILTERS]):
                 if ':' in component_name:
                     component_name = ':'.join(component_name.split(':')[:-1])
 
                 if '.iam' in full_filename:
                     sub_dct = _get_tree_assembly_recursive(document=component, root_assembly=root_assembly, is_recursion=True)
-                    value = {'component_name': component_name, 'display_name': display_name, 'short_filename': short_filename, 'image': 'iam_image.png', 'item': sub_dct, 'type_file': '.iam'}
+                    value = {
+                        'component_name': component_name, 
+                        'display_name': display_name, 
+                        'short_filename': short_filename, 
+                        'image': 'iam_image.png', 
+                        'item': sub_dct, 
+                        'type_file': '.iam'}
                 else:
-                    value = {'component_name': component_name, 'display_name': display_name, 'short_filename': short_filename, 'image': 'ipt_image.png', 'item': {},'type_file': '.ipt'}
+                    value = {
+                        'component_name': component_name,
+                        'display_name': display_name,
+                        'short_filename': short_filename,
+                        'image': 'ipt_image.png', 
+                        'item': {},
+                        'type_file': '.ipt'}
                 
                 if full_filename not in dct:
                     dct[full_filename] = value
@@ -134,70 +148,72 @@ def create_folder_rename_assembly(assembly_name: str) -> str:
     
     return  path
 
-def copy_and_rename_file_assembly(dct: dict) -> None:
+def copy_and_rename_file_assembly(dict_from_application: dict) -> None:
     """
     Копирование файлов входящих в сборку Inventor и их переименование 
     """
-    for old_short_filename, new_short_filename in dct['short_filename'].items():
-        old_full_filename = dct['root_assembly'] + old_short_filename
-        new_full_filename = dct['new_root_assembly'] + new_short_filename
+
+    for old_full_filename, value in dict_from_application['item'].items():
+        old_short_filename, new_short_filename = value['short_filename']
+        new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
     
         mkdir_tree(new_full_filename)
         if not os.path.exists(new_full_filename) and os.path.exists(old_full_filename):
             shutil.copy(old_full_filename, new_full_filename)
             
-    old_full_filename_assembly = os.path.join(dct['root_assembly'], dct['name_assembly'])
-    new_full_filename_assembly = os.path.join(dct['new_root_assembly'], dct['new_name_assembly'])
+    old_full_filename_assembly = os.path.join(dict_from_application['root_assembly'], dict_from_application['name_assembly'])
+    new_full_filename_assembly = os.path.join(dict_from_application['new_root_assembly'], dict_from_application['new_name_assembly'])
     if not os.path.exists(new_full_filename_assembly) and os.path.exists(old_full_filename_assembly):
         shutil.copy(old_full_filename_assembly, new_full_filename_assembly)
     
-def replace_reference_file(application: Any, document: Any, options_open_document: Any, dict_data_assembly: dict) -> None: 
+def replace_reference_file(application: Any, document: Any, options_open_document: Any, dict_from_application: dict) -> None: 
     """
     Замена сылок на входящие детали и подсборки на файлы в сборке
     """
+    # with open('data.txt', 'w', encoding='utf=8') as data:
+    #     data.write(str(dict_data_assembly))
+    # import sys
+    # sys.exit()
+
     for ref_file in document.File.ReferencedFileDescriptors:
         full_filename: str = ref_file.FullFileName
-        
-        for old_shortpath, new_shortpath in dict_data_assembly['short_filename'].items():
-            new_full_filename = dict_data_assembly['new_root_assembly'] + new_shortpath
-            if old_shortpath in full_filename:
-                if os.path.exists(new_full_filename):
-                    if '.ipt' in full_filename:
-                        ref_file.ReplaceReference(new_full_filename)
-                
-                    elif '.iam' in full_filename:
-                        wrapper_doc = application.Documents.OpenWithOptions(new_full_filename, options_open_document, False)
-                        replace_reference_file(application=application, document=wrapper_doc, options_open_document=options_open_document, dict_data_assembly=dict_data_assembly)
-                        ref_file.ReplaceReference(new_full_filename)
-                        wrapper_doc.Close(True)
+        item = dict_from_application['item'].get(full_filename)
+        if item:
+            old_short_filename, new_short_filename = item['short_filename']
+            new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
+            if os.path.exists(new_full_filename):
+                if '.ipt' in full_filename:
+                    ref_file.ReplaceReference(new_full_filename)
+                    
+                elif '.iam' in full_filename:
+                    wrapper_doc = application.Documents.OpenWithOptions(new_full_filename, options_open_document, False)
+                    replace_reference_file(application=application, document=wrapper_doc, options_open_document=options_open_document, dict_from_application=dict_from_application)
+                    ref_file.ReplaceReference(new_full_filename)
+                    wrapper_doc.Close(True)
 
-def rename_display_name_file(application: Any, options_open_document: Any, dict_data_assembly: dict):
+def rename_display_name_file(application: Any, options_open_document: Any, dict_from_application: dict):
     """ Открытие каждого файла входящего в сборку и переименования его имени в браузере (DisplayName) """
-    for old_short_filename, new_short_filename in dict_data_assembly['short_filename'].items():
-        new_full_filename = dict_data_assembly['new_root_assembly'] + new_short_filename
+    for old_full_filename, value in dict_from_application['item'].items():
+        old_short_filename, new_short_filename = value['short_filename']
+        new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
 
         if os.path.exists(new_full_filename):
             sub_doc = application.Documents.OpenWithOptions(new_full_filename, options_open_document, False)
-            
-            new_display_name = dict_data_assembly['display_name'].get(sub_doc.DisplayName)
-            if new_display_name is None:
-                # Инвентор может добавить в displayName расширение файла 
-                new_display_name = dict_data_assembly['display_name'].get(pathlib.Path(sub_doc.DisplayName).stem)
-
-            try:
-                if new_display_name:
+            old_display_name, new_display_name = value['display_name']
+            if new_display_name:
+                try:
                     sub_doc.DisplayName = new_display_name.replace('.ipt', '').replace('.iam', '')
                     sub_doc.Save()
-            except Exception as error:
-                loging_try()
+                except Exception as error:
+                    loging_try()
             sub_doc.Close()
 
-def rename_component_name_in_assembly(document: Any, dict_data_assembly: dict, is_recursion=False) -> None:
+def rename_component_name_in_assembly(document: Any, dict_from_application: dict, is_recursion=False) -> None:
     """ Переименовывание имён в браузере Inventor в основной сборки"""
     try:
         if not is_recursion:
             # Начало рекурсии. Когда мы работаем с базовым файлом
-            document.DisplayName = dict_data_assembly['new_name_assembly']
+            document.DisplayName = dict_from_application['new_name_assembly']
             list_component = document.ComponentDefinition.Occurrences
         else:
             # Рекурсия, когда уже начали перебор подсборок
@@ -212,17 +228,20 @@ def rename_component_name_in_assembly(document: Any, dict_data_assembly: dict, i
             referenced_document_descriptor = component.ReferencedDocumentDescriptor
             full_filename = referenced_document_descriptor.FullDocumentName
             
-            if all([i.lower() not in full_filename.lower() for i in FILTERS]):
-                key = ''.join(component_fullname.split(':')[:-1]) if ':' in component_fullname else component_fullname
-                new_component_name = dict_data_assembly['component_name'].get(key)
-                
-                if new_component_name:
-                    value = new_component_name if ':' not in component_fullname else f'{new_component_name}:{component_fullname.split(":")[-1]}'
-                    component.Name = value
-            
+            for _, dict_value_item in dict_from_application['item'].items():
+                old_full_filename = os.path.join(dict_from_application['root_assembly'], dict_value_item['short_filename'][0][1:])
+                item = dict_from_application['item'].get(old_full_filename)
+
+                if item:
+                    old_component_name, new_component_name = item['component_name']
+                    if old_component_name in component_fullname and new_component_name:
+                        value = new_component_name if ':' not in component_fullname else f'{new_component_name}:{component_fullname.split(":")[-1]}'
+                        component.Name = value
+                        break
+
             if '.iam' in full_filename:
                 # Если компонентов в подсборке более 0, то тогда мы заходим в неё и перебираем в рекурсии
-                rename_component_name_in_assembly(document=component, dict_data_assembly=dict_data_assembly, is_recursion=True)
+                rename_component_name_in_assembly(document=component, dict_from_application=dict_from_application, is_recursion=True)
         except Exception as error:
             loging_try()        
             pass
@@ -257,5 +276,4 @@ if __name__ == '__main__':
     # app.SilentOperation = True
     # oNVM = app.TransientObjects.CreateNameValueMap()
     # oNVM.Add("SkipAllUnresolvedFiles", True)
-
 
