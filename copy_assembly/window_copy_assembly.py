@@ -334,7 +334,35 @@ class LineEdit(QtWidgets.QLineEdit):
         self.signal_text.emit(self.text())
 
 
+class QButtonGetRules(QtWidgets.QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.initWidgets()
+
+    def initWidgets(self) -> None:
+        self.h_layout = QtWidgets.QHBoxLayout(self)
+        self.h_layout.setSpacing(1)
+        self.h_layout.setContentsMargins(1, 1, 1, 1)
+
+        # self.label_icon = QtWidgets.QLabel(self)
+        
+        # pixpmap = QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_rules.png'))
+        # self.label_icon.setPixmap(pixpmap)
+        # self.label_icon.setMaximumSize(15, 15)
+        # self.label_icon.setScaledContents(True)
+        # self.h_layout.addWidget(self.label_icon)
+
+        self.btn = QtWidgets.QPushButton()
+        self.btn.setObjectName('QButtonGetRules')
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_rules.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.btn.setIcon(icon)
+        self.h_layout.addWidget(self.btn)
+
+
 class Tree(QtWidgets.QTreeView):
+    signal_click_btn_rules = QtCore.pyqtSignal(dict)
+
     def __init__(self, parent, model: QtGui.QStandardItemModel, *args, **kwargs):
         super().__init__(parent)
 
@@ -383,7 +411,7 @@ class Tree(QtWidgets.QTreeView):
             setattr(item_short_filename, 'names', [short_filename])
             setattr(item_short_filename, 'type_file', value['type_file'])
 
-            item_rules_ilogic = QtGui.QStandardItem()
+            item_rules_ilogic = QtGui.QStandardItem('')
             item_rules_ilogic.setEditable(False)
             setattr(item_rules_ilogic, 'rules', value['rules'])
             
@@ -393,12 +421,12 @@ class Tree(QtWidgets.QTreeView):
 
             parent.appendRow(list_item)
             count += 1
-            
+
             if value['rules']:
-                btn = QtWidgets.QPushButton("Правила")
-                btn.clicked.connect(lambda event: print(value['rules']))
+                btn_get_rules = QButtonGetRules(self)
+                btn_get_rules.btn.clicked.connect(lambda event, rules=item_rules_ilogic.rules: self.signal_click_btn_rules.emit(rules))
                 index = self.model.indexFromItem(item_rules_ilogic)
-                self.setIndexWidget(index, btn)
+                self.setIndexWidget(index, btn_get_rules)
 
             if value['item']:
                 count = self.populatet_tree(children=value['item'], parent=item_component_name, count=count)
@@ -569,7 +597,7 @@ class ViewerRules(QtWidgets.QFrame):
                 self.text_box.setText(self.data[rule_name])
 
         return super().hide()
-                
+
 
 class FrameTreeFromDict(QtWidgets.QFrame):
     signal_rename = QtCore.pyqtSignal(tuple)
@@ -579,8 +607,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         super().__init__(parent, *args, **kwargs)
 
         self.dct_rename = None
-        # True - Активно дерево, False - активно textbox с правилами 
-        self.flag_switch_tree = True
         self.init()
 
     def init(self):
@@ -735,6 +761,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         # ------------------------------------------------------------------------------------------------#
         self.model = QtGui.QStandardItemModel()
         self.tree = Tree(self, self.model)
+        self.tree.signal_click_btn_rules.connect(self.open_window_rules)
         self.grid.addWidget(self.tree, counter_row.next(), 0, 1, 4)
 
         # ------------------------------------------------------------------------------------------------#
@@ -919,28 +946,8 @@ class FrameTreeFromDict(QtWidgets.QFrame):
                 }
             self.__get_dict(item_component_name)
 
-    def switch_rule_tree(self, event: bool):
-        if self.flag_switch_tree:
-            self.tree.hide()
-            self.btn_replace_all.show()
-            self.btn_return_back.hide()
-            self.btn_return_forward.hide()
-            self.btn_all_return_back.hide()
-            self.btn_return_all_forward.hide()
-            self.btn_open_tmp_folder.hide()
-            self.btn_update_tree.hide()
-
-        else:
-            self.tree.show()
-            self.btn_replace_all.hide()
-            self.btn_return_back.show()
-            self.btn_return_forward.show()
-            self.btn_all_return_back.show()
-            self.btn_return_all_forward.show()
-            self.btn_open_tmp_folder.show()
-            self.btn_update_tree.show()
-
-        self.flag_switch_tree = not self.flag_switch_tree
+    def open_window_rules(self, rules: dict) -> None:
+        print(rules)
 
     def update_tree(self) -> None:
         if self.dct_rename:

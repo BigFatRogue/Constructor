@@ -61,3 +61,11 @@ QTreeView::item:selected:!active {
     text-decoration: underline;
     border: none;
 }
+
+#QButtonGetRules {
+    border: none;
+}
+
+#QButtonGetRules:hover {
+    background-color: #CEEAF8;
+}
