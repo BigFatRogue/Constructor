@@ -191,16 +191,11 @@ def replace_reference_file(application: Any, document: Any, options_open_documen
     """
     Замена сылок на входящие детали и подсборки на файлы в сборке
     """
-    # with open('data.txt', 'w', encoding='utf=8') as data:
-    #     data.write(str(dict_data_assembly))
-    # import sys
-    # sys.exit()
-
     for ref_file in document.File.ReferencedFileDescriptors:
         full_filename: str = ref_file.FullFileName
         item = dict_from_application['item'].get(full_filename)
         if item:
-            old_short_filename, new_short_filename = item['short_filename']
+            _, new_short_filename = item['short_filename']
             new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
             if os.path.exists(new_full_filename):
                 if '.ipt' in full_filename:
@@ -279,6 +274,9 @@ def get_rules_assembly(application: Any, document: Optional[Any]=None, filepath:
         if rules is not None:
             for rule in rules:
                 rules_dict[rule.Name] = rule.Text
+        
+        if filepath:
+            document.Close(True)
     except Exception as error:
         loging_try()
     return rules_dict

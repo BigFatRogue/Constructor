@@ -4,16 +4,27 @@ QTreeView {
 }
 QTreeView::item {
     border-bottom: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0;
 }
                
 QTreeView::item:selected {
     background-color: #93d1ff; 
     color: black;
-}              
+} 
+
+QTreeView::item:hover {
+    background-color: #dbecfaff; 
+    color: black;
+}    
 
 QTreeView::item:selected:!active {
     background-color: #e0e0e0;  
     color: black;
+}
+
+QHeaderView::section {
+    font-weight: bold;
+    border-bottom: 1px solid #e0e0e0;
 }
 
 #frame_load {
@@ -68,4 +79,11 @@ QTreeView::item:selected:!active {
 
 #QButtonGetRules:hover {
     background-color: #CEEAF8;
+}
+
+
+#btn_ok {
+    border: 1px solid blac;
+    border-radius: 2px;
+    background-color: #CEEAF8
 }

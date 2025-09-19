@@ -1,5 +1,6 @@
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui
 from error_code import ErrorCode
+from enum import Enum ,auto
 
 
 class MessegeBoxQuestion(QtWidgets.QDialog):
@@ -37,6 +38,7 @@ class MessegeBoxQuestion(QtWidgets.QDialog):
     def __reject(self) -> None:
         self.reject()
 
+
 class MessageInforation(QtWidgets.QMessageBox):
     def __init__(self):
         self.setIcon(QtWidgets.QMessageBox.Information)
@@ -45,3 +47,13 @@ class MessageInforation(QtWidgets.QMessageBox):
         
     def set_error(self, error_code: ErrorCode) -> None:
         self.setText(f'{error_code.message}\n{error_code.description}')
+
+
+class QHLine(QtWidgets.QFrame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setFrameShape(QtWidgets.QFrame.HLine)
+        self.setFrameShadow(QtWidgets.QFrame.Sunken)
+
+
+

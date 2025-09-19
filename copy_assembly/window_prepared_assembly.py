@@ -535,13 +535,13 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent, QtCore.Qt.Window)
         self.setWindowModality(QtCore.Qt.WindowModal)
-        self.parameters = None
+        self.parameters = {}
         self.current_data_assembly = None
         self.size_mini_viewer = (150, 150)
         self.window_edit_assembly = None
         
         self.initWidgets()
-        self.fill_list_box()
+        # self.fill_list_box()
 
     def initWidgets(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
@@ -627,21 +627,21 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.full_viewer.hide()
 
     def load_parameters(self) -> dict:
-        try:
+        sitting_file = os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json')
+        if os.path.exists(sitting_file):
             with open(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json'), 'r', encoding='utf-8') as file:
                 return json.load(file)
-        except FileNotFoundError:
+        else:
             return {}
 
     def update_parameters(self) -> dict:
-        try:
+        sitting_file = os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json')
+        if os.path.exists(sitting_file):
             with open(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json'), 'w', encoding='utf-8') as file:
                 json.dump(self.parameters, file, ensure_ascii=False)
-        except FileNotFoundError:
-            ...
 
     def fill_list_box(self) -> None:
-        if self.parameters is None:
+        if self.parameters:
             self.parameters = self.load_parameters()
         for key in self.parameters.keys():
             self.list_box.add(key)
@@ -649,9 +649,10 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
     
     def select_item_list_box(self) -> None:
         current_item = self.list_box.currentItem()
-        data = self.parameters.get(current_item.text())
-        if data:
-            self.fill_window(data)
+        if current_item:
+            data = self.parameters.get(current_item.text())
+            if data:
+                self.fill_window(data)
         
     def fill_window(self, parameter: dict) -> None:
         name_assembly = parameter['name_assembly']
@@ -692,9 +693,11 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.setFixedSize(500, 500)
         self.frame_main.hide()
         self.full_viewer.show()
-        key = self.parameters.get(self.list_box.currentItem().text())
-        if key:
-            self.full_viewer.set_image(self.parameters[key]['name_assembly'] + '.png')
+        current_item = self.list_box.currentItem()
+        if current_item:
+            key = self.parameters.get(current_item.text())
+            if key:
+                self.full_viewer.set_image(self.parameters[key]['name_assembly'] + '.png')
         
     def zoom_out_viewer(self) -> None:
         self.setFixedSize(500, 300)
