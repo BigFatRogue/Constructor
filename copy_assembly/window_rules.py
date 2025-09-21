@@ -7,16 +7,6 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from Widgets import MessegeBoxQuestion, QHLine
 
 
-class LineEdit(QtWidgets.QLineEdit):
-    signal_text = QtCore.pyqtSignal(str)
-
-    def __init__(self, parent, *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
-
-    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        super().keyPressEvent(event)
-        self.signal_text.emit(self.text())
-
 class QTextBoxWithZoom(QtWidgets.QTextEdit):
     def wheelEvent(self, event: QtGui.QWheelEvent):
         delta = event.angleDelta().y()
@@ -27,10 +17,37 @@ class QTextBoxWithZoom(QtWidgets.QTextEdit):
                 self.zoomIn(5)
         else:
             super().wheelEvent(event)
+    
+
+
+class LineEditWithKeyPress(QtWidgets.QLineEdit):
+    signal_press_key_enter = QtCore.pyqtSignal()
+    signal_press_key_enter_ctrl = QtCore.pyqtSignal()
+    
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
+        if event.key() == QtCore.Qt.Key_Return:
+            self.signal_press_key_enter.emit()
+            
+        if event.key() == QtCore.Qt.Key_Return and event.modifiers() == QtCore.Qt.ControlModifier:
+            self.signal_press_key_enter_ctrl.emit()
+
+        super().keyPressEvent(event)
+
+
+class ListBoxWitrhKeyPress(QtWidgets.QListWidget):
+    signal_press_key_enter = QtCore.pyqtSignal()
+    signal_press_right = QtCore.pyqtSignal()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
+        if event.key() == QtCore.Qt.Key_Return:
+            self.signal_press_key_enter.emit()
+        if event.key() == QtCore.Qt.Key_Right:
+            self.signal_press_right.emit()
+        return super().keyPressEvent(event)
 
 
 class WindowsViewerRules(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         super().__init__(parent, QtCore.Qt.Window)
         # self.setWindowModality(QtCore.Qt.WindowModal)
         self.setWindowTitle('Правила Ilogic')
@@ -41,6 +58,8 @@ class WindowsViewerRules(QtWidgets.QWidget):
         self.initWidgets()
 
     def initWidgets(self) -> None:
+        self.resize(900, 400)
+
         self.grid = QtWidgets.QGridLayout(self)
         self.grid.setContentsMargins(5, 5, 5, 5)
         self.grid.setSpacing(5)
@@ -59,9 +78,9 @@ class WindowsViewerRules(QtWidgets.QWidget):
         self.label_search_to.setText('Искать в')
         self.grid.addWidget(self.label_search_to, counter_row.next(), 0, 1, 1)
 
-        self.textedit_search_to = LineEdit(self)
-        self.textedit_search_to.signal_text.connect(self.get_search_text)
-        self.grid.addWidget(self.textedit_search_to, counter_row.value, 1, 1, 1)
+        self.lineedit_search_to = QtWidgets.QLineEdit(self)
+        self.lineedit_search_to.textChanged.connect(self.highlight_text)
+        self.grid.addWidget(self.lineedit_search_to, counter_row.value, 1, 1, 1)
 
         self.check_box_register = QtWidgets.QCheckBox(self)
         self.check_box_register.setText('С учётом регистра')
@@ -72,8 +91,11 @@ class WindowsViewerRules(QtWidgets.QWidget):
         self.label_replace_to.setText('Заменить на')
         self.grid.addWidget(self.label_replace_to, counter_row.next(), 0, 1, 1)
 
-        self.textedit_replace_to = QtWidgets.QLineEdit(self)
-        self.grid.addWidget(self.textedit_replace_to, counter_row.value, 1, 1, 1)
+        self.linedit_replace_to = LineEditWithKeyPress(self)
+        self.setToolTip('Enter, чтобы заменить в этом правиль\nCtrl+Enter, чтобы заменить во всех правилах')
+        self.linedit_replace_to.signal_press_key_enter.connect(self.linedit_replace_to_press_enter)
+        self.linedit_replace_to.signal_press_key_enter_ctrl.connect(self.linedit_replace_to_press_enter_ctrl)
+        self.grid.addWidget(self.linedit_replace_to, counter_row.value, 1, 1, 1)
 
         self.btn_replace = QtWidgets.QPushButton(self)
         self.btn_replace.setText('Заменить в этом правиле')
@@ -85,7 +107,9 @@ class WindowsViewerRules(QtWidgets.QWidget):
         self.btn_replace_all.clicked.connect(self.click_btn_replace_all)
         self.grid.addWidget(self.btn_replace_all, counter_row.next(), 2, 1, 1)
 
-        self.list_box = QtWidgets.QListWidget(self)
+        self.list_box = ListBoxWitrhKeyPress(self)
+        self.list_box.signal_press_key_enter.connect(self.select_rule)
+        self.list_box.signal_press_right.connect(lambda: self.text_box.setFocus())
         self.list_box.clicked.connect(self.select_rule)
 
         self.text_box = QTextBoxWithZoom(self)
@@ -99,13 +123,41 @@ class WindowsViewerRules(QtWidgets.QWidget):
         splitter.setStretchFactor(1, 1)
         self.grid.addWidget(splitter, counter_row.next(), 0, 1, 3)
 
-        # self.vertical_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        # self.grid.addItem(self.vertical_spacer, counter_row.next(), 0, 1, 3)
+    def highlight_text(self):
+        cursor = self.text_box.textCursor()
+        cursor.beginEditBlock()
 
-    def get_search_text(self, chars: str) -> None:
-        if chars and self.data:
-            text = self.data[self.list_box.currentIndex().data()]
-            self.text_box.setText(text.replace(chars, f'<span style="color: red;">{chars}</span>'))
+        fmt = QtGui.QTextCharFormat()
+        fmt.setBackground(QtGui.QColor("transparent"))
+
+        cursor.movePosition(QtGui.QTextCursor.Start)
+        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.KeepAnchor)
+        cursor.setCharFormat(fmt)
+
+        cursor.endEditBlock()
+
+        search_term = self.lineedit_search_to.text()
+        if not search_term:
+            return
+
+        highlight_fmt = QtGui.QTextCharFormat()
+        highlight_fmt.setBackground(QtGui.QColor("yellow"))
+
+        cursor = self.text_box.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.Start)
+        
+        find_flag = QtGui.QTextDocument.FindCaseSensitively if self.check_box_register.checkState() else QtGui.QTextDocument().FindFlag(0)
+        while True:
+            cursor = self.text_box.document().find(search_term, cursor, find_flag)
+            if cursor.isNull():
+                break
+            cursor.mergeCharFormat(highlight_fmt)
+
+    def linedit_replace_to_press_enter(self) -> None:
+        self.click_btn_replace()
+    
+    def linedit_replace_to_press_enter_ctrl(self) -> None:
+        self.click_btn_replace_all()
 
     def fill_data(self, data) -> None:
         if self.data:
@@ -125,7 +177,7 @@ class WindowsViewerRules(QtWidgets.QWidget):
 
         return text_tb != text_dct
 
-    def select_rule(self, event: bool) -> None:
+    def select_rule(self) -> None:
         name_rule = self.list_box.currentIndex().data()
         
         if self.prevIndex != name_rule:
@@ -141,10 +193,10 @@ class WindowsViewerRules(QtWidgets.QWidget):
             self.text_box.setText(text)
 
     def click_btn_replace(self) -> None:
-        self.rename_text_box(self.textedit_search_to.text(), self.textedit_replace_to.text())
+        self.rename_text_box(self.lineedit_search_to.text(), self.linedit_replace_to.text())
 
     def click_btn_replace_all(self) -> None:
-        self.all_rename_text_box(self.textedit_search_to.text(), self.textedit_replace_to.text())
+        self.all_rename_text_box(self.lineedit_search_to.text(), self.linedit_replace_to.text())
 
     def rename_text_box(self, search: str, to: str) -> None:
         text = self.text_box.toPlainText()
@@ -230,7 +282,6 @@ class Window(QtWidgets.QMainWindow):
         
         with open(r'DEBUG\data_assembly.txt', 'r', encoding='utf-8') as data:
             data_dict: dict = eval(data.read())
-        print(data_dict['item'].keys())
         key = 'C:\\tmp\\temp assembly\\v1.6 (copy at 19-09-2025$20-13-02)\\ALS.PROJECT.ZONE.XX.00.00.000.iam'
         self.modal_window.fill_data(data=data_dict['item'][key]['rules'])
         self.modal_window.show()
@@ -238,7 +289,13 @@ class Window(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
+    window = WindowsViewerRules()
+    
+    with open(r'DEBUG\data_assembly.txt', 'r', encoding='utf-8') as data:
+        data_dict: dict = eval(data.read())
+    key = 'C:\\tmp\\temp assembly\\v1.6 (copy at 19-09-2025$20-13-02)\\ALS.PROJECT.ZONE.XX.00.00.000.iam'
+    window.fill_data(data=data_dict['item'][key]['rules'])
 
-    window = Window()
+
     window.show()
     sys.exit(app.exec_())

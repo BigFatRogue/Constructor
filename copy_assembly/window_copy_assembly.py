@@ -318,17 +318,6 @@ class HighlightDelegate(QtWidgets.QStyledItemDelegate):
         self.mode_register = value
 
 
-class LineEdit(QtWidgets.QLineEdit):
-    signal_text = QtCore.pyqtSignal(str)
-
-    def __init__(self, parent, *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
-
-    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        super().keyPressEvent(event)
-        self.signal_text.emit(self.text())
-
-
 class QButtonGetRules(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
@@ -456,8 +445,8 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.label_search_to.setText('Искать в')
         self.grid.addWidget(self.label_search_to, counter_row.value, 0, 1, 1)
 
-        self.textedit_search_to = LineEdit(self)
-        self.grid.addWidget(self.textedit_search_to, counter_row.value, 1, 1, 1)
+        self.lineedit_search_to = QtWidgets.QLineEdit(self)
+        self.grid.addWidget(self.lineedit_search_to, counter_row.value, 1, 1, 1)
 
         self.check_box_register = QtWidgets.QCheckBox(self)
         self.check_box_register.setText('С учётом регистра')
@@ -469,9 +458,9 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.label_replace_to.setText('Заменить на')
         self.grid.addWidget(self.label_replace_to, counter_row.next(), 0, 1, 1)
 
-        self.textedit_replace_to = LineEdit(self)
-        self.textedit_replace_to.returnPressed.connect(self.__click_btn_replace)
-        self.grid.addWidget(self.textedit_replace_to, counter_row.value, 1, 1, 1)
+        self.lineedit_replace_to = QtWidgets.QLineEdit(self)
+        self.lineedit_replace_to.returnPressed.connect(self.__click_btn_replace)
+        self.grid.addWidget(self.lineedit_replace_to, counter_row.value, 1, 1, 1)
 
         self.btn_replace = QtWidgets.QPushButton(self)
         self.btn_replace.setObjectName('btn_replace')
@@ -586,8 +575,8 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
         self.delegate = HighlightDelegate(self.tree)
         self.tree.setItemDelegate(self.delegate)
-        self.textedit_search_to.textChanged.connect(self.delegate.setSearchText)
-        self.textedit_search_to.textChanged.connect(self.tree.viewport().update)
+        self.lineedit_search_to.textChanged.connect(self.delegate.setSearchText)
+        self.lineedit_search_to.textChanged.connect(self.tree.viewport().update)
 
     def fill_tree(self, dict_from_assembly: dict):
         self.model.clear()
@@ -621,7 +610,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         main_window.setGeometry(main_window_geom.x(), main_window_geom.y(), int(width * 1.1), 600)
 
     def __click_btn_replace(self) -> None:
-        if self.textedit_search_to.text():
+        if self.lineedit_search_to.text():
             self.logger_changes.start_transaction()
             if self.btn_replace.text() == 'Заменить':
                 self.__rename_one_item(item=self.model.invisibleRootItem())
@@ -643,8 +632,8 @@ class FrameTreeFromDict(QtWidgets.QFrame):
             item_rules = item.child(i, 3)
             dict_rules: dict = item_rules.rules
 
-            text_search_to = self.textedit_search_to.text()
-            text_replace_to = self.textedit_replace_to.text()
+            text_search_to = self.lineedit_search_to.text()
+            text_replace_to = self.lineedit_replace_to.text()
 
             if not self.check_box_register.checkState():
                 text_component = text_component.lower()
@@ -669,7 +658,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
     def __item_add_text_preffix_or_suffix(self, item=None, text=None) -> None:
         if item is None:
             item = self.model.invisibleRootItem()
-            text = self.textedit_replace_to.text()
+            text = self.lineedit_replace_to.text()
         
         for i in range(item.rowCount()):
             item_component_name = item.child(i, 0)
@@ -703,8 +692,8 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         search_to = data['search_to']
         replace_to = data['replace_to']
 
-        self.textedit_search_to.setText(search_to)
-        self.textedit_replace_to.setText(replace_to)
+        self.lineedit_search_to.setText(search_to)
+        self.lineedit_replace_to.setText(replace_to)
         
         self.__rename_one_item(item=self.model.invisibleRootItem())
     
@@ -728,18 +717,18 @@ class FrameTreeFromDict(QtWidgets.QFrame):
     def click_check_box_register(self, value: bool) -> None:
         self.check_box_register.setCheckState
         self.delegate.setModeRegister(value)
-        text = self.textedit_search_to.text()
-        self.textedit_search_to.setText(text[1:])
-        self.textedit_search_to.setText(text)
+        text = self.lineedit_search_to.text()
+        self.lineedit_search_to.setText(text[1:])
+        self.lineedit_search_to.setText(text)
 
     def click_check_box_preffix(self, value: bool) -> None:
-        self.textedit_search_to.setEnabled(not value)
+        self.lineedit_search_to.setEnabled(not value)
         self.check_box_register.setEnabled(not value)
         self.check_box_suffix.setEnabled(not value)
         self.btn_replace.setText('Добавить' if value else 'Заменить')
 
     def click_check_box_suffix(self, value: bool) -> None:
-        self.textedit_search_to.setEnabled(not value)
+        self.lineedit_search_to.setEnabled(not value)
         self.check_box_register.setEnabled(not value)
         self.check_box_preffix.setEnabled(not value)
         self.btn_replace.setText('Добавить' if value else 'Заменить')
@@ -815,12 +804,6 @@ class ElidedLabel(QtWidgets.QLabel):
 class Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        
-        self.app = None
-        self.pid = None
-        self.options_open_document = None
-        self.doc = None
-
         self.prepared_assembly_window = PreparedAssemblyWindow(self)
         self.prepared_assembly_window.signal_get_data.connect(self.get_data_from_prepared_assembly)
         self.thread_inventor = IThread()
@@ -877,11 +860,11 @@ class Window(QtWidgets.QMainWindow):
         self.label_choose_assembly.setText('Выберите сборку')
         self.grid.addWidget(self.label_choose_assembly, 0, 0, 1, 1)
 
-        self.textedit_choose_assembly = LineEdit(self)
-        self.textedit_choose_assembly.setObjectName('textedit_choose_assembly')
-        self.textedit_choose_assembly.textChanged.connect(lambda event: self.textedit_choose_assembly.setStyleSheet("#textedit_choose_assembly {border: 1px solid gray;}"))
-        self.grid.addWidget(self.textedit_choose_assembly, 0, 1, 1, 1)
-        self.textedit_choose_assembly.setEnabled(False)
+        self.lineedit_choose_assembly = QtWidgets.QLineEdit(self)
+        self.lineedit_choose_assembly.setObjectName('lineedit_choose_assembly')
+        self.lineedit_choose_assembly.textChanged.connect(lambda event: self.lineedit_choose_assembly.setStyleSheet("#lineedit_choose_assembly {border: 1px solid gray;}"))
+        self.grid.addWidget(self.lineedit_choose_assembly, 0, 1, 1, 1)
+        self.lineedit_choose_assembly.setEnabled(False)
 
         self.btn_choose_path_assembly = QtWidgets.QPushButton(self)
         self.btn_choose_path_assembly.setObjectName('btn_choose_path_assembly')
@@ -933,7 +916,7 @@ class Window(QtWidgets.QMainWindow):
         if error_code == ErrorCode.SUCCESS:
             return
         
-        self.textedit_choose_assembly.setText('')
+        self.lineedit_choose_assembly.setText('')
         self.change_text_pb('Готово')
         
         if error_code == ErrorCode.OPEN_INVENTOR_APPLICATION or error_code == ErrorCode.OPEN_INVENTOR_PROJECT:
@@ -972,7 +955,8 @@ class Window(QtWidgets.QMainWindow):
             self.__load_assembly(filepath[0], is_CoInitialize=False)
 
     def update_tree(self, filepath) -> None:
-        self.__load_assembly(filepath=filepath, is_update=True)
+        if self.thread_inventor.pid:
+            self.__load_assembly(filepath=filepath, is_update=True)
 
     def __load_assembly(self, filepath, is_update=False, is_prepared=False, is_CoInitialize=False) -> None:
         self.switch_enabled_widgets(False)
@@ -995,7 +979,7 @@ class Window(QtWidgets.QMainWindow):
         """
         if value:
             data = self.prepared_assembly_window.current_data_assembly
-            self.textedit_choose_assembly.setText(data['new_name_assembly'] + '.iam')
+            self.lineedit_choose_assembly.setText(data['new_name_assembly'] + '.iam')
             self.frame_tree_assembly.rename_item_from_dict(data)
             self.click_ok()
         
@@ -1003,7 +987,7 @@ class Window(QtWidgets.QMainWindow):
         self.switch_enabled_widgets(True)
         self.frame_tree_assembly.switch_enabled_widgets(True)
         if data is not None: 
-            self.textedit_choose_assembly.setText(tuple(data['item'].keys())[0])
+            self.lineedit_choose_assembly.setText(tuple(data['item'].keys())[0])
             self.frame_tree_assembly.fill_tree(data)
             
     def change_text_pb(self, string: str):
@@ -1046,11 +1030,11 @@ class Window(QtWidgets.QMainWindow):
             if widgets.objectName() == 'centralwidget':
                 for w in widgets.children():
                     if isinstance(w, QtWidgets.QPushButton) or isinstance(w, QtWidgets.QLineEdit) or isinstance(w, QtWidgets.QCheckBox):
-                        if w.objectName() != 'textedit_choose_assembly':
+                        if w.objectName() != 'lineedit_choose_assembly':
                             w.setEnabled(value)
 
     def set_focus_search_line_edit(self) -> None:
-        self.frame_tree_assembly.textedit_search_to.setFocus()
+        self.frame_tree_assembly.lineedit_search_to.setFocus()
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
         return super().resizeEvent(event)

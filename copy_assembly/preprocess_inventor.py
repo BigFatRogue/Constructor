@@ -1,8 +1,5 @@
-import os
 import psutil
 import pythoncom
-import shutil
-from time import time, sleep
 import win32com.client as wc32
 from typing import Union, Any
 from sitting import *
@@ -17,7 +14,7 @@ def check_open_process(name_process: str) -> bool:
     return False
 
 
-def kill_process_for_pid(name_process: str) -> None:
+def kill_process_for_name_process(name_process: str) -> None:
     for proc in psutil.process_iter(['name']):
         if proc.info['name'].lower() == name_process.lower():
             proc.kill()
@@ -42,38 +39,6 @@ def get_app_inventor(is_CoInitialize=False) -> Union[Any, int, ErrorCode]:
     after_pids = {p.pid for p in psutil.process_iter(['pid', 'name']) if p.name() == process_name}
     pid = list(after_pids - before_pids)[0]
     return inv_app, pid, ErrorCode.SUCCESS
-
-
-def get_app_inventor_2() -> Union[Any, ErrorCode]:
-    """
-    :return: экземпляр Inventor.Application и код ошибки
-    """
-
-    project_inventor_full_filename = os.path.join(PATH_TMP, PROJECT_INVENTOR_FILENAME)
-    if check_open_process('inventor.exe'):
-        try:
-            # pythoncom.CoInitialize()
-            inv_app = wc32.DispatchEx("Inventor.Application")
-            # pythoncom.CoUninitialize()
-            inv_app.DesignProjectManager.DesignProjects.AddExisting(project_inventor_full_filename).Activate()
-            return inv_app, ErrorCode.SUCCESS
-        except Exception:
-            return None, ErrorCode.OPEN_INVENTOR_PROJECT
-    else:
-        # os.startfile(project_inventor_full_filename)
-
-        t_start = time()
-        while True:
-            try:
-                inv_app = wc32.DispatchEx('Inventor.Application')
-                break
-            except Exception as error:
-                sleep(1)
-                t_end = time()
-                print(t_end - t_start, error)
-                if t_end - t_start > 30:
-                    return None, ErrorCode.OPEN_INVENTOR_APPLICATION
-        return inv_app, ErrorCode.SUCCESS
 
 
 def get_active_app_inventor() -> Union[Any, ErrorCode]:

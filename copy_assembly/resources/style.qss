@@ -12,6 +12,11 @@ QTreeView::item:selected {
     color: black;
 } 
 
+QTreeView::item:selected:active {
+    background-color: #93d1ff;  
+    color: black;
+}
+
 QTreeView::item:hover {
     background-color: #dbecfaff; 
     color: black;
