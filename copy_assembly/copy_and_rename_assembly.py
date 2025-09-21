@@ -175,11 +175,12 @@ def copy_and_rename_file_assembly(dict_from_application: dict) -> None:
     """
 
     for old_full_filename, value in dict_from_application['item'].items():
-        old_short_filename, new_short_filename = value['short_filename']
+        _, new_short_filename = value['short_filename']
         new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
     
         mkdir_tree(new_full_filename)
         if not os.path.exists(new_full_filename) and os.path.exists(old_full_filename):
+            print(old_full_filename, new_full_filename)
             shutil.copy(old_full_filename, new_full_filename)
             
     old_full_filename_assembly = os.path.join(dict_from_application['root_assembly'], dict_from_application['name_assembly'])
@@ -207,8 +208,11 @@ def replace_reference_file(application: Any, document: Any, options_open_documen
                     ref_file.ReplaceReference(new_full_filename)
                     wrapper_doc.Close(True)
 
-def rename_display_name_file(application: Any, options_open_document: Any, dict_from_application: dict):
-    """ Открытие каждого файла входящего в сборку и переименования его имени в браузере (DisplayName) """
+def rename_display_name_and_set_rules(application: Any, document: Any, options_open_document: Any, dict_from_application: dict):
+    """ Открытие каждого файла входящего в сборку и переименования его имени в браузере (DisplayName) и установка правил"""
+    
+    set_rules(aplication=application, document=document, dict_rules=dict_from_application['rules'])
+    
     for _, value in dict_from_application['item'].items():
         _, new_short_filename = value['short_filename']
         new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
@@ -219,6 +223,7 @@ def rename_display_name_file(application: Any, options_open_document: Any, dict_
             if new_display_name:
                 try:
                     sub_doc.DisplayName = new_display_name.replace('.ipt', '').replace('.iam', '')
+                    set_rules(aplication=application, document=sub_doc, dict_rules=value['rules'])
                     sub_doc.Save()
                 except Exception:
                     loging_try()
@@ -281,13 +286,27 @@ def get_rules_assembly(application: Any, document: Optional[Any]=None, filepath:
         loging_try()
     return rules_dict
 
-def set_rulse(aplication: Any, document: Any, dict_rules: dict) -> None:
+def set_rules(aplication: Any, document: Any, dict_rules: dict) -> None:
     """ Замена текста в правилах """
-    if dict_rules:
-        iLogic = aplication.ApplicationAddIns.ItemById("{3bdd8d79-2179-4b11-8a5a-257b1c0263ac}").Automation
-        for rule in iLogic.Rules(document):
-            rule.Text = dict_rules[rule.Name]
+    iLogic = aplication.ApplicationAddIns.ItemById("{3bdd8d79-2179-4b11-8a5a-257b1c0263ac}").Automation
+    rules_in_document = iLogic.Rules(document)
 
+    if rules_in_document is not None:
+        if dict_rules:
+            for rule in rules_in_document:
+                rule.Text = dict_rules[rule.Name]
+        else:
+            del_rule(aplication, document)
+
+def del_rule(aplication: Any, document: Any) -> None:
+    iLogic = aplication.ApplicationAddIns.ItemById("{3bdd8d79-2179-4b11-8a5a-257b1c0263ac}").Automation
+    for _ in range(20):
+        rules_in_document = iLogic.Rules(document)
+        if rules_in_document is not None:
+            for rule in rules_in_document:
+                iLogic.DeleteRule(document, rule.Name)
+        else:
+            return
     
 if __name__ == '__main__':
     assembly_path = r'C:\Users\p.golubev\Desktop\Пробники Inventor\Дренажный лоток\v1.5\ALS.PROJECT.ZONE.XX.00.00.000.iam'

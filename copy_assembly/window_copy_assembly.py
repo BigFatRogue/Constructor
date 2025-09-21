@@ -4,7 +4,7 @@ import ctypes
 import os
 from typing import Optional, Any
 from PyQt5 import QtCore, QtGui, QtWidgets
-from Widgets import QHLine
+from Widgets import QHLine, MessegeBoxQuestion
 from LoggerChangesQTree import LoggerChangesQTree, TypeItemQTree
 from window_prepared_assembly import PreparedAssemblyWindow
 from window_rules import WindowsViewerRules
@@ -14,12 +14,13 @@ from error_code import ErrorCode
 from my_logging import loging_sys, loging_try
 from mode_code import Mode
 from preprocess_inventor import get_app_inventor, kill_process_for_pid
-from copy_and_rename_assembly import move_file_inventor_project, copy_file_assembly, get_tree_assembly, copy_and_rename_file_assembly, replace_reference_file, rename_display_name_file, rename_component_name_in_assembly, create_folder_rename_assembly
+from copy_and_rename_assembly import move_file_inventor_project, copy_file_assembly, get_tree_assembly, copy_and_rename_file_assembly, replace_reference_file, rename_display_name_and_set_rules, rename_component_name_in_assembly, create_folder_rename_assembly
 from my_function import strip_path, RowCounter
 
 
 class IThread(QtCore.QObject):
     __instance = None
+
     def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
             cls.__instance = super().__new__(cls, *args, **kwargs)
@@ -31,6 +32,7 @@ class IThread(QtCore.QObject):
     signal_is_prepared = QtCore.pyqtSignal(bool)
     signal_error = QtCore.pyqtSignal(ErrorCode)
     signal_complite_thread = QtCore.pyqtSignal()
+    signal_complite_copy_assembly = QtCore.pyqtSignal(str)
     signal_close = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
@@ -48,6 +50,7 @@ class IThread(QtCore.QObject):
         self.pid: Optional[int] = None
         self.__options_open_document: Optional[Any] = None
         self.__current_path_project: Optional[str] = None
+        self.__tmp_assembly_path: Optional[str] = None
     
     def __init_app(self) -> None:
         if self.__app is None:
@@ -108,12 +111,12 @@ class IThread(QtCore.QObject):
         if self.__app:
             if not self.__is_update:
                 self.signal_text_pb.emit(f'Копирование папки {self.__full_filename_assembly}...')
-                tmp_assembly_path = copy_file_assembly(full_filename=self.__full_filename_assembly)
+                self.__tmp_assembly_path = copy_file_assembly(full_filename=self.__full_filename_assembly)
             else:
-                tmp_assembly_path = self.__full_filename_assembly
+                self.__tmp_assembly_path = self.__full_filename_assembly
 
             self.signal_text_pb.emit(f'Загрузка и чтение сборки...')
-            dict_assembly, document = get_tree_assembly(application=self.__app, options_open_document=self.__options_open_document, full_filename_assembly=tmp_assembly_path)
+            dict_assembly, document = get_tree_assembly(application=self.__app, options_open_document=self.__options_open_document, full_filename_assembly=self.__tmp_assembly_path)
             
             self.signal_text_pb.emit('Чтение правил...')
             document.Close()
@@ -134,6 +137,11 @@ class IThread(QtCore.QObject):
         self.__mode = Mode.COPY_ASSEMBLY
         self.__dict_assembly = dict_assembly
 
+        if DEBUG:
+            with open(r'DEBUG\data_from_application.txt', 'w', encoding='utf-8') as file_data_assembly: 
+                file_data_assembly.write(str(dict_assembly))
+
+
     def __claer_variable_copy(self) -> None:
         self.__dict_assembly = None
 
@@ -152,18 +160,24 @@ class IThread(QtCore.QObject):
             replace_reference_file(application=self.__app, document=doc, options_open_document=self.__options_open_document, dict_from_application=self.__dict_assembly)
             
             self.signal_text_pb.emit(f'Переименовывание названий компонентов...')
-            rename_display_name_file(application=self.__app, options_open_document=self.__options_open_document, dict_from_application=self.__dict_assembly)
+            rename_display_name_and_set_rules(application=self.__app, document=doc, options_open_document=self.__options_open_document, dict_from_application=self.__dict_assembly)
             rename_component_name_in_assembly(document=doc, dict_from_application=self.__dict_assembly)
 
             doc.Save()
             doc.Close()
 
-            os.system(f"explorer {self.__dict_assembly['new_root_assembly']}")
+            self.signal_complite_copy_assembly.emit(self.__dict_assembly['new_root_assembly'])
         else:
             self.signal_error.emit(ErrorCode.CONNECT_INVENTOR_APPLICATION)
         self.__claer_variable_copy()
         self.signal_complite_thread.emit()
     
+    def remove_tmp_dir(self) -> None:
+        if self.__tmp_assembly_path:
+            dir_name = os.path.dirname(self.__tmp_assembly_path)
+            if os.path.exists(dir_name):
+                shutil.rmtree(dir_name)
+
     @QtCore.pyqtSlot()
     def run(self) -> None:
         if self.__mode == Mode.OPEN_ASSEMBLY:
@@ -316,32 +330,39 @@ class HighlightDelegate(QtWidgets.QStyledItemDelegate):
     
     def setModeRegister(self, value: bool) -> None:
         self.mode_register = value
+    
 
+class ButtonShowRules(QtWidgets.QPushButton):
+    signal_remove_rule = QtCore.pyqtSignal()
 
-class QButtonGetRules(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, item_display_name: QtGui.QStandardItem, item_rules_ilogic: QtGui.QStandardItem):
         super().__init__(parent)
-        self.initWidgets()
 
-    def initWidgets(self) -> None:
-        self.h_layout = QtWidgets.QHBoxLayout(self)
-        self.h_layout.setSpacing(1)
-        self.h_layout.setContentsMargins(1, 1, 1, 1)
+        self.item_display_name = item_display_name
+        self.item_rules_ilogic = item_rules_ilogic
 
-        self.btn = QtWidgets.QPushButton()
-        self.btn.setObjectName('QButtonGetRules')
+        self.setObjectName('QButtonGetRules')
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_rules.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.btn.setIcon(icon)
-        self.h_layout.addWidget(self.btn)
-
+        self.setIcon(icon)
         self.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
 
-class StandartModel(QtGui.QStandardItemModel):
-    def __init__(self, parent, *args, **kwargs):
-        super().__inti__(parent, *args, **kwargs)
-    
+        self.menu = QtWidgets.QMenu(self)
+        action = self.menu.addAction('Удалить правило')
+        action.triggered.connect(self.remove_rule)
+
+    def show_context_menu(self, point) -> None:
+        self.menu.exec(self.mapToGlobal(point))
+
+    def remove_rule(self) -> None:
+        msg = MessegeBoxQuestion(self, question='Удалить правило?')
+        if msg.exec() == QtWidgets.QDialog.Accepted:
+            self.item_rules_ilogic.rules = {}
+            self.hide()
+            
 
 class Tree(QtWidgets.QTreeView):
     signal_click_btn_rules = QtCore.pyqtSignal(tuple)
@@ -377,14 +398,14 @@ class Tree(QtWidgets.QTreeView):
             display_name = value['display_name']
             item_display_name = QtGui.QStandardItem(display_name)
             setattr(item_display_name, 'name', display_name)
-            setattr(item_display_name, 'old_value', component_name)
+            setattr(item_display_name, 'old_value', display_name)
             
             # ALS.000.itp[-4] -> ALS.000 
             short_filename = value['short_filename'][:-4]
             item_short_filename = QtGui.QStandardItem(short_filename)
             setattr(item_short_filename, 'name', short_filename)
             setattr(item_short_filename, 'type_file', value['type_file'])
-            setattr(item_short_filename, 'old_value', component_name)
+            setattr(item_short_filename, 'old_value', short_filename)
 
             item_rules_ilogic = QtGui.QStandardItem('')
             item_rules_ilogic.setEditable(False)
@@ -398,9 +419,8 @@ class Tree(QtWidgets.QTreeView):
             row += 1
 
             if value['rules']:
-                btn_get_rules = QButtonGetRules(self)
-                btn_get_rules.btn.clicked.connect(lambda event, item_display_name=item_display_name, item_rules_ilogic=item_rules_ilogic: \
-                                                  self.click_btn_get_rules(item_display_name, item_rules_ilogic))
+                btn_get_rules = ButtonShowRules(self, item_display_name, item_rules_ilogic)
+                btn_get_rules.clicked.connect(lambda event: self.click_btn_get_rules(btn_get_rules.item_display_name, btn_get_rules.item_rules_ilogic))
                 index = self.model().indexFromItem(item_rules_ilogic)
                 self.setIndexWidget(index, btn_get_rules)
 
@@ -429,7 +449,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-        self.dct_rename = None
+        self.dict_rename = None
         self.window_rules = WindowsViewerRules(self)
         self.logger_changes = LoggerChangesQTree()
         self.init()
@@ -582,7 +602,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(['Имя компонента в сборке', 'Имя файла', 'Относительный путь', 'Правила Ilogic'])
         
-        self.dct_rename = {
+        self.dict_rename = {
             'root_assembly': dict_from_assembly['root_assembly'],
             'name_assembly': dict_from_assembly['name_assembly'],
             'new_root_assembly': '',
@@ -734,10 +754,14 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.btn_replace.setText('Добавить' if value else 'Заменить')
 
     def get_dict(self) -> dict:
-        if self.dct_rename:
-            self.dct_rename['item'].clear()
+        if self.dict_rename:
+            self.dict_rename['new_root_assembly'] = ''
+            self.dict_rename['new_name_assembly'] = ''
+            self.dict_rename['rules'] = {}
+            self.dict_rename['item'].clear()
+
             self.__get_dict(self.model.invisibleRootItem())
-            return self.dct_rename
+            return self.dict_rename
 
     def __get_dict(self, item):
         for i in range(item.rowCount()):
@@ -746,14 +770,14 @@ class FrameTreeFromDict(QtWidgets.QFrame):
             item_short_filename = item.child(i, 2)
             item_rules = item.child(i, 3)
 
-            self.dct_rename['rules'] = item_rules.rules
-            if not self.dct_rename['new_name_assembly']:
-                self.dct_rename['new_name_assembly'] = item_component_name.text() + '.iam'
+            if not self.dict_rename['new_name_assembly']:
+                self.dict_rename['new_name_assembly'] = item_component_name.text() + '.iam'
+                self.dict_rename['rules'] = item_rules.rules
             else:
-                # item_short_filename.name --> '\dir1\dir2\file1.ipt' --> [1:] убирает слэш вначале
-                full_file_path = os.path.join(self.dct_rename['root_assembly'], item_short_filename.name[1:] + item_short_filename.type_file)
+                # item_short_filename.name[1:] --> '\dir1\dir2\file1.ipt' -->  убирает слэш вначале
+                full_file_path = os.path.join(self.dict_rename['root_assembly'], item_short_filename.name[1:] + item_short_filename.type_file)
 
-                self.dct_rename['item'][full_file_path] = {
+                self.dict_rename['item'][full_file_path] = {
                     'component_name': (item_component_name.name, item_component_name.text()),
                     'display_name': (item_display_name.name, item_display_name.text()),
                     'short_filename': (item_short_filename.name + item_short_filename.type_file, strip_path(item_short_filename.text()) + item_short_filename.type_file),
@@ -769,11 +793,9 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.window_rules.show()
         
     def update_tree(self) -> None:
-        if self.dct_rename:
-            self.signal_update_tree.emit(os.path.join(self.dct_rename['root_assembly'], self.dct_rename['name_assembly']))
+        if self.dict_rename:
+            self.signal_update_tree.emit(os.path.join(self.dict_rename['root_assembly'], self.dict_rename['name_assembly']))
 
-    def clear_date_dict(self) -> None:
-        self.dct_rename = None
 
     def switch_enabled_widgets(self, value: bool) -> None:
         for widgets in self.children():
@@ -781,8 +803,8 @@ class FrameTreeFromDict(QtWidgets.QFrame):
                 widgets.setEnabled(value)
     
     def open_tmp_folder(self) -> None:
-        if self.dct_rename:
-            root_assmbly = self.dct_rename['root_assembly']
+        if self.dict_rename:
+            root_assmbly = self.dict_rename['root_assembly']
             if os.path.exists(root_assmbly):
                 os.system(f"explorer {root_assmbly}")
                 return
@@ -804,6 +826,8 @@ class ElidedLabel(QtWidgets.QLabel):
 class Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
+        self.tmp_assembly_path: Optional[str] = None
+
         self.prepared_assembly_window = PreparedAssemblyWindow(self)
         self.prepared_assembly_window.signal_get_data.connect(self.get_data_from_prepared_assembly)
         self.thread_inventor = IThread()
@@ -816,7 +840,7 @@ class Window(QtWidgets.QMainWindow):
             self.label_load_ring.setText(r'\\pdm\pkodocs\Inventor Project\ООО ЛебедяньМолоко\1642_24\5.3.X5. Порошковый миксер Inoxpa ME-4105_ME-4110\05 проект INVENTOR\ALS.1642.5.3.06.01-Рама\ALS.1642.5.3.06.01.00.000 СБ\Frame')
             with open(r'DEBUG\data_assembly.txt', 'r', encoding='utf-8') as file_data_assembly: 
                 self.fill_trees(eval(file_data_assembly.read()))
-        
+
     def initWindow(self):
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -880,13 +904,13 @@ class Window(QtWidgets.QMainWindow):
         self.frame_tree_assembly.signal_update_tree.connect(self.update_tree)
         self.grid.addWidget(self.frame_tree_assembly, 3, 0, 1, 3)
         # ------------------------------------------------------------------------------------------------#
-        self.btn_ok = QtWidgets.QPushButton(self)
-        self.btn_ok.setObjectName('btn_ok')
-        self.btn_ok.setText('Продолжить')
-        self.btn_ok.setMinimumHeight(20)
-        self.btn_ok.clicked.connect(self.click_ok)
-        self.btn_ok.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        self.grid.addWidget(self.btn_ok, 4, 0, 1, 3)
+        self.btn_continue = QtWidgets.QPushButton(self)
+        self.btn_continue.setObjectName('btn_ok')
+        self.btn_continue.setText('Продолжить')
+        self.btn_continue.setMinimumHeight(20)
+        self.btn_continue.clicked.connect(self.click_continue)
+        self.btn_continue.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.grid.addWidget(self.btn_continue, 4, 0, 1, 3)
         # ------------------------------------------------------------------------------------------------#
         self.frame_load = QtWidgets.QFrame(self)
         self.frame_load.setMaximumSize(160000, 25)
@@ -910,6 +934,7 @@ class Window(QtWidgets.QMainWindow):
         self.thread_inventor.signal_dict_assembly.connect(self.fill_trees)
         self.thread_inventor.signal_error.connect(self.thread_inventor_error)
         self.thread_inventor.signal_complite_thread.connect(self.thread_inventor_complite)
+        self.thread_inventor.signal_complite_copy_assembly.connect(self.move_complite_assembly)
         self.thread_inventor.signal_is_prepared.connect(self.__full_rename_assembly)
 
     def thread_inventor_error(self, error_code: ErrorCode) -> None:
@@ -981,7 +1006,7 @@ class Window(QtWidgets.QMainWindow):
             data = self.prepared_assembly_window.current_data_assembly
             self.lineedit_choose_assembly.setText(data['new_name_assembly'] + '.iam')
             self.frame_tree_assembly.rename_item_from_dict(data)
-            self.click_ok()
+            self.click_continue()
         
     def fill_trees(self, data: dict) -> None:
         self.switch_enabled_widgets(True)
@@ -999,13 +1024,13 @@ class Window(QtWidgets.QMainWindow):
         else:
             self.pb_ring.stop_load()
 
-    def click_ok(self) -> None:
+    def click_continue(self) -> None:
         dct_assembly = self.frame_tree_assembly.get_dict()
 
         if not dct_assembly:
             return
 
-        self.btn_ok.setText('Процесс копирования...')
+        self.btn_continue.setText('Процесс копирования...')
         self.switch_enabled_widgets(False)
         self.frame_tree_assembly.switch_enabled_widgets(False)
 
@@ -1021,9 +1046,25 @@ class Window(QtWidgets.QMainWindow):
          
     def thread_inventor_complite(self):
         self.label_load_ring.setText('Готово')
-        self.btn_ok.setText('Продолжить')
+        self.btn_continue.setText('Продолжить')
         self.switch_enabled_widgets(True)
         self.frame_tree_assembly.switch_enabled_widgets(True)
+
+    def move_complite_assembly(self, path_from_: str) -> None:
+        dlg = QtWidgets.QFileDialog(self)
+        filepath = dlg.getExistingDirectory(self, 'Выберете папку')
+        if filepath:
+            filepath = filepath.replace('/', '\\')
+            dirpath = os.path.basename(path_from_)
+            path_to = os.path.join(filepath, dirpath)
+            try:
+                shutil.copytree(path_from_, path_to)
+                shutil.rmtree(path_from_)
+                os.system(f"explorer {path_to}")
+            except Exception:
+                os.system(f"explorer {path_from_}")
+        else:
+            os.system(f"explorer {path_from_}")
 
     def switch_enabled_widgets(self, value: bool) -> None:
         for widgets in self.children():
@@ -1035,9 +1076,6 @@ class Window(QtWidgets.QMainWindow):
 
     def set_focus_search_line_edit(self) -> None:
         self.frame_tree_assembly.lineedit_search_to.setFocus()
-
-    def resizeEvent(self, event: QtGui.QResizeEvent):
-        return super().resizeEvent(event)
 
     def del_tmp_copy_assembly(self) -> None:
         if os.path.exists(PATH_TMP):

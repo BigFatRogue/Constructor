@@ -53,12 +53,15 @@ class LoggerChangesQTree:
         if self.list_undo:
             last_item = self.list_undo.pop()
             self.list_redo.append(last_item)
-            for item in last_item:
-                item: ItemChangeLoggerQTree
-                if item.type == TypeItemQTree.text:
-                    item.item.setText(item.old_value)
-                if item.type == TypeItemQTree.rules:
-                    item.item.rules = item.old_value
+            try:
+                for item in last_item:
+                    item: ItemChangeLoggerQTree
+                    if item.type == TypeItemQTree.text:
+                        item.item.setText(item.old_value)
+                    if item.type == TypeItemQTree.rules:
+                        item.item.rules = item.old_value
+            except Exception:
+                self.list_redo.append(last_item)
         self.has_add_change = True
             
     def redo(self) -> None:
@@ -66,12 +69,15 @@ class LoggerChangesQTree:
         if self.list_redo:
             last_item = self.list_redo.pop()
             self.list_undo.append(last_item)
-            for item in last_item:
-                item: ItemChangeLoggerQTree
-                if item.type == TypeItemQTree.text:
-                    item.item.setText(item.new_value)
-                if item.type == TypeItemQTree.rules:
-                    item.item.rules = item.new_value
+            try:
+                for item in last_item:
+                    item: ItemChangeLoggerQTree
+                    if item.type == TypeItemQTree.text:
+                        item.item.setText(item.new_value)
+                    if item.type == TypeItemQTree.rules:
+                        item.item.rules = item.new_value
+            except Exception:
+                self.list_redo.append(last_item)
         self.has_add_change = True
 
         
