@@ -1,5 +1,5 @@
 {
   "name_project": "_CopyAssembly",
-  "pyfile": "window_copy_assembly.py",
+  "pyfile": "main_window_copy_assembly.py",
   "ico": "resources\\icon\\CopyAssembly.png"
 }

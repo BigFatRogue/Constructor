@@ -55,9 +55,10 @@ class PushButtonZoomPreview(QtWidgets.QPushButton):
 class MiniViewer(QtWidgets.QWidget):
     signal_zoom = QtCore.pyqtSignal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, default_size: tuple[int, int]):
         super().__init__(parent)
 
+        self.default_size = default_size
         self.height_panel = 25
         self.init()
 
@@ -84,10 +85,13 @@ class MiniViewer(QtWidgets.QWidget):
         
         self.setMouseTracking(True)
 
-    def set_image(self, filename) -> None:
+    def set_image(self, filename: str) -> None:
         self.icon = QtGui.QIcon()
         self.pixmap = QtGui.QPixmap(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\image', filename))
-        self.pixmap = self.pixmap.scaled(self.label.width(), self.label.height())
+        if self.width() < self.default_size[0]:
+            self.pixmap = self.pixmap.scaled(*self.default_size)
+        else:
+            self.pixmap = self.pixmap.scaled(self.width(), self.height())
         self.icon.addPixmap(self.pixmap)
         self.label.setPixmap(self.pixmap)
 
@@ -114,8 +118,8 @@ class MiniViewer(QtWidgets.QWidget):
 
 
 class FullViewer(MiniViewer):
-    def __init__(self, parent):
-        super().__init__(parent)
+    def __init__(self, parent, default_size):
+        super().__init__(parent, default_size)
         self.btn_zoom.setIconFromIcoName('icon_zoom_out.png')
 
 
@@ -541,7 +545,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.window_edit_assembly = None
         
         self.initWidgets()
-        # self.fill_list_box()
+        self.fill_list_box()
 
     def initWidgets(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
@@ -560,7 +564,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.grid_main = QtWidgets.QGridLayout(self.frame_main)
         self.grid_main.setContentsMargins(0, 0, 0, 0)
 
-        self.mini_viewer = MiniViewer(self.frame_main)
+        self.mini_viewer = MiniViewer(parent=self.frame_main, default_size=self.size_mini_viewer)
         self.mini_viewer.setMinimumSize(*self.size_mini_viewer)
         self.mini_viewer.setMaximumSize(*self.size_mini_viewer)
         self.mini_viewer.signal_zoom.connect(self.zoom_in_viewer)
@@ -621,7 +625,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.vertcal_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.grid_main.addItem(self.vertcal_spacer, 6, 0, 1, 2)
 
-        self.full_viewer = FullViewer(self)
+        self.full_viewer = FullViewer(self, default_size=self.size_mini_viewer)
         self.full_viewer.signal_zoom.connect(self.zoom_out_viewer)
         self.v_layout.addWidget(self.full_viewer)
         self.full_viewer.hide()
@@ -629,7 +633,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
     def load_parameters(self) -> dict:
         sitting_file = os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json')
         if os.path.exists(sitting_file):
-            with open(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json'), 'r', encoding='utf-8') as file:
+            with open(sitting_file, 'r', encoding='utf-8') as file:
                 return json.load(file)
         else:
             return {}
@@ -637,11 +641,11 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
     def update_parameters(self) -> dict:
         sitting_file = os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json')
         if os.path.exists(sitting_file):
-            with open(os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json'), 'w', encoding='utf-8') as file:
+            with open(os.path.join(sitting_file), 'w', encoding='utf-8') as file:
                 json.dump(self.parameters, file, ensure_ascii=False)
 
     def fill_list_box(self) -> None:
-        if self.parameters:
+        if not self.parameters:
             self.parameters = self.load_parameters()
         for key in self.parameters.keys():
             self.list_box.add(key)
@@ -660,7 +664,6 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         
         self.line_edit_old_name_assembly.setText(name_assembly)
         self.line_edit_search_to.setText(search)
-
         self.mini_viewer.set_preview(filename_image=f'{name_assembly}.png')
     
     def text_edited_replace_to(self, text) -> None:
@@ -695,9 +698,9 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.full_viewer.show()
         current_item = self.list_box.currentItem()
         if current_item:
-            key = self.parameters.get(current_item.text())
-            if key:
-                self.full_viewer.set_image(self.parameters[key]['name_assembly'] + '.png')
+            value = self.parameters.get(current_item.text())
+            if value:
+                self.full_viewer.set_image(value['name_assembly'] + '.png')
         
     def zoom_out_viewer(self) -> None:
         self.setFixedSize(500, 300)

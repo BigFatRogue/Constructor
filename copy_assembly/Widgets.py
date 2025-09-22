@@ -1,15 +1,17 @@
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets
 from error_code import ErrorCode
-from enum import Enum ,auto
 
 
 class MessegeBoxQuestion(QtWidgets.QDialog):
-    def __init__(self, parent, question=None, answer_accept=None, answer_reject=None):
+    def __init__(self, parent, question=None, answer_accept=None, answer_reject=None, title='Сохранения изменений'):
         super().__init__(parent)
         self.question = 'Сохранить изменения?' if question is None else question
         self.text_answer_accept = 'Да' if answer_accept is None else answer_accept
         self.text_answer_reject = 'Нет' if answer_reject is None else answer_reject
         
+        self.setWindowTitle(title)
+        self.resize(300, 50)
+
         vbox = QtWidgets.QVBoxLayout()
         vbox.addSpacing(20)
 
@@ -49,7 +51,7 @@ class MessageInforation(QtWidgets.QMessageBox):
         self.setText(f'{error_code.message}\n{error_code.description}')
 
 
-class QHLine(QtWidgets.QFrame):
+class QHLineSeparate(QtWidgets.QFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.setFrameShape(QtWidgets.QFrame.HLine)

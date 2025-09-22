@@ -1,7 +1,7 @@
 import pathlib
 import json
 
-DEBUG = False
+DEBUG = True
 PROJECT_ROOT = pathlib.Path(__file__).parent
 
 with open(f'{PROJECT_ROOT}\\resources\\parameters_copy_assembly.json', 'r', encoding='utf-8') as param:

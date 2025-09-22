@@ -1,7 +1,61 @@
-QTreeView {
-    show-decoration-selected: 1;
-    alternate-background-color: #f5f5f5;
+#centralwidget {
+    padding-top: 5px;
 }
+
+QPushButton {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    min-height: 20px;
+    padding: 0px 6px 0px 6px;
+    background-color:  #ffffff;
+}
+
+QPushButton:hover {
+    border: 1px solid #0078d4;
+    background-color: rgb(209, 235, 255);
+}
+
+QPushButton:pressed {
+    background-color: #edebe9;
+    border: 1px solid #0078d4;
+}
+
+QPushButton:focus {
+    border: 2px solid #0078d4;
+}
+
+QLineEdit {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    min-height: 20px;
+    padding: 0px 5px 0px 5px;
+    background-color:  #ffffff;
+}
+
+QLineEdit:hover {
+    border: 1px solid #a0a0a0;
+}
+
+QLineEdit:focus {
+    border: 1px solid #a0a0a0;
+    border-bottom: 2px solid #0078d4;
+}
+
+QLineEdit:disabled {
+    background-color:  #f0f0f0;
+}
+
+
+QTreeView {
+    border: none;
+}
+
+#frame_tree_assembly {
+    padding: 5px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+}
+
 QTreeView::item {
     border-bottom: 1px solid #e0e0e0;
     border-right: 1px solid #e0e0e0;
@@ -32,63 +86,82 @@ QHeaderView::section {
     border-bottom: 1px solid #e0e0e0;
 }
 
+#frame_btn_control {
+    padding: 0px;
+    max-height: 30px;
+}
+
+#btn_update_tree {
+    margin-left: 20px;
+}
+
+#btn_return_back,
+#btn_return_forward,
+#btn_update_tree,
+#btn_open_tmp_folder {
+    max-width: 20px;
+    padding: 2px;
+}
+
+#btn_return_back,
+#btn_return_forward {
+    max-width: 20px;
+    padding: 2px;
+}
+
+
+#ButtonShowRules {
+    border: none;
+    border-radius: none;
+    background-color: none;
+}
+
+#ButtonShowRules:hover {
+    background-color: #CEEAF8;
+}
+
 #frame_load {
     border-top: 1px solid gray;
 }
 
-#frame_btn_control {
-    max-height: 25px;
+QTextEdit,
+QListWidget {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background-color:  #ffffff;
 }
 
-#btn_all_return_back,
-#btn_return_back,
-#btn_return_forward,
-#btn_return_all_forward {
-    background-color: rgba(0, 0, 0, 0);
+QTextEdit:hover,
+QListWidget:hover {
     border: 1px solid gray;
 }
 
-#btn_all_return_back:hover,
-#btn_return_back:hover,
-#btn_return_forward:hover,
-#btn_return_all_forward:hover {
-    background-color: #CEEAF8;
-    border: 1px solid #2B5881;
+QTextEdit:focus,
+QListWidget:focus {
+    border: 1px solid #0078d4;
 }
 
-#btn_update_tree,
-#btn_open_tmp_folder {
-    background-color: rgba(0, 0, 0, 0);
-    border: 1px solid gray;
-}
-
-#btn_update_tree {
-    margin-left: 15px;
-}
-    
-
-#btn_update_tree:hover,
-#btn_open_tmp_folder:hover {
-    background-color: #CEEAF8;
-}
-
-#btn_rules {
-    color: blue;
-    text-decoration: underline;
-    border: none;
-}
-
-#QButtonGetRules {
-    border: none;
-}
-
-#QButtonGetRules:hover {
-    background-color: #CEEAF8;
-}
-
-
-#btn_ok {
-    border: 1px solid blac;
+QCheckBox::indicator {
+    border: 1px solid #d0d0d0;
     border-radius: 2px;
-    background-color: #CEEAF8
+    background-color: #ffffff;
+    width: 13px;
+    height: 13px;
 }
+
+QCheckBox::indicator:hover {
+    border: 1px solid #0078d4;
+    background-color: rgb(209, 235, 255);
+}
+
+QCheckBox::indicator:checked {
+    border: 1px solid #0078d4;
+    image: url("{{ICO_FOLDER}}/icon_checked.png");
+}
+
+/* window_prepared_assembly */
+#btn_zoom {
+    background-color: none;
+    border: none;
+}
+

@@ -4,7 +4,7 @@ from typing import Optional
 
 from my_function import RowCounter
 from PyQt5 import QtCore, QtWidgets, QtGui
-from Widgets import MessegeBoxQuestion, QHLine
+from Widgets import MessegeBoxQuestion, QHLineSeparate
 
 
 class QTextBoxWithZoom(QtWidgets.QTextEdit):
@@ -71,7 +71,7 @@ class WindowsViewerRules(QtWidgets.QWidget):
         self.label_name_assembly.setMaximumSize(16666, 14)
         self.grid.addWidget(self.label_name_assembly, counter_row.value, 0, 1, 3)
 
-        self.h_line = QHLine(self)
+        self.h_line = QHLineSeparate(self)
         self.grid.addWidget(self.h_line, counter_row.next(), 0, 1, 3)
 
         self.label_search_to = QtWidgets.QLabel(self)
@@ -114,7 +114,7 @@ class WindowsViewerRules(QtWidgets.QWidget):
 
         self.text_box = QTextBoxWithZoom(self)
 
-        self.h_line_2 = QHLine(self)
+        self.h_line_2 = QHLineSeparate(self)
         self.grid.addWidget(self.h_line_2, counter_row.next(), 0, 1, 3)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
