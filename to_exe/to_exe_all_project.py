@@ -6,7 +6,7 @@ import zipfile
 import PyInstaller.__main__ as PyInst
 
 
-VERSION = 1.02
+VERSION = 1.04
 PROJECTS = {
     # 'CopyDrinage': 'drainage_tray',
     '_CopyAssembly': 'copy_assembly'
@@ -116,7 +116,12 @@ def create_empty_to_exe() -> None:
     path_exe = os.path.join(TO_EXE_ROOT, 'build', 'exe')
     if os.path.exists(path_exe):
         shutil.rmtree(path_exe)
-    PyInst.run(["--noconsole", f'--name={EMPTY_FILE_NAME}', f'--distpath={path_exe}', f'--contents-directory=.', EMPTY_PY_FULL_FILEPATH])
+    
+    path_temp = os.path.join(TO_EXE_ROOT, '_temp')
+    if not os.path.exists(path_temp):
+        os.mkdir(path_temp)
+    
+    PyInst.run(["--noconsole", f'--name={EMPTY_FILE_NAME}', f'--distpath={path_exe}', f'--contents-directory=.', f'--workpath={path_temp}', EMPTY_PY_FULL_FILEPATH])
 
 def clear_lib():
     """
@@ -216,7 +221,7 @@ def create_zip() -> None:
                 arcname = os.path.relpath(full_path, start=total_project_full_filename)
                 zf.write(full_path, arcname=arcname)
 
-def clear_tmp_files():
+def clear_tmp_files() -> None:
     for file in os.listdir(TOTAL_PROJECT_ROOT):
         if '.spec' in file:
             os.remove(file)

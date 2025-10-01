@@ -6,7 +6,6 @@ QPushButton {
     border: 1px solid #d1d5db;
     border-radius: 6px;
     min-height: 20px;
-    padding: 0px 6px 0px 6px;
     background-color:  #ffffff;
 }
 
@@ -16,8 +15,8 @@ QPushButton:hover {
 }
 
 QPushButton:pressed {
-    background-color: #edebe9;
     border: 1px solid #0078d4;
+    background-color: #edebe9;
 }
 
 QPushButton:focus {
@@ -165,3 +164,6 @@ QCheckBox::indicator:checked {
     border: none;
 }
 
+#btn_choose_path_assembly {
+    width: 100px;
+}

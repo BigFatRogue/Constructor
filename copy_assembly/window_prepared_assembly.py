@@ -792,6 +792,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         if event.key() == QtCore.Qt.Key.Key_Escape:
             self.close()
         return super().keyPressEvent(event)
+    
 
 
 class Window(QtWidgets.QMainWindow):

@@ -39,6 +39,7 @@ def download_programm() -> None:
     os.mkdir(PATH_SRC)
     with zipfile.ZipFile(os.path.join(PATH_TEPM, name_zip)) as zip:
         zip.extractall(PATH_SRC)
+    shutil.rmtree(PATH_TEPM)
     
 def create_shortcut_for_exe() -> None:
     """

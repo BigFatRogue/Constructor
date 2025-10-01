@@ -41,9 +41,11 @@ def get_selection_screen(signal=None) -> dict:
         document.SelectionSets(name_selection).Delete()
     except Exception:
         pass
-
-    selection = document.SelectionSets.Add(name_selection)
-    selection.SelectOnScreen()
+    try:
+        selection = document.SelectionSets.Add(name_selection)
+        selection.SelectOnScreen()
+    except Exception:
+        return {}
 
     attrs = {}
     title = None

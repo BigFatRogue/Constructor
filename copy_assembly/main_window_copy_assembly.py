@@ -124,13 +124,13 @@ class IThread(QtCore.QObject):
             if DEBUG:
                 with open(r'DEBUG\data_assembly.txt', 'w', encoding='utf-8') as file_data_assembly: 
                     file_data_assembly.write(str(dict_assembly))
-        
-            self.signal_dict_assembly.emit(dict_assembly)
-            self.signal_is_prepared.emit(self.__is_prepared)
         else:
             self.signal_error.emit(ErrorCode.OPEN_INVENTOR_APPLICATION)
-        self.__clear_variable_open()
+        
         self.signal_complite_thread.emit()
+        self.signal_dict_assembly.emit(dict_assembly)
+        self.signal_is_prepared.emit(self.__is_prepared)
+        self.__clear_variable_open()
 
     @QtCore.pyqtSlot(dict)
     def init_copy_assembly(self, dict_assembly: dict) -> None:
@@ -140,7 +140,6 @@ class IThread(QtCore.QObject):
         if DEBUG:
             with open(r'DEBUG\data_from_application.txt', 'w', encoding='utf-8') as file_data_assembly: 
                 file_data_assembly.write(str(dict_assembly))
-
 
     def __claer_variable_copy(self) -> None:
         self.__dict_assembly = None
@@ -958,7 +957,7 @@ class Window(QtWidgets.QMainWindow):
         self.prepared_assembly_window.show()
     
     def get_data_from_prepared_assembly(self, data: dict) -> None:
-        self.prepared_assembly_window.close()        
+        self.prepared_assembly_window.close()     
         self.__load_assembly(filepath=data['path_assembly'], is_prepared=True, is_CoInitialize=True)
 
     def click_choose_assembly(self):
@@ -1000,6 +999,8 @@ class Window(QtWidgets.QMainWindow):
             data = self.prepared_assembly_window.current_data_assembly
             self.lineedit_choose_assembly.setText(data['new_name_assembly'] + '.iam')
             self.frame_tree_assembly.rename_item_from_dict(data)
+            self.switch_enabled_widgets(True)
+            self.frame_tree_assembly.switch_enabled_widgets(True)
             self.click_continue()
         
     def fill_trees(self, data: dict) -> None:
@@ -1105,6 +1106,8 @@ class Window(QtWidgets.QMainWindow):
         self.thread_inventor.deleteLater()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        self.change_text_pb('Закрытие...')
+        self.pb_ring.start_load()
         loop = QtCore.QEventLoop()
         self.thread_inventor.signal_close.connect(loop.quit)
         QtCore.QMetaObject.invokeMethod(self.thread_inventor, "close", QtCore.Qt.QueuedConnection)
