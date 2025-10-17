@@ -5,9 +5,10 @@ import os
 from typing import Optional, Any
 from PyQt5 import QtCore, QtGui, QtWidgets
 from Widgets import QHLineSeparate, MessegeBoxQuestion
-from LoggerChangesQTree import LoggerChangesQTree, TypeItemQTree
+from logger_changes_qtree import LoggerChangesQTree, TypeItemQTree
 from window_prepared_assembly import PreparedAssemblyWindow
 from window_rules import WindowsViewerRules
+from helper.helper_widget_interective import WidgetHelperInterective
 
 from sitting import *
 from error_code import ErrorCode
@@ -811,7 +812,7 @@ class ElidedLabel(QtWidgets.QLabel):
         
     def minimumSizeHint(self):
         return QtCore.QSize(0, 0)
-
+    
 
 class Window(QtWidgets.QMainWindow):
     def __init__(self):
@@ -821,11 +822,13 @@ class Window(QtWidgets.QMainWindow):
         self.prepared_assembly_window = PreparedAssemblyWindow(self)
         self.prepared_assembly_window.signal_get_data.connect(self.get_data_from_prepared_assembly)
         self.thread_inventor = IThread()
+        self.helper_interective = None
+        self.mode = Mode.MAIN_WINDOW_MODE
 
         self.initWindow()
         self.initWidgets()
         self.init_thread()
-        
+                
         if DEBUG:
             self.label_load_ring.setText(r'\\pdm\pkodocs\Inventor Project\ООО ЛебедяньМолоко\1642_24\5.3.X5. Порошковый миксер Inoxpa ME-4105_ME-4110\05 проект INVENTOR\ALS.1642.5.3.06.01-Рама\ALS.1642.5.3.06.01.00.000 СБ\Frame')
             with open(r'DEBUG\data_assembly.txt', 'r', encoding='utf-8') as file_data_assembly: 
@@ -854,17 +857,21 @@ class Window(QtWidgets.QMainWindow):
         self.setCentralWidget(self.centralwidget)
 
         menuBar = self.menuBar()
-        fileMenu = QtWidgets.QMenu(self)
         
         prepared_action = QtWidgets.QAction("&Готовые сборки", self)
         prepared_action.triggered.connect(self.show_window_prepared_assembly)
         menuBar.addAction(prepared_action)
 
-        help_action = QtWidgets.QAction("&Помощь", self)
-        help_action.triggered.connect(self.open_instruction)
-        menuBar.addAction(help_action)
-        
-        menuBar.addMenu(fileMenu)
+        help_menu = menuBar.addMenu('&Помощь')
+
+        help_action_doc = QtWidgets.QAction("&Справка", self)
+        help_action_doc.triggered.connect(self.open_instruction)
+        help_menu.addAction(help_action_doc)
+
+        help_action_interactive = QtWidgets.QAction("&Интерактивная справка", self)
+        help_action_interactive.setShortcut('F2')
+        help_action_interactive.triggered.connect(self.start_help_interective)
+        help_menu.addAction(help_action_interactive)
 
         self.shortcut_search_focus = QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+F'), self)
         self.shortcut_search_focus.activated.connect(self.set_focus_search_line_edit)
@@ -929,6 +936,36 @@ class Window(QtWidgets.QMainWindow):
         self.thread_inventor.signal_complite_thread.connect(self.thread_inventor_complite)
         self.thread_inventor.signal_complite_copy_assembly.connect(self.move_complite_assembly)
         self.thread_inventor.signal_is_prepared.connect(self.__full_rename_assembly)
+
+    def start_help_interective(self) -> None:
+        self.mode = Mode.INTERACTIVE_HELP
+        self.desable_event_widgets()
+        if self.helper_interective is None:
+            self.helper_interective = WidgetHelperInterective(self)
+            self.helper_interective.add_widget(self.label_choose_assembly)
+            self.helper_interective.add_widget(self.lineedit_choose_assembly)
+            self.helper_interective.add_widget(self.btn_choose_path_assembly)
+        self.helper_interective.highlight_widgets()
+        self.helper_interective.show()
+        
+    def desable_event_widgets(self, parent=None) -> None:
+        if parent is None:
+            parent = self
+        for child in parent.children():
+            if isinstance(child, (QtWidgets.QPushButton, QtWidgets.QLineEdit, QtWidgets.QCheckBox, QtWidgets.QMenuBar)):
+                child.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
+                child.setFocusPolicy(QtCore.Qt.NoFocus)
+            self.desable_event_widgets(child)
+
+    def enable_event_widgets(self, parent=None) -> None:
+        if parent is None:
+            parent = self
+        for child in parent.children():
+            if isinstance(child, (QtWidgets.QPushButton, QtWidgets.QLineEdit, QtWidgets.QCheckBox, QtWidgets.QMenuBar)):
+                child.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
+                child.setFocusPolicy(QtCore.Qt.StrongFocus)
+            self.enable_event_widgets(child)
+
 
     def thread_inventor_error(self, error_code: ErrorCode) -> None:
         if error_code == ErrorCode.SUCCESS:
@@ -1115,6 +1152,18 @@ class Window(QtWidgets.QMainWindow):
         self.close_application()
         super().closeEvent(event)
 
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
+        key = event.key()
+        if key == QtCore.Qt.Key.Key_Escape and self.helper_interective and self.mode == Mode.INTERACTIVE_HELP:
+            self.mode = Mode.MAIN_WINDOW_MODE
+            self.enable_event_widgets()
+            self.helper_interective.hide()
+        return super().keyPressEvent(event)
+
+    def resizeEvent(self, event):
+        if self.helper_interective:
+            self.helper_interective.resize(self.size())
+        return super().resizeEvent(event)
 
 def my_excepthook(type, value, tback):
     global window, app

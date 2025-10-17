@@ -7,3 +7,5 @@ class Mode(Enum):
     DELETE_PPREPARED_ASSEMLY = auto()
     OPEN_ASSEMBLY = auto()
     COPY_ASSEMBLY = auto()
+    MAIN_WINDOW_MODE = auto()
+    INTERACTIVE_HELP = auto()
