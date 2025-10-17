@@ -8,7 +8,7 @@ from Widgets import QHLineSeparate, MessegeBoxQuestion
 from logger_changes_qtree import LoggerChangesQTree, TypeItemQTree
 from window_prepared_assembly import PreparedAssemblyWindow
 from window_rules import WindowsViewerRules
-from helper.helper_widget_interective import WidgetHelperInterective
+from helper.helper_widget_interective import WidgetBackground
 
 from sitting import *
 from error_code import ErrorCode
@@ -939,33 +939,14 @@ class Window(QtWidgets.QMainWindow):
 
     def start_help_interective(self) -> None:
         self.mode = Mode.INTERACTIVE_HELP
-        self.desable_event_widgets()
         if self.helper_interective is None:
-            self.helper_interective = WidgetHelperInterective(self)
+            self.helper_interective = WidgetBackground(self)
             self.helper_interective.add_widget(self.label_choose_assembly)
             self.helper_interective.add_widget(self.lineedit_choose_assembly)
             self.helper_interective.add_widget(self.btn_choose_path_assembly)
-        self.helper_interective.highlight_widgets()
+        self.helper_interective.desable_event_widgets(self)
+        self.helper_interective.highlight_step()
         self.helper_interective.show()
-        
-    def desable_event_widgets(self, parent=None) -> None:
-        if parent is None:
-            parent = self
-        for child in parent.children():
-            if isinstance(child, (QtWidgets.QPushButton, QtWidgets.QLineEdit, QtWidgets.QCheckBox, QtWidgets.QMenuBar)):
-                child.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
-                child.setFocusPolicy(QtCore.Qt.NoFocus)
-            self.desable_event_widgets(child)
-
-    def enable_event_widgets(self, parent=None) -> None:
-        if parent is None:
-            parent = self
-        for child in parent.children():
-            if isinstance(child, (QtWidgets.QPushButton, QtWidgets.QLineEdit, QtWidgets.QCheckBox, QtWidgets.QMenuBar)):
-                child.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
-                child.setFocusPolicy(QtCore.Qt.StrongFocus)
-            self.enable_event_widgets(child)
-
 
     def thread_inventor_error(self, error_code: ErrorCode) -> None:
         if error_code == ErrorCode.SUCCESS:
@@ -1156,7 +1137,7 @@ class Window(QtWidgets.QMainWindow):
         key = event.key()
         if key == QtCore.Qt.Key.Key_Escape and self.helper_interective and self.mode == Mode.INTERACTIVE_HELP:
             self.mode = Mode.MAIN_WINDOW_MODE
-            self.enable_event_widgets()
+            self.helper_interective.enable_event_widgets(self)
             self.helper_interective.hide()
         return super().keyPressEvent(event)
 

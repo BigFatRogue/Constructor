@@ -571,7 +571,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.grid_main.addWidget(self.mini_viewer, 0, 0)
 
         # -------------------------- List Box -------------------------------------        
-        self.list_box = Listwidgets(self)
+        self.list_box = Listwidgets(self.frame_main)
         self.list_box.signal_eidt_assembly.connect(self.edit_assembly)
         self.list_box.signal_open_folder_assebly.connect(self.open_folder_assembly)
         self.list_box.signal_del_assebly.connect(self.del_assembly)
@@ -585,7 +585,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.label_old_name_assembly.setText('Текущее имя сборки')
         self.grid_main.addWidget(self.label_old_name_assembly, 1, 0)
 
-        self.line_edit_old_name_assembly = QtWidgets.QLineEdit(self)
+        self.line_edit_old_name_assembly = QtWidgets.QLineEdit(self.frame_main)
         self.line_edit_old_name_assembly.setObjectName('line_edit_old_name_assembly')
         self.line_edit_old_name_assembly.setReadOnly(True)
         self.line_edit_old_name_assembly.setStyleSheet('#line_edit_old_name_assembly {color: gray}')
@@ -793,7 +793,6 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
             self.close()
         return super().keyPressEvent(event)
     
-
 
 class Window(QtWidgets.QMainWindow):
     def __init__(self):
