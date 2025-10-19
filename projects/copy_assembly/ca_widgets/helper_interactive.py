@@ -27,32 +27,44 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.new_pos: QtCore.QPoint = None
         self.flag_move = False
 
-        self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
+        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
         self.installEventFilter(self)
         self.initWidgets()
     
     def initWidgets(self) -> None:
+        self.setMinimumSize(100, 100)
         self.setStyleSheet('''
-                           ToolTipMessage {
+                   ToolTipMessage {
+                   background-color: white;
+                   padding: 5px;
+                   }''')
+        self.v_layout = QtWidgets.QGridLayout()
+        self.v_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.v_layout)
+
+        self.frame_tool_tip = QtWidgets.QFrame(self)
+        self.frame_tool_tip.setObjectName('frame_tool_tip')
+        self.frame_tool_tip.setStyleSheet('''
+                           #frame_tool_tip {
                            background-color: white;
                            border: 3px solid #0078d4;
-                           border-radius: 5px;
-                           padding: 10px;
+                           padding: 5px;
                            }''')
-        self.setMinimumSize(100, 100)
-        self.grid_layout = QtWidgets.QGridLayout()
-        self.grid_layout.setContentsMargins(5, 5, 5, 5)
-        self.setLayout(self.grid_layout)
-
+        self.v_layout.addWidget(self.frame_tool_tip)
+        
+        self.grid_layout = QtWidgets.QGridLayout(self.frame_tool_tip)
+        self.grid_layout.setSpacing(2)
+        self.grid_layout.setContentsMargins(2, 2, 2, 2)
+        
         row_counter = RowCounter()
 
-        self.label_title = QtWidgets.QLabel(self)
+        self.label_title = QtWidgets.QLabel(self.frame_tool_tip)
         self.label_title.setMaximumHeight(20)
         self.label_title.setObjectName('label_title')
         self.label_title.setStyleSheet('#label_title {}')
         self.grid_layout.addWidget(self.label_title, row_counter.value, 0, 1, 1)
 
-        self.btn_end_tour = QtWidgets.QPushButton(self)
+        self.btn_end_tour = QtWidgets.QPushButton(self.frame_tool_tip)
         self.btn_end_tour.setObjectName('btn_end_tour')
         self.btn_end_tour.setMaximumSize(20, 20)
         self.btn_end_tour.setToolTip('Завершить')
@@ -73,10 +85,10 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.btn_end_tour.clicked.connect(self.end)
         self.grid_layout.addWidget(self.btn_end_tour, row_counter.value, 1, 1, 1)
 
-        self.line_separate = QHLineSeparate(self)
+        self.line_separate = QHLineSeparate(self.frame_tool_tip)
         self.grid_layout.addWidget(self.line_separate, row_counter.next(), 0, 1, 2)
 
-        self.label_message = QtWidgets.QLabel(self)
+        self.label_message = QtWidgets.QLabel(self.frame_tool_tip)
         self.label_message.setObjectName('label_message')
         self.label_message.setWordWrap(True)
         self.label_message.setStyleSheet('''
@@ -87,7 +99,7 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.label_message.setMinimumWidth(250)
         self.grid_layout.addWidget(self.label_message, row_counter.next(), 0, 1, 2)
 
-        self.label_content = QtWidgets.QLabel(self)
+        self.label_content = QtWidgets.QLabel(self.frame_tool_tip)
         self.grid_layout.addWidget(self.label_content, row_counter.next(), 0, 1, 2)
 
         self.btn_next_step = QtWidgets.QPushButton(self)
@@ -129,11 +141,15 @@ class ToolTipMessage(QtWidgets.QWidget):
 
     def eventFilter(self, obj, event):
         tp = event.type()
+
+        if tp == QtCore.QEvent.FocusOut:
+            event.ignore()
+            return False
         if tp == 2:
             self.old_pos = event.pos()
-            self.flag_move == True
+            self.flag_move = True
         elif tp == 3:
-            self.flag_move == False
+            self.flag_move = False
         if tp == 5:
             self.new_pos = event.pos()
             pos = self.geometry().topLeft() + (self.new_pos - self.old_pos)
@@ -322,7 +338,7 @@ class HelperInteractive:
             else:
                 y += rect.height() + 10
 
-            return QtCore.QPointF(x, y)
+            return QtCore.QPointF(x + self.parent.geometry().x(), y + self.parent.geometry().y())
         else:
             return QtCore.QPointF((self.parent.width() - self.widget_tool_tip.width())/2, (self.parent.height() - self.widget_tool_tip.height())/2)
 

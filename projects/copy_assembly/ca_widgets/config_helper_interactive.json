@@ -2,7 +2,7 @@
     "steps": {
         "0": {
             "object_names": ["btn_choose_path_assembly"],
-            "message": "Нажмите кнопку 'Выбрать', чтобы выбрать сборку (файл формата .iam)",
+            "message": "Нажмите кнопку <b>Выбрать</b>, чтобы выбрать сборку (файл формата .iam)",
             "content_path": "",
             "button_is_wait": false
         },

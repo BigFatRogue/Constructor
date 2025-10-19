@@ -1,13 +1,15 @@
 import sys
 import os 
-from tempfile import TemporaryFile
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'copy_assembly'))
+
 from copy_assembly.ca_main import Window
+from copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow 
 from copy_assembly.ca_widgets.helper_interactive import HelperInteractive
+
 
 
 class RowCounter:
@@ -44,33 +46,47 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.new_pos: QtCore.QPoint = None
         self.flag_move = False
 
-        self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
+        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
         self.installEventFilter(self)
         self.initWidgets()
     
     def initWidgets(self) -> None:
+        self.setMinimumSize(100, 100)
         self.setStyleSheet('''
-                           ToolTipMessage {
+                   ToolTipMessage {
+                   background-color: white;
+                   padding: 5px;
+                   }''')
+        self.v_layout = QtWidgets.QGridLayout()
+        self.v_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.v_layout)
+
+        self.frame_tool_tip = QtWidgets.QFrame(self)
+        self.frame_tool_tip.setObjectName('frame_tool_tip')
+        self.frame_tool_tip.setStyleSheet('''
+                           #frame_tool_tip {
                            background-color: white;
                            border: 3px solid #0078d4;
-                           border-radius: 5px;
-                           padding: 10px;
+                           padding: 5px;
                            }''')
-        self.setMinimumSize(100, 100)
-        self.grid_layout = QtWidgets.QGridLayout()
-        self.grid_layout.setContentsMargins(5, 5, 5, 5)
-        self.setLayout(self.grid_layout)
-
+        self.v_layout.addWidget(self.frame_tool_tip)
+        
+        self.grid_layout = QtWidgets.QGridLayout(self.frame_tool_tip)
+        self.grid_layout.setSpacing(2)
+        self.grid_layout.setContentsMargins(2, 2, 2, 2)
+        
         row_counter = RowCounter()
 
-        self.label_title = QtWidgets.QLabel(self)
+        self.label_title = QtWidgets.QLabel(self.frame_tool_tip)
         self.label_title.setMaximumHeight(20)
         self.label_title.setObjectName('label_title')
-        self.label_title.setText('Шаг 1')
         self.label_title.setStyleSheet('#label_title {}')
+        self.label_title.setText('Шаг 1')
         self.grid_layout.addWidget(self.label_title, row_counter.value, 0, 1, 1)
 
-        self.btn_end_tour = QtWidgets.QPushButton(self)
+        self.btn_end_tour = QtWidgets.QPushButton(self.frame_tool_tip)
         self.btn_end_tour.setObjectName('btn_end_tour')
         self.btn_end_tour.setMaximumSize(20, 20)
         self.btn_end_tour.setToolTip('Завершить')
@@ -88,12 +104,12 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.btn_end_tour.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.grid_layout.addWidget(self.btn_end_tour, row_counter.value, 1, 1, 1)
 
-        self.line_separate = QHLineSeparate(self)
+        self.line_separate = QHLineSeparate(self.frame_tool_tip)
         self.grid_layout.addWidget(self.line_separate, row_counter.next(), 0, 1, 2)
 
-        self.label_message = QtWidgets.QLabel(self)
-        self.label_message.setWordWrap(True)
+        self.label_message = QtWidgets.QLabel(self.frame_tool_tip)
         self.label_message.setObjectName('label_message')
+        self.label_message.setWordWrap(True)
         self.label_message.setStyleSheet('''
                                         #label_message {
                                         font-size: 12pt; 
@@ -102,7 +118,7 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.label_message.setMinimumWidth(250)
         self.grid_layout.addWidget(self.label_message, row_counter.next(), 0, 1, 2)
 
-        self.label_content = QtWidgets.QLabel(self)
+        self.label_content = QtWidgets.QLabel(self.frame_tool_tip)
         self.grid_layout.addWidget(self.label_content, row_counter.next(), 0, 1, 2)
 
         self.btn_next_step = QtWidgets.QPushButton(self)
@@ -125,7 +141,7 @@ class ToolTipMessage(QtWidgets.QWidget):
             gif.start()
         else:
             self.label_content.clear()
-
+    
 
 class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
     def __init__(self):
@@ -296,18 +312,18 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
     def show_step_in_application(self) -> None:
         self.delete_helper()
         object_name = self.line_edit_list_object_name.text()
-
-        self.helper = HelperInteractive(self.application)
-        data = {
-            "0": {
-                "object_names": [*[i.strip() for i in object_name.split(',')]],
-                "message": self.tool_tip_widget.label_message.text(),
-                "content_path": self.current_path_content,
-                "button_is_wait": False,
+        if object_name:
+            self.helper = HelperInteractive(self.application)
+            data = {
+                "0": {
+                    "object_names": [*[i.strip() for i in object_name.split(',')]],
+                    "message": self.tool_tip_widget.label_message.text(),
+                    "content_path": self.current_path_content,
+                    "button_is_wait": False,
+                    }
                 }
-            }
-        self.helper._add_config(data)
-        self.helper.show()
+            self.helper._add_config(data)
+            self.helper.show()
 
     def add_value_in_config(self) -> None:
         self.dict_step[str(self.current_number_step)] = {
@@ -334,7 +350,6 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             self.clear_step()
             self.current_number_step = len(self.dict_step) - 1
             self.show_step()
-
 
     def generate_config(self) -> None:
         ...
