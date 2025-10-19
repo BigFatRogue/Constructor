@@ -1,0 +1,32 @@
+/*CustomWindow*/
+
+QFrame {
+    background-color:  rgb(59, 68, 83);
+}
+QFrame #TitleBar, #lSize, #rSize, #dSize, #ldSize, #rdSize,  #luSize, #ruSize {
+    background-color: rgb(46, 52, 64);
+}
+#minimazeButton,#closeButton {
+    background-color: rgba(255, 255, 255, 0);
+}
+#minimazeButton:hover {
+    background-color: rgb(17, 19, 24);
+}
+#closeButton:hover {
+    background-color: rgb(255, 0, 0, 200);
+}
+#list_result_search {
+    background-color: white}
+
+#gridList, #label_text {
+    background-color: white
+}
+
+#label_image {
+    background-color: darkgrey
+}
+/*!*ContentFrame*!*/
+/*#selectAcad, #sellectAcadAdd, #sellectExcel, #select_from_search, #clear_toolBox {*/
+/*    background-color: rgba(0, 0, 0, 0);*/
+/*    color: white;*/
+/*}*/

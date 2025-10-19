@@ -1,0 +1,14 @@
+<RCC>
+  <qresource>
+    <file>excel.png</file>
+    <file>zoom_element_white.png</file>
+    <file>zoom_element.png</file>
+    <file>icon_minimaze.png</file>
+    <file>excel.png</file>
+    <file>icon_close.png</file>
+    <file>sellect_add.png</file>
+    <file>folder.png</file>
+    <file>sellect.png</file>
+    <file>inventor.png</file>
+  </qresource>
+</RCC>

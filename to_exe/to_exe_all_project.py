@@ -9,12 +9,12 @@ import PyInstaller.__main__ as PyInst
 VERSION = 1.04
 PROJECTS = {
     # 'CopyDrinage': 'drainage_tray',
-    '_CopyAssembly': 'copy_assembly'
+    '_CopyAssembly': 'projects\\copy_assembly'
 }
 
 __root_pathlib = pathlib.Path(__file__).parent
-TOTAL_PROJECT_ROOT = str(__root_pathlib.parent)                            
-TOTAL_PROJECT_NAME = str(__root_pathlib.parent.name)                       
+TOTAL_PROJECT_ROOT = str(__root_pathlib.parent)        
+TOTAL_PROJECT_NAME = str(__root_pathlib.parent.name)                    
 TO_EXE_ROOT = str(__root_pathlib)
 
 EMPTY_FILE_NAME = 'empty'
@@ -100,7 +100,6 @@ def check_and_create_empty_py():
     dict_import_from_py_file = get_dict_all_import_from_py_file()
     if dict_import_from_py_file:
         if not check_empty_exe(dict_import_from_py_file):
-            print(EMPTY_PY_FULL_FILEPATH)
             with open(EMPTY_PY_FULL_FILEPATH, 'w', encoding='utf-8') as py:
                 for lib, string in dict_import_from_py_file.items():
                     py.write(string + '\n')

@@ -8,8 +8,8 @@
 __pycache__
 /Инструкция
 /specification
-/log_files_small
-/log_files
+log_files_small
+log_files
 _temp
 *.exe
 *.ini
