@@ -151,8 +151,7 @@ class ToolTipMessage(QtWidgets.QWidget):
         elif tp == 3:
             self.flag_move = False
         if tp == 5:
-            self.new_pos = event.pos()
-            pos = self.geometry().topLeft() + (self.new_pos - self.old_pos)
+            pos = self.geometry().topLeft() + (event.pos()- self.old_pos)
             self.set_pos(pos)
 
         return super().eventFilter(obj, event)
