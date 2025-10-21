@@ -1,6 +1,6 @@
 import sys
 import cv2
-import imageio
+# import imageio
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout,
     QFileDialog, QLabel, QSlider, QStyleOptionSlider, QStyle, QFrame,
@@ -80,6 +80,7 @@ class VideoPlayer(QWidget):
 
         self.load_btn = QPushButton("Открыть видео")
         self.play_btn = QPushButton("▶️ / ⏸️")
+        
         self.mark_start_btn = QPushButton("Отметить начало")
         self.mark_end_btn = QPushButton("Отметить конец")
         self.make_gif_btn = QPushButton("Создать GIF")
