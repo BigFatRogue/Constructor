@@ -629,13 +629,14 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         main_window.setGeometry(main_window_geom.x(), main_window_geom.y(), int(width * 1.1), 600)
 
     def __click_btn_replace(self) -> None:
-        if self.lineedit_search_to.text():
-            self.logger_changes.start_transaction()
-            if self.btn_replace.text() == 'Заменить':
+        self.logger_changes.start_transaction()
+        if self.btn_replace.text() == 'Заменить':
+            if self.lineedit_search_to.text():
                 self.__rename_one_item(item=self.model.invisibleRootItem())
-            else:
+        else:
+            if self.lineedit_replace_to.text():
                 self.__item_add_text_preffix_or_suffix()
-            self.logger_changes.end_transaction()
+        self.logger_changes.end_transaction()
 
     def __rename_one_item(self, item) -> None:
         for i in range(item.rowCount()):
@@ -1196,6 +1197,7 @@ class Window(QtWidgets.QMainWindow):
         if self.interactive_helper and self.interactive_helper.isVisible():
             self.interactive_helper.resize(self.size())
         return super().resizeEvent(event)
+
 
 def my_excepthook(type, value, tback):
     global window, app

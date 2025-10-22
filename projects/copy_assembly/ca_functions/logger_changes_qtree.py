@@ -31,6 +31,7 @@ class LoggerChangesQTree:
     def __init__(self):
         self.list_undo: list[list[ItemChangeLoggerQTree]] = []
         self.list_redo: list[list[ItemChangeLoggerQTree]] = []
+        self.list_change: list[ItemChangeLoggerQTree] = []
         self.is_start_transaction = False
         self.has_add_change = True
 
@@ -39,14 +40,20 @@ class LoggerChangesQTree:
 
     def end_transaction(self) -> None:
         self.is_start_transaction = False
+        self.list_undo.append(self.list_change)
+        self.list_change = []
 
     def add_change(self, item: QtGui.QStandardItem, old_value: str, new_value: str, type_item: TypeItemQTree=TypeItemQTree.text):
         if self.has_add_change:
-            if not self.is_start_transaction or not self.list_undo:
-                self.list_undo.append([])
             if self.list_redo:
                 self.list_redo.clear()
-            self.list_undo[-1].append(ItemChangeLoggerQTree(item, old_value, new_value, type_item))
+            
+            if new_value:
+                if self.is_start_transaction:
+                    self.list_change.append(ItemChangeLoggerQTree(item, old_value, new_value, type_item))
+                else:
+                    self.list_undo.append([ItemChangeLoggerQTree(item, old_value, new_value, type_item)])
+
     
     def undo(self) -> None:
         self.has_add_change = False
@@ -91,19 +98,26 @@ if __name__ == '__main__':
         logger.add_change(*item)
     logger.end_transaction()
 
+    logger.start_transaction()
     for item in list_item:
         logger.add_change(*item)
+    logger.end_transaction()
     
-    logger.undo()
-    logger.undo()
-    logger.redo()
+    # for item in list_item:
+    #     logger.add_change(*item)
+    
+    for i, it in enumerate(logger.list_undo):
+        print(i, it)
 
+    # logger.undo()
+    # logger.undo()
+    # logger.redo()
+    # print('----------------')
+    # for i, it in enumerate(logger.list_undo):
+    #     print(i, it)
     
     # logger.current_index = 1
     # logger.start_transaction()
     # for item in list_item:
     #     logger.add_change(*item)
     # logger.end_transaction()
-
-    for i, it in enumerate(logger.list_undo):
-        print(i, it)
