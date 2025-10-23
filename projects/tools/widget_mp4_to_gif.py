@@ -81,11 +81,11 @@ class RectSetSizeCapture(QtWidgets.QFrame):
 
     def __init_style(self) -> None:
         if self.tp in (TypeRectSize.LT, TypeRectSize.RB):
-            self.setStyleSheet('RectSetSizeCapture {background-color: black;}')
+            self.setStyleSheet('RectSetSizeCapture {background-color: rgb(100, 100, 100);}')
             self.setCursor(QtCore.Qt.SizeBDiagCursor)
             self.setCursor(QtCore.Qt.SizeFDiagCursor)
         elif self.tp in (TypeRectSize.RT, TypeRectSize.LB):
-            self.setStyleSheet('RectSetSizeCapture {background-color: black;}')
+            self.setStyleSheet('RectSetSizeCapture {background-color: rgb(100, 100, 100);}')
             self.setCursor(QtCore.Qt.SizeBDiagCursor)
         elif self.tp in (TypeRectSize.CT, TypeRectSize.CB):
             self.setCursor(QtCore.Qt.SizeVerCursor)
@@ -108,12 +108,14 @@ class FrameCaptureVideo(QtWidgets.QFrame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
+        self.is_fullscreen = False
+        self.old_capture_rect = QtCore.QRect()
         self.is_draw = False
         self.is_press_rect_size = False
         self.tp_press_rect_size = None
         self.left_top = QtCore.QPoint(0, 0)
         self.right_bottom = QtCore.QPoint(0, 0)
-        self.x0, self.y0, self.x1, self.y1 = 50, 50, 100, 100
+        self.x0, self.y0, self.x1, self.y1 = 50, 50, 200, 200
         self.x0_old, self.y0_old, self.x1_old, self.y1_old = 0, 0, 0, 0 
         self.capture_rect = QtCore.QRect()
 
@@ -128,10 +130,9 @@ class FrameCaptureVideo(QtWidgets.QFrame):
 
         self.frame_capture_rect = QtWidgets.QFrame(self)
         self.frame_capture_rect.setObjectName('frame_capture_rect')
-        self.frame_capture_rect.setStyleSheet('#frame_capture_rect {border: 1px solid black}')
+        self.frame_capture_rect.setStyleSheet('#frame_capture_rect {border: 1px solid rgb(100, 100 , 100)}')
         self.frame_capture_rect.setGeometry(self.x0, self.y0, abs(self.x0 - self.x1), abs(self.y0 - self.y1))
-        self.v_layout.addWidget(self.frame_capture_rect)
-
+        
         self.grid_frame_capture_rect = QtWidgets.QGridLayout(self.frame_capture_rect)
         self.grid_frame_capture_rect.setSpacing(0)
         self.grid_frame_capture_rect.setContentsMargins(0, 0, 0, 0)
@@ -222,10 +223,32 @@ class FrameCaptureVideo(QtWidgets.QFrame):
             self.draw_rect()
         return super().mouseMoveEvent(event)
     
+    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
+        if self.get_rect().contains(event.pos()):
+            if not self.is_fullscreen:
+                self.old_capture_rect = self.get_rect()
+                self.x0, self.y0, self.x1, self.y1 = 0, 0, self.parent().width(), self.parent().height()
+            else:
+                self.x0, self.y0, self.x1, self.y1 = self.old_capture_rect.getCoords()
+            
+            self.is_draw = True
+            self.draw_rect()
+            self.is_draw = False
+            self.is_fullscreen = not self.is_fullscreen
+        return super().mouseDoubleClickEvent(event)
+
     def draw_rect(self) -> None:
         if self.is_draw:
             self.capture_rect = QtCore.QRect(self.x0 , self.y0 , abs(self.x0 - self.x1) , abs(self.y0 - self.y1) )
             self.frame_capture_rect.setGeometry(self.capture_rect)
+    
+    def hide_rect_angle(self) -> None:
+        for rect in (self.ltr, self.rtr, self.lbr, self.rbr):
+            rect.setStyleSheet('background-color: rgba(0, 0, 0, 0)')
+
+    def show_rect_angle(self) -> None:
+        for rect in (self.ltr, self.rtr, self.lbr, self.rbr):
+            rect.setStyleSheet('background-color: rgba(100, 100, 100, 100)')
 
 
 class MarkerSlider(QtWidgets.QSlider):
@@ -236,6 +259,11 @@ class MarkerSlider(QtWidgets.QSlider):
         self.curren_x = 0
         self.width_groove = 10
         self.is_click_groove = False
+        self.frames: list[QtGui.QImage] = None
+
+    def set_frames(self, frames: list[QtGui.QImage]) -> None:
+        self.setMaximum(len(frames))
+        self.frames = frames
         
     def setValue(self, value):
         self.curren_x = int(value / self.maximum() * self.width())
@@ -243,10 +271,23 @@ class MarkerSlider(QtWidgets.QSlider):
 
     def paintEvent(self, event):
         super().paintEvent(event)
-        # curren_x = int(self.value() / self.maximum() * self.width())
+        
+        painter = QtGui.QPainter(self)
+        if self.frames:
+            len_frames = len(self.frames)
+            step = 4 
+            total_width = self.width()
+            img_width = total_width // len_frames
+            
+            for i in range(0, len_frames + 1, step):
+                if i < len_frames:
+                    img = self.frames[i]
+                    x = i * img_width
+                    scaled_img = img.scaled(img_width, int(self.height()*0.90))
+                    painter.drawRect(x, 0, img_width, self.height())
+                    painter.drawImage(x, 0, scaled_img)
 
         if self.curren_x:
-            painter = QtGui.QPainter(self)
             pen = QtGui.QPen(QtCore.Qt.black, self.width_groove, QtCore.Qt.SolidLine)
             painter.setPen(pen)
             painter.drawLine(self.curren_x, 0, self.curren_x, self.height())
@@ -288,8 +329,10 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.current_frame = 0
         self.count_frame = 0
         self.is_play = False
-        self.frames = []
+        self.frames: list[QtGui.QImage] = []
         self.fps = 20
+        self.qimg_cursor: QtGui.QImage = None
+        self.__load_frames()
 
         self.__init_window()
         self.__init_widgets()
@@ -315,41 +358,51 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.label_video.setAlignment(QtCore.Qt.AlignCenter)
         self.grid_layout.addWidget(self.label_video, 0, 0, 1, 5)
 
+        self.slider = MarkerSlider(parent=self, orientation=QtCore.Qt.Horizontal)
+        self.slider.sliderMoved.connect(self.slider_moved)
+        # self.slider.setEnabled(False)
+        self.grid_layout.addWidget(self.slider, 1, 0, 1, 5)
+        self.slider.set_frames(self.frames)
+
         self.h_line_separate = QHLineSeparate(self)
-        self.grid_layout.addWidget(self.h_line_separate, 1, 0, 1, 5)
+        self.grid_layout.addWidget(self.h_line_separate, 2, 0, 1, 5)
         
         self.btn_play = QtWidgets.QPushButton("▶️")
         self.btn_play.setMaximumWidth(50)
         self.btn_play.clicked.connect(self.start_play)
-        self.grid_layout.addWidget(self.btn_play, 2, 0, 1, 1)
+        self.grid_layout.addWidget(self.btn_play, 3, 0, 1, 1)
 
         self.btn_select_rect = QtWidgets.QPushButton("[..]")
         self.btn_select_rect.setMaximumWidth(50)
-        # self.btn_select_rect.clicked.connect(self.start_draw_capture_rect)
-        self.grid_layout.addWidget(self.btn_select_rect, 2, 1, 1, 1)
+        self.btn_select_rect.clicked.connect(self.start_draw_capture_rect)
+        self.grid_layout.addWidget(self.btn_select_rect, 3, 1, 1, 1)
 
-        self.btn_rec = QtWidgets.QPushButton("🔴")
+        self.btn_rec = QtWidgets.QPushButton("Запись")
         self.btn_rec.setObjectName('btn_rec')
-        self.btn_rec.setMaximumWidth(25)
         self.btn_rec.clicked.connect(self.start_recording)
-        self.grid_layout.addWidget(self.btn_rec, 2, 2, 1, 1)
+        self.grid_layout.addWidget(self.btn_rec, 3, 2, 1, 1)
 
-        self.slider = MarkerSlider(parent=self, orientation=QtCore.Qt.Horizontal)
-        self.slider.sliderMoved.connect(self.slider_moved)
-        # self.slider.setEnabled(False)
-        self.grid_layout.addWidget(self.slider, 2, 3, 1, 1)
+        self.btn_screenshot = QtWidgets.QPushButton("🖼️")
+        self.btn_screenshot.setObjectName('btn_screenshot')
+        self.btn_screenshot.setMaximumWidth(25)
+        self.btn_screenshot.clicked.connect(self.set_screenshot)
+        self.grid_layout.addWidget(self.btn_screenshot, 3, 3, 1, 1)
 
         self.label_time = QtWidgets.QLabel(self)
         self.set_time_label()
         self.label_time.setAlignment(QtCore.Qt.AlignRight)
-        self.grid_layout.addWidget(self.label_time, 2, 4, 1, 1)
+        self.grid_layout.addWidget(self.label_time, 3, 4, 1, 1)
         
-
     def __init_capture_video(self):
         self.frame_capture_video = FrameCaptureVideo(self.app)
         self.app.layout().addWidget(self.frame_capture_video)
-        self.frame_capture_video.hide()
         self.desable_event_widgets(self.app)
+
+        with open(os.path.join(os.getcwd(), 'projects\\tools\\window_cursor.png'), 'rb') as img_file:
+            qimg = QtGui.QImage()
+            qimg.loadFromData(img_file.read())
+            qimg = qimg.scaled(25, 25)
+            self.qimg_cursor = qimg 
 
     def __init_recorder(self) -> None:
         self.timer = QtCore.QTimer()
@@ -392,29 +445,31 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
             self.frames.clear()
             self.current_frame = 0
             self.count_frame = 0
-            self.btn_rec.setStyleSheet('#btn_rec {border: 2px solid black}')
             self.enable_event_widgets(self.app)
+            self.btn_rec.setDown(True)
             self.frame_capture_video.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
+            self.frame_capture_video.hide_rect_angle()
             self.slider.setEnabled(False)
         else:
-            self.btn_rec.setStyleSheet('#btn_rec {border: 1px solid black}')
             self.frame_capture_video.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
+            self.frame_capture_video.show_rect_angle()
             self.slider.setMaximum(self.count_frame)
+            self.btn_rec.setDown(False)
             self.slider.setEnabled(True)
             self.set_time_label()
+            
+            self.__save_frames()
     
     def capture_frame(self):
         if not self.is_play:
-            self.frame_capture_video.hide()
             rect = self.frame_capture_video.get_rect().getRect()
             pixmap = self.app.screen().grabWindow(self.app.winId(), *rect)
-            
+
             self.draw_cursor(pixmap)
             qimage = pixmap.toImage()
             pixmap = QtGui.QPixmap.fromImage(qimage)
-            
             self.label_video.setPixmap(pixmap)
-            self.frame_capture_video.show()
+
             if self.is_recording:
                 self.count_frame += 1
                 self.frames.append(qimage)
@@ -429,11 +484,11 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         pos_y = cursor_pos.y() - app_pos.y() - capture_rect.y()
 
         painter = QtGui.QPainter(pixmap)
-
-        painter.setPen(QtCore.Qt.black)
-        painter.setBrush(QtCore.Qt.white)
-        r = 2
-        painter.drawEllipse(pos_x - r, pos_y - r, r * 2, r * 2)
+        painter.drawImage(pos_x, pos_y, self.qimg_cursor)
+        # painter.setPen(QtCore.Qt.black)
+        # painter.setBrush(QtCore.Qt.white)
+        # r = 2
+        # painter.drawEllipse(pos_x - r, pos_y - r, r * 2, r * 2)
                 
         painter.end()
 
@@ -467,10 +522,35 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
             self.slider.setValue(self.current_frame)
             self.set_time_label()
 
+    def set_screenshot(self) -> None:
+        count = len(tuple(file for file in os.listdir() if 'screenshot' in file))
+                
+        self.frame_capture_video.hide_rect_angle()
+        QtWidgets.QApplication.processEvents()
+        rect = self.frame_capture_video.get_rect().getRect()
+        pixmap = self.app.screen().grabWindow(self.app.winId(), *rect)
+        pixmap.toImage().save(f'screenshot_{count + 1}.png', format='png', quality=1)
+        self.frame_capture_video.show_rect_angle()
+
     def __run_application(self) -> None:
         self.app = TempWindow(self)
         self.app.show()
 
+    def __save_frames(self) -> None:
+        if not os.path.exists('_image'): 
+            os.mkdir('_image')
+        for i, frame in enumerate(self.frames):
+            frame.save(os.path.join(os.getcwd(), '_image', f'picture_{i}.png'), format='png')
+
+    def __load_frames(self) -> None:
+        for img in os.listdir(os.path.join(os.getcwd(), '_image')):
+            with open(os.path.join(os.getcwd(), '_image', img), 'rb') as file:
+                qimg = QtGui.QImage()
+                qimg.loadFromData(file.read())
+                self.frames.append(qimg)
+        self.count_frame = len(self.frames)
+        
+                              
     def showEvent(self, a0):
         geom = self.geometry()
         self.app.setGeometry(geom.x() + geom.width() + 50, self.app.y(), self.app.width(), self.app.height())
