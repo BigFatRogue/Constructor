@@ -64,31 +64,35 @@ class RectSetSizeCapture(QtWidgets.QFrame):
         super().__init__(parent)
 
         self.tp = tp
-        self.__init_cursor()
+        self.wh_size = 10
+        self.__init_style()
         self.__init_size()
 
     def __init_size(self) -> None:
         if self.tp in (TypeRectSize.LT, TypeRectSize.RT, TypeRectSize.LB, TypeRectSize.RB):
-            self.setMinimumSize(5, 5)
-            self.setMaximumSize(5, 5)
+            self.setMinimumSize(self.wh_size, self.wh_size)
+            self.setMaximumSize(self.wh_size, self.wh_size)
         elif self.tp in (TypeRectSize.CT, TypeRectSize.CB):
-            self.setMinimumHeight(5)
-            self.setMaximumHeight(5)
+            self.setMinimumHeight(self.wh_size)
+            self.setMaximumHeight(self.wh_size)
         elif self.tp in (TypeRectSize.LC, TypeRectSize.RC):
-            self.setMinimumWidth(5)
-            self.setMaximumWidth(5)
+            self.setMinimumWidth(self.wh_size)
+            self.setMaximumWidth(self.wh_size)
 
-    def __init_cursor(self) -> None:
+    def __init_style(self) -> None:
         if self.tp in (TypeRectSize.LT, TypeRectSize.RB):
+            self.setStyleSheet('RectSetSizeCapture {background-color: black;}')
             self.setCursor(QtCore.Qt.SizeBDiagCursor)
             self.setCursor(QtCore.Qt.SizeFDiagCursor)
-        elif self.tp in (TypeRectSize.RT, TypeRectSize.LB, ):
+        elif self.tp in (TypeRectSize.RT, TypeRectSize.LB):
+            self.setStyleSheet('RectSetSizeCapture {background-color: black;}')
             self.setCursor(QtCore.Qt.SizeBDiagCursor)
         elif self.tp in (TypeRectSize.CT, TypeRectSize.CB):
             self.setCursor(QtCore.Qt.SizeVerCursor)
         elif self.tp in (TypeRectSize.LC, TypeRectSize.RC):
             self.setCursor(QtCore.Qt.SizeHorCursor)
         elif self.tp == TypeRectSize.CC:
+            # self.setStyleSheet('RectSetSizeCapture {border: 1px solid black}')
             self.setCursor(QtCore.Qt.SizeAllCursor)
     
     def mousePressEvent(self, event):
@@ -120,7 +124,7 @@ class FrameCaptureVideo(QtWidgets.QFrame):
         self.v_layout = QtWidgets.QVBoxLayout(self)
         self.setLayout(self.v_layout)
         self.setGeometry(self.parent().rect())
-        self.setStyleSheet("FrameCaptureVideo {background-color: rgba(100, 100, 100, 0);}")
+        self.setStyleSheet("FrameCaptureVideo {background-color: rgba(100, 100, 100, 0)")
 
         self.frame_capture_rect = QtWidgets.QFrame(self)
         self.frame_capture_rect.setObjectName('frame_capture_rect')
@@ -159,6 +163,10 @@ class FrameCaptureVideo(QtWidgets.QFrame):
             rect_size.signal_press.connect(self.press_rect_size)
             rect_size.signal_release.connect(self.release_rect_size)
     
+    def get_rect(self) -> QtCore.QRect:
+        wh_size = self.cc.wh_size
+        return QtCore.QRect(self.x0 , self.y0 , abs(self.x0 - self.x1), abs(self.y0 - self.y1))
+
     def press_rect_size(self, tp) -> None:
         self.is_press_rect_size = True
         self.tp_press_rect_size = tp
@@ -178,42 +186,97 @@ class FrameCaptureVideo(QtWidgets.QFrame):
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         if self.is_press_rect_size:
+            x, y = event.pos().x(), event.pos().y()
+            limit_left = -self.cc.wh_size
+            limit_rigth = self.parent().geometry().width() + self.cc.wh_size
+            limit_top = -self.cc.wh_size
+            limit_bottom = self.parent().geometry().height() + self.cc.wh_size
+            
+            if x < limit_left or x > limit_rigth or y < limit_top or x > limit_bottom:
+                return
             if self.tp_press_rect_size == TypeRectSize.LT:
-                self.x0, self.y0 = event.pos().x(), event.pos().y()
+                self.x0, self.y0 = x, y
             elif self.tp_press_rect_size == TypeRectSize.CT:
-                self.y0 = event.pos().y()
+                self.y0 = y
             elif self.tp_press_rect_size == TypeRectSize.RT:
-                self.x1, self.y0 = event.pos().x(), event.pos().y()
+                self.x1, self.y0 = x, y
             elif self.tp_press_rect_size == TypeRectSize.LC:
-                self.x1 = event.pos().x()
+                self.x0 = x
             elif self.tp_press_rect_size == TypeRectSize.CC:
                 dxy = event.pos() - self.old_pos
                 dx, dy = dxy.x(), dxy.y()
-                self.x0 = self.x0_old + dx
-                self.x1 = self.x1_old + dx
-                self.y0 = self.y0_old + dy
-                self.y1 = self.y1_old + dy
+                if not self.x0_old + dx < limit_left and not self.x1_old + dx > limit_rigth:
+                    self.x0 = self.x0_old + dx
+                    self.x1 = self.x1_old + dx
+                if not self.y0_old + dy < limit_top and not self.y1_old + dy > limit_bottom:
+                    self.y0 = self.y0_old + dy
+                    self.y1 = self.y1_old + dy
             elif self.tp_press_rect_size == TypeRectSize.RC:
-                self.x1 = event.pos().x()
+                self.x1 = x
             elif self.tp_press_rect_size == TypeRectSize.LB:
-                self.x0, self.y1 = event.pos().x(), event.pos().y()
-
+                self.x0, self.y1 = x, y
             elif self.tp_press_rect_size == TypeRectSize.CB:
-                self.y1 = event.pos().y()
+                self.y1 = y
             elif self.tp_press_rect_size == TypeRectSize.RB:
-                self.x1, self.y1 = event.pos().x(), event.pos().y()
+                self.x1, self.y1 = x, y
             self.draw_rect()
         return super().mouseMoveEvent(event)
     
     def draw_rect(self) -> None:
         if self.is_draw:
-            self.capture_rect = QtCore.QRect(self.x0, self.y0, abs(self.x0 - self.x1), abs(self.y0 - self.y1))
+            self.capture_rect = QtCore.QRect(self.x0 , self.y0 , abs(self.x0 - self.x1) , abs(self.y0 - self.y1) )
             self.frame_capture_rect.setGeometry(self.capture_rect)
 
 
 class MarkerSlider(QtWidgets.QSlider):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
+
+        self.setStyleSheet('MarkerSlider:groove {border: 1px solid black; border-radius: 2px}')
+        self.curren_x = 0
+        self.width_groove = 10
+        self.is_click_groove = False
+        
+    def setValue(self, value):
+        self.curren_x = int(value / self.maximum() * self.width())
+        return super().setValue(value)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        # curren_x = int(self.value() / self.maximum() * self.width())
+
+        if self.curren_x:
+            painter = QtGui.QPainter(self)
+            pen = QtGui.QPen(QtCore.Qt.black, self.width_groove, QtCore.Qt.SolidLine)
+            painter.setPen(pen)
+            painter.drawLine(self.curren_x, 0, self.curren_x, self.height())
+    
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        x = event.pos().x()
+
+        if self.curren_x - self.width_groove < x < self.curren_x + self.width_groove:
+            self.is_click_groove = True
+        else:
+            self.curren_x = x
+            value = int(self.curren_x / self.width() * self.maximum())
+            self.setValue(value)
+            self.sliderMoved.emit(value)
+        event.ignore()
+        # return super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        self.is_click_groove = False
+        return super().mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        if self.is_click_groove:
+            x = event.pos().x()
+            if x > self.width_groove / 2 and x < self.width() - self.width_groove / 2:
+                self.curren_x = event.pos().x()
+                value = int(self.curren_x / self.width() * self.maximum())
+                self.sliderMoved.emit(value)
+                self.update()
+        return super().mouseMoveEvent(event)
 
 
 class WidgetMp4ToGif(QtWidgets.QWidget): 
@@ -223,7 +286,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.app = app
         self.is_recording = False
         self.current_frame = 0
-        self.number_frame = 0
+        self.count_frame = 0
         self.is_play = False
         self.frames = []
         self.fps = 20
@@ -236,6 +299,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.__init_recorder()
         self.__init_player()
         self.__init_capture_video()
+        self.start_draw_capture_rect()
 
     def __init_window(self) -> None:
         self.resize(650, 320)
@@ -261,7 +325,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
 
         self.btn_select_rect = QtWidgets.QPushButton("[..]")
         self.btn_select_rect.setMaximumWidth(50)
-        self.btn_select_rect.clicked.connect(self.start_draw_capture_rect)
+        # self.btn_select_rect.clicked.connect(self.start_draw_capture_rect)
         self.grid_layout.addWidget(self.btn_select_rect, 2, 1, 1, 1)
 
         self.btn_rec = QtWidgets.QPushButton("🔴")
@@ -271,12 +335,15 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.grid_layout.addWidget(self.btn_rec, 2, 2, 1, 1)
 
         self.slider = MarkerSlider(parent=self, orientation=QtCore.Qt.Horizontal)
+        self.slider.sliderMoved.connect(self.slider_moved)
+        # self.slider.setEnabled(False)
         self.grid_layout.addWidget(self.slider, 2, 3, 1, 1)
 
         self.label_time = QtWidgets.QLabel(self)
         self.set_time_label()
         self.label_time.setAlignment(QtCore.Qt.AlignRight)
         self.grid_layout.addWidget(self.label_time, 2, 4, 1, 1)
+        
 
     def __init_capture_video(self):
         self.frame_capture_video = FrameCaptureVideo(self.app)
@@ -314,7 +381,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
             self.enable_event_widgets(child) 
 
     def set_time_label(self) -> None:
-        self.label_time.setText(f'{self.current_frame // self.fps:02}:{self.current_frame % self.fps:02} / {self.number_frame // self.fps:02}:{self.number_frame % self.fps:02}')
+        self.label_time.setText(f'{self.current_frame // self.fps:02}:{self.current_frame % self.fps:02} / {self.count_frame // self.fps:02}:{self.count_frame % self.fps:02}')
 
     def start_draw_capture_rect(self) -> None:
         self.frame_capture_video.show()
@@ -324,27 +391,51 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         if self.is_recording:
             self.frames.clear()
             self.current_frame = 0
-            self.number_frame = 0
+            self.count_frame = 0
             self.btn_rec.setStyleSheet('#btn_rec {border: 2px solid black}')
             self.enable_event_widgets(self.app)
             self.frame_capture_video.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
+            self.slider.setEnabled(False)
         else:
             self.btn_rec.setStyleSheet('#btn_rec {border: 1px solid black}')
             self.frame_capture_video.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
+            self.slider.setMaximum(self.count_frame)
+            self.slider.setEnabled(True)
             self.set_time_label()
     
     def capture_frame(self):
         if not self.is_play:
-            rect = self.frame_capture_video.capture_rect.getRect()
+            self.frame_capture_video.hide()
+            rect = self.frame_capture_video.get_rect().getRect()
             pixmap = self.app.screen().grabWindow(self.app.winId(), *rect)
+            
+            self.draw_cursor(pixmap)
             qimage = pixmap.toImage()
             pixmap = QtGui.QPixmap.fromImage(qimage)
-            self.label_video.setPixmap(pixmap)
             
+            self.label_video.setPixmap(pixmap)
+            self.frame_capture_video.show()
             if self.is_recording:
-                self.number_frame += 1
+                self.count_frame += 1
                 self.frames.append(qimage)
                 self.set_time_label()
+
+    def draw_cursor(self, pixmap) -> None:
+        cursor_pos = QtGui.QCursor.pos()
+        app_pos = self.app.mapToGlobal(QtCore.QPoint(0, 0))
+
+        capture_rect = self.frame_capture_video.get_rect()
+        pos_x = cursor_pos.x() - app_pos.x() - capture_rect.x()
+        pos_y = cursor_pos.y() - app_pos.y() - capture_rect.y()
+
+        painter = QtGui.QPainter(pixmap)
+
+        painter.setPen(QtCore.Qt.black)
+        painter.setBrush(QtCore.Qt.white)
+        r = 2
+        painter.drawEllipse(pos_x - r, pos_y - r, r * 2, r * 2)
+                
+        painter.end()
 
     def start_play(self) -> None:
         self.is_play = not self.is_play
@@ -356,6 +447,10 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
 
         self.show_current_frame()
     
+    def slider_moved(self, pos) -> None:
+        self.current_frame = pos
+        self.show_current_frame()
+
     def show_next_frame(self):
         if self.is_play:
             self.current_frame += 1
@@ -369,12 +464,17 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
     def show_current_frame(self) -> None:
         if self.current_frame < len(self.frames):
             self.label_video.setPixmap(QtGui.QPixmap.fromImage(self.frames[self.current_frame]))
+            self.slider.setValue(self.current_frame)
             self.set_time_label()
 
     def __run_application(self) -> None:
         self.app = TempWindow(self)
         self.app.show()
 
+    def showEvent(self, a0):
+        geom = self.geometry()
+        self.app.setGeometry(geom.x() + geom.width() + 50, self.app.y(), self.app.width(), self.app.height())
+        return super().showEvent(a0)
 
 
 if __name__ == "__main__":
