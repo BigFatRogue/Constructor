@@ -326,13 +326,14 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
 
         self.app = app
         self.is_recording = False
+        self.is_show_capture = False
         self.current_frame = 0
         self.count_frame = 0
         self.is_play = False
         self.frames: list[QtGui.QImage] = []
         self.fps = 20
         self.qimg_cursor: QtGui.QImage = None
-        self.__load_frames()
+        # self.__load_frames()
 
         self.__init_window()
         self.__init_widgets()
@@ -342,7 +343,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.__init_recorder()
         self.__init_player()
         self.__init_capture_video()
-        self.start_draw_capture_rect()
+        # self.start_draw_capture_rect()
 
     def __init_window(self) -> None:
         self.resize(650, 320)
@@ -369,17 +370,19 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         
         self.btn_play = QtWidgets.QPushButton("▶️")
         self.btn_play.setMaximumWidth(50)
-        self.btn_play.clicked.connect(self.start_play)
+        self.btn_play.clicked.connect(self.toggle_play)
         self.grid_layout.addWidget(self.btn_play, 3, 0, 1, 1)
 
         self.btn_select_rect = QtWidgets.QPushButton("[..]")
         self.btn_select_rect.setMaximumWidth(50)
-        self.btn_select_rect.clicked.connect(self.start_draw_capture_rect)
+        self.btn_select_rect.clicked.connect(self.toggle_draw_capture_rect)
         self.grid_layout.addWidget(self.btn_select_rect, 3, 1, 1, 1)
 
-        self.btn_rec = QtWidgets.QPushButton("Запись")
+        self.btn_rec = QtWidgets.QPushButton("🔴 Начать запись")
+        m = QtGui.QFontMetricsF(self.font())
+        self.btn_rec.setMaximumWidth(m.width(self.btn_rec.text()) + 20)
         self.btn_rec.setObjectName('btn_rec')
-        self.btn_rec.clicked.connect(self.start_recording)
+        self.btn_rec.clicked.connect(self.toggle_recording)
         self.grid_layout.addWidget(self.btn_rec, 3, 2, 1, 1)
 
         self.btn_screenshot = QtWidgets.QPushButton("🖼️")
@@ -396,7 +399,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
     def __init_capture_video(self):
         self.frame_capture_video = FrameCaptureVideo(self.app)
         self.app.layout().addWidget(self.frame_capture_video)
-        self.desable_event_widgets(self.app)
+        self.frame_capture_video.hide()
 
         with open(os.path.join(os.getcwd(), 'projects\\tools\\window_cursor.png'), 'rb') as img_file:
             qimg = QtGui.QImage()
@@ -407,7 +410,6 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
     def __init_recorder(self) -> None:
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.capture_frame)
-        self.timer.start(1000 // self.fps)
 
     def __init_player(self) -> None:
         self.playback_timer = QtCore.QTimer()
@@ -436,32 +438,63 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
     def set_time_label(self) -> None:
         self.label_time.setText(f'{self.current_frame // self.fps:02}:{self.current_frame % self.fps:02} / {self.count_frame // self.fps:02}:{self.count_frame % self.fps:02}')
 
-    def start_draw_capture_rect(self) -> None:
+    def start_show_capture(self) -> None:
         self.frame_capture_video.show()
+        if not self.is_recording:
+            self.desable_event_widgets(self.app)
+        self.timer.start(1000 // self.fps)
+        self.btn_play.setEnabled(False)
 
-    def start_recording(self) -> None:
-        self.is_recording = not self.is_recording
-        if self.is_recording:
-            self.frames.clear()
-            self.current_frame = 0
-            self.count_frame = 0
-            self.enable_event_widgets(self.app)
-            self.btn_rec.setDown(True)
-            self.frame_capture_video.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
-            self.frame_capture_video.hide_rect_angle()
-            self.slider.setEnabled(False)
+    def stop_show_capture(self) -> None:
+        self.frame_capture_video.hide()
+        self.enable_event_widgets(self.app)
+        self.timer.stop()
+
+        if self.frames:
+            self.current_frame = 1
+            self.show_current_frame()
+            self.btn_play.setEnabled(True)
         else:
-            self.frame_capture_video.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
-            self.frame_capture_video.show_rect_angle()
-            self.slider.setMaximum(self.count_frame)
-            self.btn_rec.setDown(False)
-            self.slider.setEnabled(True)
-            self.set_time_label()
+            self.label_video.setText('Укажите область захвата')
+
+    def toggle_draw_capture_rect(self) -> None:
+        self.is_show_capture = not self.is_show_capture
+        if self.is_show_capture:
+            self.start_show_capture()
+            self.btn_select_rect.setDown(True)
+        else:
+            self.stop_show_capture()
+            self.btn_select_rect.setDown(False)
+
+    def toggle_recording(self) -> None:
+        if self.is_show_capture:
+            self.is_recording = not self.is_recording
+            if self.is_recording :
+                self.btn_rec.setText('🔴 Остановить запись')
+                self.btn_rec.setDown(True)
+                self.frame_capture_video.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
+                self.frames.clear()
+                self.current_frame = 0
+                self.count_frame = 0
+                self.frame_capture_video.hide_rect_angle()
+                self.slider.setEnabled(False)
+                self.start_show_capture()
+                self.enable_event_widgets(self.app)
+            else:
+                self.btn_rec.setText('🔴 Начать запись')
+                self.btn_rec.setDown(False)
+                self.frame_capture_video.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
+                self.frame_capture_video.show_rect_angle()
+                self.slider.setMaximum(self.count_frame)
+                self.slider.setEnabled(True)
+                self.set_time_label()
+                self.stop_show_capture()
+                self.is_show_capture = not self.is_show_capture
             
-            self.__save_frames()
+                # self.__save_frames()
     
     def capture_frame(self):
-        if not self.is_play:
+        if self.is_show_capture:
             rect = self.frame_capture_video.get_rect().getRect()
             pixmap = self.app.screen().grabWindow(self.app.winId(), *rect)
 
@@ -485,19 +518,19 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
 
         painter = QtGui.QPainter(pixmap)
         painter.drawImage(pos_x, pos_y, self.qimg_cursor)
-        # painter.setPen(QtCore.Qt.black)
-        # painter.setBrush(QtCore.Qt.white)
-        # r = 2
-        # painter.drawEllipse(pos_x - r, pos_y - r, r * 2, r * 2)
                 
         painter.end()
 
-    def start_play(self) -> None:
+    def toggle_play(self) -> None:
         self.is_play = not self.is_play
         if self.is_play and self.frames:
+            if self.is_show_capture:
+                self.toggle_draw_capture_rect()
+            self.btn_select_rect.setEnabled(False)
             self.btn_play.setText('⏸️')
             self.playback_timer.start(1000 // self.fps)
         else:
+            self.btn_select_rect.setEnabled(True)
             self.btn_play.setText('▶️')
 
         self.show_current_frame()
@@ -549,8 +582,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
                 qimg.loadFromData(file.read())
                 self.frames.append(qimg)
         self.count_frame = len(self.frames)
-        
-                              
+                                
     def showEvent(self, a0):
         geom = self.geometry()
         self.app.setGeometry(geom.x() + geom.width() + 50, self.app.y(), self.app.width(), self.app.height())
