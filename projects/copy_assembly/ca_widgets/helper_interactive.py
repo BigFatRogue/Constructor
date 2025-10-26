@@ -15,7 +15,6 @@ from ca_widgets.messege_box_question import MessegeBoxQuestion
 from ca_functions.RowCounter import RowCounter
 
 
-
 class ToolTipMessage(QtWidgets.QWidget): 
     signal_next_step = QtCore.pyqtSignal()
     signal_end = QtCore.pyqtSignal()
@@ -167,6 +166,13 @@ class WidgetBackground(QtWidgets.QWidget):
 
         self.list_widgets: list[QtWidgets.QWidget] = []
         self.highlight_rect = QtCore.QRectF()
+
+        self.__step_transparency = 5
+        self.__sign = 1
+        self.__highlight_color_transparency = 255 - self.__step_transparency
+        self.__timer = QtCore.QTimer()
+        self.__timer.timeout.connect(self.__set_color_border_highlight)
+        self.__timer.start(1000 // 60)
     
     def set_list_widget(self, widgets: Union[list[QtWidgets.QWidget], QtCore.QRect]) -> None:
         self.list_widgets = widgets
@@ -206,6 +212,12 @@ class WidgetBackground(QtWidgets.QWidget):
         self.highlight_rect = QtCore.QRectF(point, size_f)
         self.update()
     
+    def __set_color_border_highlight(self) -> None:
+        if self.__highlight_color_transparency < 5 or self.__highlight_color_transparency > 255 - self.__step_transparency:
+            self.__sign *= -1
+        self.__highlight_color_transparency -= self.__step_transparency * self.__sign
+        self.update(self.highlight_rect.toRect())
+
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -213,9 +225,11 @@ class WidgetBackground(QtWidgets.QWidget):
         path = QtGui.QPainterPath()
         path.addRect(QtCore.QRectF(self.rect()))
         path.addRoundedRect(self.highlight_rect, 5, 5)
-       
-        painter.fillPath(path, QtGui.QBrush(QtGui.QColor(0, 0, 0, 180)))
-        painter.setPen(QtGui.QPen(QtGui.QColor(255, 50, 50), 2))
+
+        painter.setPen(QtGui.QPen(QtGui.QColor(0, 128, 255, self.__highlight_color_transparency), 5))
+        painter.drawRect(self.highlight_rect)
+
+        painter.fillPath(path, QtGui.QBrush(QtGui.QColor(0, 0, 0, 220)))
         
         painter.setCompositionMode(QtGui.QPainter.CompositionMode_Clear)
         painter.end()
@@ -313,8 +327,7 @@ class HelperInteractive:
         self.desable_event_widgets()
 
         self.widget_background.update()
-        
-        
+            
     def desable_event_widgets(self, parent=None) -> None:
         if parent is None:
             parent = self.parent

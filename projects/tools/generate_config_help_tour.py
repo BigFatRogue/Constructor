@@ -204,7 +204,8 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.current_path_content = ""
         self.current_number_step = 0
         self.dict_step = {}
-        self.Widget_record_gif_from_app = None
+        self.widget_record_gif_from_app = None
+        self.filepath_config = None
 
         self.init_window()
         self.init_widgets()
@@ -227,39 +228,32 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
     def init_widgets(self) -> None:
         row_counter = RowCounter()
 
-        #--------------------------- Save / Open Panel -------------------------------
-        self.frame_panel = QtWidgets.QFrame(self)
-        self.hl_frame_panel = QtWidgets.QHBoxLayout(self.frame_panel)
-        self.hl_frame_panel.setContentsMargins(0, 0, 0, 0)
-        self.hl_frame_panel.setSpacing(0)
-        self.grid.addWidget(self.frame_panel, row_counter.value, 0, 1, 2)
-        
-        self.btn_save_config = QtWidgets.QPushButton(self.frame_panel)
-        self.btn_save_config.setText('💾')
-        self.btn_save_config.setToolTip('Сохранить config файл')
-        self.btn_save_config.clicked.connect(self.save_config)
-        self.btn_save_config.setMaximumSize(25, 25)
-        self.hl_frame_panel.addWidget(self.btn_save_config)
+        #--------------------------- Меню  -------------------------------
+        menuBar = self.menuBar()
 
-        self.btn_load_config = QtWidgets.QPushButton(self.frame_panel)
-        self.btn_load_config.setText('📁')
-        self.btn_load_config.setToolTip('Загрузить config файл')
-        self.btn_load_config.clicked.connect(self.load_config)
-        self.btn_load_config.setMaximumSize(25, 25)
-        self.hl_frame_panel.addWidget(self.btn_load_config)
+        file_menu = menuBar.addMenu('&Файл')
 
-        self.hs_frame_panel = QtWidgets.QSpacerItem(20, 15, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.hl_frame_panel.addItem(self.hs_frame_panel)
-        
-        self.h_separate_1 = QHLineSeparate(self)
-        self.grid.addWidget(self.h_separate_1, row_counter.next(), 0, 1, 2)
+        file_open = QtWidgets.QAction("&📁 Открыть", self)
+        file_open.setShortcut('Ctrl+O')
+        file_open.triggered.connect(self.load_config)
+        file_menu.addAction(file_open)
+
+        file_save = QtWidgets.QAction("&💾 Сохранить", self)
+        file_save.setShortcut('Ctrl+S')
+        file_save.triggered.connect(self.save_config)
+        file_menu.addAction(file_save)
+
+        file_save_as = QtWidgets.QAction("&💾 Сохранить как", self)
+        file_save_as.setShortcut(QtGui.QKeySequence('Ctrl+Alt+S'))
+        file_save_as.triggered.connect(self.save_as_config)
+        file_menu.addAction(file_save_as)
 
         #--------------------------- add Object Name -------------------------------
         self.frame_add_object_name = QtWidgets.QFrame(self)
         self.hl_frame_add_object_name = QtWidgets.QHBoxLayout(self.frame_add_object_name)
         self.hl_frame_add_object_name.setContentsMargins(0, 0, 0, 0)
         self.hl_frame_add_object_name.setSpacing(5)
-        self.grid.addWidget(self.frame_add_object_name, row_counter.next(), 0, 1, 2)
+        self.grid.addWidget(self.frame_add_object_name, row_counter.value, 0, 1, 2)
         
         self.label_object_name = QtWidgets.QLabel(self.frame_add_object_name)
         self.label_object_name.setText('objectName:')
@@ -274,6 +268,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.btn_add_object_name = QtWidgets.QPushButton(self.frame_add_object_name)
         self.btn_add_object_name.setText('🔎')
         self.btn_add_object_name.setToolTip('Выделить widget[objectName]')
+        self.btn_add_object_name.setShortcut('Ctrl+R')
         self.btn_add_object_name.clicked.connect(self.show_step_in_application)
         self.btn_add_object_name.setMaximumSize(25, 25)
         self.hl_frame_add_object_name.addWidget(self.btn_add_object_name)
@@ -362,8 +357,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
     def run_application(self) -> None:
         self.application = self.application()
         self.desable_event_widgets(self.application)
-        self.install_event_filters(self.application)
-            
+        self.install_event_filters(self.application) 
         self.application.show() 
 
     def clear_step(self) -> None:
@@ -420,14 +414,18 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.tool_tip_widget.set_content(self.current_path_content)
 
     def create_content(self) -> None:
-        if self.Widget_record_gif_from_app is None:
+        if self.widget_record_gif_from_app is None:
             self.delete_helper()
             name = f'helper_inter_step_{self.current_number_step}.gif'
             full_file_name = os.path.join(PATH_SAVE_CONTENT_GIF, name)
-            self.Widget_record_gif_from_app = WidgetRecordGifFromApp(self, app=self.application, full_file_gif_name=full_file_name)
-            self.Widget_record_gif_from_app.signal_close.connect(self.close_widget_mp4_to_gif)
-            self.Widget_record_gif_from_app.signal_get_path_gif.connect(self.set_content_from_widgets)
-        self.Widget_record_gif_from_app.show()
+            self.widget_record_gif_from_app = WidgetRecordGifFromApp(self, app=self.application, full_file_gif_name=full_file_name)
+            self.widget_record_gif_from_app.signal_close.connect(self.close_widget_mp4_to_gif)
+            self.widget_record_gif_from_app.signal_get_path_gif.connect(self.set_content_from_widgets)
+
+        self.widget_record_gif_from_app.show()
+        x, y = self.widget_record_gif_from_app.x(), self.widget_record_gif_from_app.y()
+        w, h = self.widget_record_gif_from_app.width(), self.widget_record_gif_from_app.height()
+        self.widget_record_gif_from_app.setGeometry(x + 50, y + 250, w, h)
 
     def del_content(self) -> None:
         self.tool_tip_widget.set_content("")
@@ -438,7 +436,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.current_path_content = full_file_name
 
     def close_widget_mp4_to_gif(self) -> None:
-        self.Widget_record_gif_from_app = None
+        self.widget_record_gif_from_app = None
 
     def show_step_in_application(self) -> None:
         self.delete_helper()
@@ -491,12 +489,22 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.tool_tip_widget.set_button_is_wait(self.check_box_is_wait.isChecked())
 
     def save_config(self) -> None:
+        if self.filepath_config is None:
+            self.save_as_config()
+        else:
+            self.__save_config(filename=self.filepath_config)
+
+    def save_as_config(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
         filename = dlg.getSaveFileName(self, 'Сохранить файл', 'config_helper_interactive', filter='JSON файл (*.json)')
-        if filename:
-            dict_step = {'steps': self.dict_step}
-            with open(filename[0], 'w', encoding='utf-8') as config_file:
-                json.dump(dict_step, config_file, ensure_ascii=False)
+        if filename[0]:
+            self.filepath_config = filename[0]
+            self.__save_config(filename=self.filepath_config )
+
+    def __save_config(self, filename) -> None:
+        dict_step = {'steps': self.dict_step}
+        with open(filename, 'w', encoding='utf-8') as config_file:
+            json.dump(dict_step, config_file, ensure_ascii=False)
 
     def load_config(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
@@ -568,6 +576,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         if key == QtCore.Qt.Key.Key_Escape:
             self.delete_helper()
         return super().keyPressEvent(event)
+
+    def showEvent(self, event):
+        self.application.setGeometry(self.x() + self.width() + 50, self.y(), self.application.width(), self.application.height())   
+        return super().showEvent(event)
 
     def closeEvent(self, event):
         try:

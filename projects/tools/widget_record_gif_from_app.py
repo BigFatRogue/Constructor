@@ -98,7 +98,6 @@ class RectSetSizeCapture(QtWidgets.QFrame):
         elif self.tp in (TypeRectSize.LC, TypeRectSize.RC):
             self.setCursor(QtCore.Qt.SizeHorCursor)
         elif self.tp == TypeRectSize.CC:
-            # self.setStyleSheet('RectSetSizeCapture {border: 1px solid black}')
             self.setCursor(QtCore.Qt.SizeAllCursor)
     
     def mousePressEvent(self, event):
@@ -132,11 +131,11 @@ class FrameCaptureVideo(QtWidgets.QFrame):
         self.v_layout = QtWidgets.QVBoxLayout(self)
         self.setLayout(self.v_layout)
         self.setGeometry(self.parent().rect())
-        self.setStyleSheet("FrameCaptureVideo {background-color: rgba(100, 100, 100, 0)")
+        self.setStyleSheet("FrameCaptureVideo {background-color: rgba(50, 50, 50, 0)")
 
         self.frame_capture_rect = QtWidgets.QFrame(self)
         self.frame_capture_rect.setObjectName('frame_capture_rect')
-        self.frame_capture_rect.setStyleSheet('#frame_capture_rect {border: 1px solid rgb(100, 100 , 100)}')
+        self.frame_capture_rect.setStyleSheet('#frame_capture_rect {border: 1px dashed rgb(50, 50 , 50)}')
         self.frame_capture_rect.setGeometry(self.x0, self.y0, abs(self.x0 - self.x1), abs(self.y0 - self.y1))
         
         self.grid_frame_capture_rect = QtWidgets.QGridLayout(self.frame_capture_rect)
@@ -171,7 +170,6 @@ class FrameCaptureVideo(QtWidgets.QFrame):
             rect_size.signal_release.connect(self.release_rect_size)
     
     def get_rect(self) -> QtCore.QRect:
-        wh_size = self.cc.wh_size
         return QtCore.QRect(self.x0 , self.y0 , abs(self.x0 - self.x1), abs(self.y0 - self.y1))
 
     def press_rect_size(self, tp) -> None:
@@ -249,12 +247,14 @@ class FrameCaptureVideo(QtWidgets.QFrame):
             self.frame_capture_rect.setGeometry(self.capture_rect)
     
     def hide_rect_angle(self) -> None:
+        self.frame_capture_rect.setStyleSheet('#frame_capture_rect {border: 1px solid rgb(50, 50 , 50)}')
         for rect in (self.ltr, self.rtr, self.lbr, self.rbr):
             rect.setStyleSheet('background-color: rgba(0, 0, 0, 0)')
 
     def show_rect_angle(self) -> None:
+        self.frame_capture_rect.setStyleSheet('#frame_capture_rect {border: 1px dashed rgb(50, 50 , 50)}')
         for rect in (self.ltr, self.rtr, self.lbr, self.rbr):
-            rect.setStyleSheet('background-color: rgba(100, 100, 100, 100)')
+            rect.setStyleSheet('background-color: rgba(50, 50, 50)')
 
 
 class MarkerSlider(QtWidgets.QSlider):
@@ -279,7 +279,8 @@ class MarkerSlider(QtWidgets.QSlider):
         return int(self.x_start_slice / self.width() * self.maximum()), int(self.x_end_slice / self.width() * self.maximum())
 
     def setValue(self, value):
-        self.curren_x = int(value / self.maximum() * self.width())
+        if self.maximum() > 0:
+            self.curren_x = int(value / self.maximum() * self.width())
         return super().setValue(value)
 
     def paintEvent(self, event):
@@ -401,7 +402,6 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
 
         self.slider = MarkerSlider(parent=self, orientation=QtCore.Qt.Horizontal)
         self.slider.sliderMoved.connect(self.slider_moved)
-        # self.slider.setEnabled(False)
         self.grid_layout.addWidget(self.slider, 1, 0, 1, 6)
         self.slider.set_frames(self.frames)
 
