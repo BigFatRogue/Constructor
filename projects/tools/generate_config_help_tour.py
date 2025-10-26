@@ -261,7 +261,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.hl_frame_add_object_name.addWidget(self.label_object_name)
         
         self.lineedit_list_object_name = QtWidgets.QLineEdit(self.frame_add_object_name)
-        self.lineedit_list_object_name.setPlaceholderText('Введите objectName')
+        self.lineedit_list_object_name.setPlaceholderText('Введите objectName или кликните в дочернем приложении')
         self.lineedit_list_object_name.returnPressed.connect(self.show_step_in_application)
         self.hl_frame_add_object_name.addWidget(self.lineedit_list_object_name)
 

@@ -131,7 +131,7 @@ class FrameCaptureVideo(QtWidgets.QFrame):
         self.v_layout = QtWidgets.QVBoxLayout(self)
         self.setLayout(self.v_layout)
         self.setGeometry(self.parent().rect())
-        self.setStyleSheet("FrameCaptureVideo {background-color: rgba(50, 50, 50, 0)")
+        self.setStyleSheet("FrameCaptureVideo {background-color: rgba(0, 0, 0, 0)")
 
         self.frame_capture_rect = QtWidgets.QFrame(self)
         self.frame_capture_rect.setObjectName('frame_capture_rect')
@@ -373,8 +373,8 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
         self.frames: list[QtGui.QImage] = []
         self.fps = 20
         self.qimg_cursor: QtGui.QImage = None
-        if self.parent() is None:
-            self.__load_frames()
+        # if self.parent() is None:
+        #     self.__load_frames()
 
         self.__init_window()
         self.__init_widgets()
@@ -396,7 +396,8 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
 
     def __init_widgets(self) -> None:
         self.label_video = QtWidgets.QLabel(self)
-        self.label_video.setText('Укажите область захвата')
+        self.label_video.setText('<a href="//">Укажите область захвата</a>')
+        self.label_video.linkActivated.connect(self.toggle_draw_capture_rect)
         self.label_video.setAlignment(QtCore.Qt.AlignCenter)
         self.grid_layout.addWidget(self.label_video, 0, 0, 1, 6)
 
@@ -503,7 +504,7 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
             self.show_current_frame()
             self.btn_play.setEnabled(True)
         else:
-            self.label_video.setText('Укажите область захвата')
+            self.label_video.setText('<a href="//">Укажите область захвата</a>')
 
     def toggle_draw_capture_rect(self) -> None:
         self.is_show_capture = not self.is_show_capture
