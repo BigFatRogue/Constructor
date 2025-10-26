@@ -1,13 +1,20 @@
 import sys
 import os 
+import shutil
+import json
 from PyQt5 import QtCore, QtGui, QtWidgets
+from widget_record_gif_from_app import WidgetRecordGifFromApp
 
+# Добавлене путей к приложению, которое необходимо запустить 
+PATH_PROJCETS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PATH_APPLICATION = os.path.join(PATH_PROJCETS, 'copy_assembly')
+PATH_SAVE_CONTENT_GIF = os.path.join(PATH_APPLICATION, 'resources', 'gif')
+PATH_SAVE_CONTENT_IMAGE = os.path.join(PATH_APPLICATION, 'resources', 'image')
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'copy_assembly'))
+sys.path.append(PATH_PROJCETS)
+sys.path.append(PATH_APPLICATION)
 
 from copy_assembly.ca_main import Window
-from copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow 
 from copy_assembly.ca_widgets.helper_interactive import HelperInteractive
 
 
@@ -35,6 +42,45 @@ class QHLineSeparate(QtWidgets.QFrame):
         self.setFrameShadow(QtWidgets.QFrame.Sunken)
 
 
+class MessegeBoxQuestion(QtWidgets.QDialog):
+    def __init__(self, parent, question=None, answer_accept=None, answer_reject=None, title='Сохранения изменений'):
+        super().__init__(parent)
+        self.question = 'Сохранить изменения?' if question is None else question
+        self.text_answer_accept = 'Да' if answer_accept is None else answer_accept
+        self.text_answer_reject = 'Нет' if answer_reject is None else answer_reject
+        
+        self.setWindowTitle(title)
+        self.resize(300, 50)
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addSpacing(20)
+
+        label_dialog = QtWidgets.QLabel()
+        label_dialog.setText(self.question)
+        vbox.addWidget(label_dialog)
+        
+        layout = QtWidgets.QHBoxLayout()
+        vbox.addLayout(layout)
+
+        button_accept = QtWidgets.QPushButton(self)
+        button_accept.setText(self.text_answer_accept)
+        button_accept.clicked.connect(self.__accept)
+        layout.addWidget(button_accept)
+
+        button_reject = QtWidgets.QPushButton(self)
+        button_reject.setText(self.text_answer_reject)
+        button_reject.clicked.connect(self.__reject)
+        layout.addWidget(button_reject)
+
+        self.setLayout(vbox)
+
+    def __accept(self) -> None:
+        self.accept()
+    
+    def __reject(self) -> None:
+        self.reject()
+
+
 class ToolTipMessage(QtWidgets.QWidget): 
     signal_next_step = QtCore.pyqtSignal()
     signal_end = QtCore.pyqtSignal()
@@ -46,13 +92,12 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.new_pos: QtCore.QPoint = None
         self.flag_move = False
 
-        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         self.installEventFilter(self)
-        self.initWidgets()
+        self.init_widgets()
     
-    def initWidgets(self) -> None:
+    def init_widgets(self) -> None:
         self.setMinimumSize(100, 100)
         self.setStyleSheet('''
                    ToolTipMessage {
@@ -131,33 +176,42 @@ class ToolTipMessage(QtWidgets.QWidget):
 
     def set_text(self, text: str) -> None:
         self.label_message.setText(text)
-    
-    def set_content(self, filepath) -> None:
-        if filepath:
-            gif = QtGui.QMovie(filepath)
-            gif.setScaledSize(QtCore.QSize(100, 100))
+        QtCore.QTimer.singleShot(10, self.adjustSize)
+
+    def set_content(self, content_path: str) -> None:
+        if content_path:
+            gif = QtGui.QMovie(content_path)
             self.label_content.setMovie(gif)
-            self.label_content.setMaximumSize(100, 100)
             gif.start()
         else:
             self.label_content.clear()
-    
+        QtCore.QTimer.singleShot(10, self.adjustSize)
+        
+    def set_button_is_wait(self, value: bool=False) -> None:
+        if value:
+            self.btn_next_step.setEnabled(False)
+            self.btn_next_step.setText('Ожидание..')
+        else:
+            self.btn_next_step.setEnabled(True)
+            self.btn_next_step.setText('Продолжить')
+
 
 class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, application):
         super().__init__()
-        self.application = None
+        self.application = application
         self.helper = None
         self.current_path_content = ""
         self.current_number_step = 0
         self.dict_step = {}
+        self.Widget_record_gif_from_app = None
 
-        self.initWindow()
-        self.initWidgets()
+        self.init_window()
+        self.init_widgets()
         self.run_application()
 
-    def initWindow(self) -> None:
-        self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
+    def init_window(self) -> None:
+        # self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
         self.resize(650, 320)
         self.setWindowTitle('Window Creater Config HelpTour')
 
@@ -166,96 +220,154 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.setCentralWidget(self.centralwidget)
         
         self.grid = QtWidgets.QGridLayout(self.centralwidget)
-        self.grid.setContentsMargins(9, 9, 9, 9)
+        self.grid.setContentsMargins(5, 5, 5, 5)
+        self.grid.setSpacing(5)
         self.grid.setObjectName("gridLayoutCentral")
 
-    def initWidgets(self) -> None:
-        self.line_edit_list_object_name = QtWidgets.QLineEdit(self)
-        self.line_edit_list_object_name.returnPressed.connect(self.show_step_in_application)
-
-        self.text_edit = QtWidgets.QTextEdit(self)
-        self.text_edit.textChanged.connect(self.text_change)
-
-        self.btn_add_object_name = QtWidgets.QPushButton(self)
-        self.btn_add_object_name.setText('Просмотр')
-        self.btn_add_object_name.clicked.connect(self.show_step_in_application)
-        
-        self.btn_prev_step = QtWidgets.QPushButton(self)
-        self.btn_prev_step.setText('Предыдущий шаг')
-        self.btn_prev_step.clicked.connect(self.prev_step)
-
-        self.btn_netx_step = QtWidgets.QPushButton(self)
-        self.btn_netx_step.setText('Следующий шаг')
-        self.btn_netx_step.clicked.connect(self.next_step)
-
-        self.combo_box_choose_step = QtWidgets.QComboBox(self)
-        self.combo_box_choose_step.addItem(f'Шаг 1')
-        self.combo_box_choose_step.view().pressed.connect(self.choose_step_from_index)
-        
-        self.tool_tip_widget = ToolTipMessage(self)
-        
-        self.btn_load_content = QtWidgets.QPushButton(self)
-        self.btn_load_content.setText('Загрузить файл gif')
-        self.btn_load_content.clicked.connect(self.load_content)
-
-        self.btn_del_content = QtWidgets.QPushButton(self)
-        self.btn_del_content.setText('Удалить gif')
-        self.btn_del_content.clicked.connect(self.del_content)
-        
-        self.btn_add_value_in_config = QtWidgets.QPushButton(self)
-        self.btn_add_value_in_config.setText('Добавить значение в config')
-        self.btn_add_value_in_config.clicked.connect(self.add_value_in_config)
-
-        self.btn_del_value_in_config = QtWidgets.QPushButton(self)
-        self.btn_del_value_in_config.setText('Удалить значение из config')
-        self.btn_del_value_in_config.clicked.connect(self.del_value_in_config)
-        
-        self.h_separate_1 = QHLineSeparate(self)
-        self.h_separate_2 = QHLineSeparate(self)
-
-        self.btn_generate_config = QtWidgets.QPushButton(self)
-        self.btn_generate_config.setText('Сохранить config')
-        self.btn_load_content.clicked.connect(self.generate_config)
-        
+    def init_widgets(self) -> None:
         row_counter = RowCounter()
 
-        self.grid.addWidget(self.line_edit_list_object_name, row_counter.value, 0, 1, 3)
-        self.grid.addWidget(self.btn_add_object_name, row_counter.value, 3, 1, 1)
-
-        self.grid.addWidget(self.h_separate_1, row_counter.next(), 0, 1, 4)
-
-        self.grid.addWidget(self.text_edit, row_counter.next(), 0, 3, 2)
-        self.grid.addWidget(self.btn_prev_step, row_counter.value, 2, 1, 1)
-        self.grid.addWidget(self.btn_netx_step, row_counter.value, 3, 1, 1)
+        #--------------------------- Save / Open Panel -------------------------------
+        self.frame_panel = QtWidgets.QFrame(self)
+        self.hl_frame_panel = QtWidgets.QHBoxLayout(self.frame_panel)
+        self.hl_frame_panel.setContentsMargins(0, 0, 0, 0)
+        self.hl_frame_panel.setSpacing(0)
+        self.grid.addWidget(self.frame_panel, row_counter.value, 0, 1, 2)
         
-        self.grid.addWidget(self.combo_box_choose_step, row_counter.next(), 2, 1, 2)
-       
-        self.grid.addWidget(self.tool_tip_widget, row_counter.next(), 2, 2, 2)
+        self.btn_save_config = QtWidgets.QPushButton(self.frame_panel)
+        self.btn_save_config.setText('💾')
+        self.btn_save_config.setToolTip('Сохранить config файл')
+        self.btn_save_config.clicked.connect(self.save_config)
+        self.btn_save_config.setMaximumSize(25, 25)
+        self.hl_frame_panel.addWidget(self.btn_save_config)
 
-        self.grid.addWidget(self.btn_load_content, row_counter.next(), 0, 1, 1)
-        self.grid.addWidget(self.btn_del_content, row_counter.value, 1, 1, 1)
+        self.btn_load_config = QtWidgets.QPushButton(self.frame_panel)
+        self.btn_load_config.setText('📁')
+        self.btn_load_config.setToolTip('Загрузить config файл')
+        self.btn_load_config.clicked.connect(self.load_config)
+        self.btn_load_config.setMaximumSize(25, 25)
+        self.hl_frame_panel.addWidget(self.btn_load_config)
 
-        self.grid.addWidget(self.btn_add_value_in_config, row_counter.next(), 0, 1, 2)
-        self.grid.addWidget(self.btn_del_value_in_config, row_counter.value, 2, 1, 2)
-            
-        self.grid.addWidget(self.h_separate_2, row_counter.next(), 0, 1, 4)
+        self.hs_frame_panel = QtWidgets.QSpacerItem(20, 15, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.hl_frame_panel.addItem(self.hs_frame_panel)
+        
+        self.h_separate_1 = QHLineSeparate(self)
+        self.grid.addWidget(self.h_separate_1, row_counter.next(), 0, 1, 2)
 
-        self.grid.addWidget(self.btn_generate_config, row_counter.next(), 0, 1, 4)
+        #--------------------------- add Object Name -------------------------------
+        self.frame_add_object_name = QtWidgets.QFrame(self)
+        self.hl_frame_add_object_name = QtWidgets.QHBoxLayout(self.frame_add_object_name)
+        self.hl_frame_add_object_name.setContentsMargins(0, 0, 0, 0)
+        self.hl_frame_add_object_name.setSpacing(5)
+        self.grid.addWidget(self.frame_add_object_name, row_counter.next(), 0, 1, 2)
+        
+        self.label_object_name = QtWidgets.QLabel(self.frame_add_object_name)
+        self.label_object_name.setText('objectName:')
+        self.label_object_name.setMaximumWidth(75)
+        self.hl_frame_add_object_name.addWidget(self.label_object_name)
+        
+        self.lineedit_list_object_name = QtWidgets.QLineEdit(self.frame_add_object_name)
+        self.lineedit_list_object_name.setPlaceholderText('Введите objectName')
+        self.lineedit_list_object_name.returnPressed.connect(self.show_step_in_application)
+        self.hl_frame_add_object_name.addWidget(self.lineedit_list_object_name)
 
+        self.btn_add_object_name = QtWidgets.QPushButton(self.frame_add_object_name)
+        self.btn_add_object_name.setText('🔎')
+        self.btn_add_object_name.setToolTip('Выделить widget[objectName]')
+        self.btn_add_object_name.clicked.connect(self.show_step_in_application)
+        self.btn_add_object_name.setMaximumSize(25, 25)
+        self.hl_frame_add_object_name.addWidget(self.btn_add_object_name)
+        
+        #--------------------------- content Edit  -------------------------------
+        self.frame_content_edit = QtWidgets.QFrame(self)
+        self.gird_frame_content_edit = QtWidgets.QGridLayout(self.frame_content_edit)
+        self.gird_frame_content_edit.setContentsMargins(0, 0, 0, 0)
+        self.gird_frame_content_edit.setSpacing(5)
+        self.grid.addWidget(self.frame_content_edit, row_counter.next(), 0, 1, 1)
+        
+        self.text_edit = QtWidgets.QTextEdit(self.frame_content_edit)
+        self.text_edit.textChanged.connect(self.text_change)
+        self.text_edit.setPlaceholderText('Введите текст')
+        self.gird_frame_content_edit.addWidget(self.text_edit, 0, 0, 1, 3)
+
+        self.btn_create_gif = QtWidgets.QPushButton(self.frame_content_edit)
+        self.btn_create_gif.setText('Записать файл gif')
+        self.btn_create_gif.clicked.connect(self.create_content)
+        self.gird_frame_content_edit.addWidget(self.btn_create_gif, 1, 0, 1, 1)
+
+        self.btn_load_content = QtWidgets.QPushButton(self.frame_content_edit)
+        self.btn_load_content.setText('📄')
+        self.btn_load_content.setToolTip('Добавить .gif')
+        self.btn_load_content.setMaximumSize(25, 25)
+        self.btn_load_content.clicked.connect(self.load_content)
+        self.gird_frame_content_edit.addWidget(self.btn_load_content, 1, 1, 1, 1)
+        
+        self.btn_del_content = QtWidgets.QPushButton(self.frame_content_edit)
+        self.btn_del_content.setText('🗑️')
+        self.btn_del_content.setToolTip('Убрать .gif')
+        self.btn_del_content.setMaximumSize(25, 25)
+        self.btn_del_content.clicked.connect(self.del_content)
+        self.gird_frame_content_edit.addWidget(self.btn_del_content, 1, 2, 1, 1)
+        
+        #--------------------------- Control / View step  -------------------------------
+        self.frame_control_step = QtWidgets.QFrame(self)
+        self.gird_frame_control_step = QtWidgets.QGridLayout(self.frame_control_step)
+        self.gird_frame_control_step.setContentsMargins(0, 0, 0, 0)
+        self.gird_frame_control_step.setSpacing(5)
+        self.grid.addWidget(self.frame_control_step, row_counter.value, 1, 1, 1)
+        
+        self.btn_prev_step = QtWidgets.QPushButton(self.frame_control_step)
+        self.btn_prev_step.setText('⬅️')
+        self.btn_prev_step.setToolTip('Пердыдущий шаг')
+        self.btn_prev_step.setMaximumSize(25, 25)
+        self.btn_prev_step.clicked.connect(self.prev_step)
+        self.gird_frame_control_step.addWidget(self.btn_prev_step, 0, 0, 1, 1)
+
+        self.combo_box_choose_step = QtWidgets.QComboBox(self.frame_control_step)
+        self.combo_box_choose_step.addItem(f'Шаг 1')
+        self.combo_box_choose_step.view().pressed.connect(self.choose_step_from_index)
+        self.gird_frame_control_step.addWidget(self.combo_box_choose_step, 0, 1, 1, 1)
+
+        self.btn_netx_step = QtWidgets.QPushButton(self.frame_control_step)
+        self.btn_netx_step.setText('➡️')
+        self.btn_prev_step.setToolTip('Следующий шаг')
+        self.btn_netx_step.setMaximumSize(25, 25)
+        self.btn_netx_step.clicked.connect(self.next_step)
+        self.gird_frame_control_step.addWidget(self.btn_netx_step, 0, 2, 1, 1)
+
+        self.tool_tip_widget = ToolTipMessage(self.frame_control_step)
+        self.gird_frame_control_step.addWidget(self.tool_tip_widget, 1, 0, 1, 3)
+        
+        self.check_box_is_wait = QtWidgets.QCheckBox(self.frame_content_edit)
+        self.check_box_is_wait.setText('В режиме ожидания')
+        self.check_box_is_wait.clicked.connect(self.click_check_box_is_wait)
+        self.gird_frame_control_step.addWidget(self.check_box_is_wait, 2, 0, 1, 3)
+
+        self.btn_add_value_in_config = QtWidgets.QPushButton(self)
+        self.btn_add_value_in_config.setText('Добавить шаг')
+        self.btn_add_value_in_config.clicked.connect(self.add_value_in_config)
+        self.gird_frame_control_step.addWidget(self.btn_add_value_in_config, 3, 0, 1, 2)
+
+        self.btn_del_value_in_config = QtWidgets.QPushButton(self)
+        self.btn_del_value_in_config.setText('🗑️')
+        self.btn_del_value_in_config.setToolTip('Удалить шаг')
+        self.btn_del_value_in_config.setMaximumSize(25, 25)
+        self.btn_del_value_in_config.clicked.connect(self.del_value_in_config)
+        self.gird_frame_control_step.addWidget(self.btn_del_value_in_config, 3, 2, 1, 1)
+        
     def text_change(self) -> None:
         text = self.text_edit.toPlainText()
         self.tool_tip_widget.set_text(text)
 
     def run_application(self) -> None:
-        if self.application is None:
-            self.application = Window()
-            self.desable_event_widgets(self.application)
-            self.install_event_filters(self.application)
+        self.application = self.application()
+        self.desable_event_widgets(self.application)
+        self.install_event_filters(self.application)
             
-            self.application.show() 
+        self.application.show() 
 
     def clear_step(self) -> None:
-        self.line_edit_list_object_name.setText("")
+        self.lineedit_list_object_name.setText("")
         self.text_edit.setPlainText("")
         self.tool_tip_widget.set_content("")
         self.tool_tip_widget.set_title(f'Шаг {self.current_number_step}')
@@ -275,9 +387,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         if self.dict_step:
             self.combo_box_choose_step.setCurrentIndex(self.current_number_step)
             step = self.dict_step[str(self.current_number_step)]
-            self.line_edit_list_object_name.setText(*step['object_names'])
+            self.lineedit_list_object_name.setText(*step['object_names'])
             self.text_edit.setPlainText(step['message'])
-            self.tool_tip_widget.set_content(step['content_path'])
+            self.current_path_content = step['content_path']
+            self.tool_tip_widget.set_content(self.current_path_content)
             self.tool_tip_widget.set_title(f'Шаг {self.current_number_step + 1}')
 
     def prev_step(self) -> None:
@@ -306,31 +419,52 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.current_path_content = filepath[0] if filepath else ""
         self.tool_tip_widget.set_content(self.current_path_content)
 
+    def create_content(self) -> None:
+        if self.Widget_record_gif_from_app is None:
+            self.delete_helper()
+            name = f'helper_inter_step_{self.current_number_step}.gif'
+            full_file_name = os.path.join(PATH_SAVE_CONTENT_GIF, name)
+            self.Widget_record_gif_from_app = WidgetRecordGifFromApp(self, app=self.application, full_file_gif_name=full_file_name)
+            self.Widget_record_gif_from_app.signal_close.connect(self.close_widget_mp4_to_gif)
+            self.Widget_record_gif_from_app.signal_get_path_gif.connect(self.set_content_from_widgets)
+        self.Widget_record_gif_from_app.show()
+
     def del_content(self) -> None:
         self.tool_tip_widget.set_content("")
+        self.current_path_content = ''
+
+    def set_content_from_widgets(self, full_file_name) -> None:
+        self.tool_tip_widget.set_content(full_file_name)
+        self.current_path_content = full_file_name
+
+    def close_widget_mp4_to_gif(self) -> None:
+        self.Widget_record_gif_from_app = None
 
     def show_step_in_application(self) -> None:
         self.delete_helper()
-        object_name = self.line_edit_list_object_name.text()
-        if object_name:
-            self.helper = HelperInteractive(self.application)
-            data = {
-                "0": {
-                    "object_names": [*[i.strip() for i in object_name.split(',')]],
-                    "message": self.tool_tip_widget.label_message.text(),
-                    "content_path": self.current_path_content,
-                    "button_is_wait": False,
-                    }
+        object_name = self.lineedit_list_object_name.text()
+        self.helper = HelperInteractive(self.application)
+        object_names = [] if not object_name else [i.strip() for i in object_name.split(',')]
+
+        data = {
+            f"{self.current_number_step}": {
+                "object_names": object_names,           
+                "message": self.tool_tip_widget.label_message.text(),
+                "content_path": self.current_path_content,
+                "button_is_wait":  self.check_box_is_wait.isChecked(),
                 }
-            self.helper._add_config(data)
-            self.helper.show()
+            }
+
+        self.helper._add_config(data)
+        self.helper.curent_index_step = self.current_number_step
+        self.helper.show()
 
     def add_value_in_config(self) -> None:
         self.dict_step[str(self.current_number_step)] = {
-            "object_names": [*[i.strip() for i in self.line_edit_list_object_name.text().split(',')]],
+            "object_names": [*[i.strip() for i in self.lineedit_list_object_name.text().split(',')]],
             "message": self.tool_tip_widget.label_message.text(),
             "content_path": self.current_path_content,
-            "button_is_wait": False,
+            "button_is_wait": self.check_box_is_wait.isChecked(),
         }
         
         self.current_number_step += 1
@@ -339,20 +473,44 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
     
     def del_value_in_config(self) -> None:
         if str(self.current_number_step) in self.dict_step:
-            del self.dict_step[str(self.current_number_step)]
-            self.combo_box_choose_step.clear()
+            dlg = MessegeBoxQuestion(self, title='Удалить шаг?')
+            if dlg.exec():
+                del self.dict_step[str(self.current_number_step)]
+                self.combo_box_choose_step.clear()
 
-            new_dict = {}
-            for i, value in enumerate(self.dict_step.values()):
-                new_dict[str(i)] = value
-                self.combo_box_choose_step.addItem(f'Шаг {i + 1}')
-            self.dict_step = new_dict
-            self.clear_step()
-            self.current_number_step = len(self.dict_step) - 1
+                new_dict = {}
+                for i, value in enumerate(self.dict_step.values()):
+                    new_dict[str(i)] = value
+                    self.combo_box_choose_step.addItem(f'Шаг {i + 1}')
+                self.dict_step = new_dict
+                self.clear_step()
+                self.current_number_step = len(self.dict_step) - 1
+                self.show_step()
+
+    def click_check_box_is_wait(self) -> None:
+        self.tool_tip_widget.set_button_is_wait(self.check_box_is_wait.isChecked())
+
+    def save_config(self) -> None:
+        dlg = QtWidgets.QFileDialog(self)
+        filename = dlg.getSaveFileName(self, 'Сохранить файл', 'config_helper_interactive', filter='JSON файл (*.json)')
+        if filename:
+            dict_step = {'steps': self.dict_step}
+            with open(filename[0], 'w', encoding='utf-8') as config_file:
+                json.dump(dict_step, config_file, ensure_ascii=False)
+
+    def load_config(self) -> None:
+        dlg = QtWidgets.QFileDialog(self)
+        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter='JSON файл (*.json)')
+        if filename[0]:
+            with open(filename[0], 'r', encoding='utf-8') as config_file:
+                dict_step: dict = json.load(config_file) 
+            if dict_step:
+                self.dict_step = dict_step.get('steps')
+                self.combo_box_choose_step.clear()
+                for i in self.dict_step.keys():
+                    self.combo_box_choose_step.addItem(f'Шаг {int(i) + 1}')
+            self.current_number_step = 0
             self.show_step()
-
-    def generate_config(self) -> None:
-        ...
 
     def desable_event_widgets(self, parent=None) -> None:
         for child in parent.children():
@@ -367,6 +525,9 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                 child.installEventFilter(self)
 
     def eventFilter(self, obj, event: QtGui.QMouseEvent):
+        if event.type() == QtCore.QEvent.Move:
+            if self.helper:
+                self.application.moveEvent(event)
         if event.type() == QtCore.QEvent.MouseButtonPress:
             event: QtGui.QMouseEvent
             global_pos = event.globalPos()
@@ -376,11 +537,11 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                 widget = deepest_widget[-1]
                 
                 if self.helper is None:
-                    self.line_edit_list_object_name.setText(self.line_edit_list_object_name.text() + "," + widget.objectName())
-                    self.line_edit_list_object_name.setText(self.line_edit_list_object_name.text().strip(','))
+                    self.lineedit_list_object_name.setText(self.lineedit_list_object_name.text() + "," + widget.objectName())
+                    self.lineedit_list_object_name.setText(self.lineedit_list_object_name.text().strip(','))
                     
             return True
-        
+
         return super().eventFilter(obj, event)
 
     def get_deepest_widget_at(self, parent, pos, widgets=[]):
@@ -406,18 +567,20 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         key = event.key()
         if key == QtCore.Qt.Key.Key_Escape:
             self.delete_helper()
-
         return super().keyPressEvent(event)
 
     def closeEvent(self, event):
-        if self.application:
-            self.application.close()
+        try:
+            if self.application:
+                self.application.close()
+        except Exception:
+            pass
         return super().closeEvent(event)
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
 
-    window = WindowCreaterConfigHelpTour()
+    window = WindowCreaterConfigHelpTour(application=Window)
     window.show()
     sys.exit(app.exec_())

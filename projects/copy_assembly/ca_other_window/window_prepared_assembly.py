@@ -635,6 +635,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.full_viewer.hide()
 
     def load_parameters(self) -> dict:
+        return {}
         sitting_file = os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json')
         if os.path.exists(sitting_file):
             with open(sitting_file, 'r', encoding='utf-8') as file:
@@ -804,6 +805,7 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
             event.ignore()
         else:
             return super().closeEvent(event)
+
 
 class Window(QtWidgets.QMainWindow):
     def __init__(self):

@@ -1,11 +1,17 @@
 import sys
 import os 
+from PIL import Image
 from enum import Enum, auto
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'copy_assembly'))
+from copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
+
+
 
 class TempWindow(QtWidgets.QMainWindow):
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         self.resize(500, 500)
@@ -255,16 +261,23 @@ class MarkerSlider(QtWidgets.QSlider):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
-        self.setStyleSheet('MarkerSlider:groove {border: 1px solid black; border-radius: 2px}')
+        self.setStyleSheet('MarkerSlider:groove {border: 1px solid black; background-color: white}')
         self.curren_x = 0
         self.width_groove = 10
         self.is_click_groove = False
+        self.is_drow_slice = False
+        self.x_start_slice = 0
+        self.x_end_slice = 0
         self.frames: list[QtGui.QImage] = None
+        self.setMinimumHeight(50)
 
     def set_frames(self, frames: list[QtGui.QImage]) -> None:
         self.setMaximum(len(frames))
         self.frames = frames
-        
+
+    def get_slice(self) -> tuple:
+        return int(self.x_start_slice / self.width() * self.maximum()), int(self.x_end_slice / self.width() * self.maximum())
+
     def setValue(self, value):
         self.curren_x = int(value / self.maximum() * self.width())
         return super().setValue(value)
@@ -275,56 +288,82 @@ class MarkerSlider(QtWidgets.QSlider):
         painter = QtGui.QPainter(self)
         if self.frames:
             len_frames = len(self.frames)
-            step = 4 
-            total_width = self.width()
-            img_width = total_width // len_frames
+            step = 4
+            total_width = self.width() - 5
+            img_width = int(total_width / len_frames * step)
             
+            x = 5
             for i in range(0, len_frames + 1, step):
                 if i < len_frames:
                     img = self.frames[i]
-                    x = i * img_width
-                    scaled_img = img.scaled(img_width, int(self.height()*0.90))
-                    painter.drawRect(x, 0, img_width, self.height())
-                    painter.drawImage(x, 0, scaled_img)
+                    h = int(self.height() * 0.9)
+                    scaled_img = img.scaled(img_width, h)
+                    y = int((self.height()-h)/2)
+                    painter.drawRect(x, y, img_width, self.height())
+                    painter.drawImage(x, y, scaled_img)
+                    x += img_width + 1
 
         if self.curren_x:
             pen = QtGui.QPen(QtCore.Qt.black, self.width_groove, QtCore.Qt.SolidLine)
             painter.setPen(pen)
             painter.drawLine(self.curren_x, 0, self.curren_x, self.height())
+
+        if self.x_end_slice != 0:
+            pen = QtGui.QPen(QtGui.QColor('000'))
+            brush = QtGui.QBrush(QtGui.QColor("#2F00FFFF")) 
+            painter.setPen(pen)
+            painter.setBrush(brush)
+            painter.drawRect(self.x_start_slice, 0, abs(self.x_end_slice - self.x_start_slice), self.height())
     
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         x = event.pos().x()
-
-        if self.curren_x - self.width_groove < x < self.curren_x + self.width_groove:
-            self.is_click_groove = True
-        else:
-            self.curren_x = x
-            value = int(self.curren_x / self.width() * self.maximum())
-            self.setValue(value)
-            self.sliderMoved.emit(value)
+        if event.button() == QtCore.Qt.LeftButton:
+            if self.curren_x - self.width_groove < x < self.curren_x + self.width_groove:
+                self.is_click_groove = True
+            else:
+                if x > self.width_groove / 2 and x < self.width():
+                    self.curren_x = x
+                    value = int(self.curren_x / self.width() * self.maximum())
+                    self.setValue(value)
+                    self.sliderMoved.emit(value)
+        elif event.button() == QtCore.Qt.RightButton:
+            self.is_drow_slice = True
+            self.x_start_slice = x
         event.ignore()
-        # return super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
-        self.is_click_groove = False
+        if event.button() == QtCore.Qt.LeftButton:
+            self.is_click_groove = False
+        elif event.button() == QtCore.Qt.RightButton:
+            self.is_drow_slice = False
         return super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        x = event.pos().x()
         if self.is_click_groove:
-            x = event.pos().x()
-            if x > self.width_groove / 2 and x < self.width() - self.width_groove / 2:
-                self.curren_x = event.pos().x()
+            if x > self.width_groove / 2 and x < self.width():
+                self.curren_x = x
                 value = int(self.curren_x / self.width() * self.maximum())
                 self.sliderMoved.emit(value)
                 self.update()
+        if self.is_drow_slice and x > self.x_start_slice:
+            self.x_end_slice = x
+            self.curren_x = x
+            value = int(self.curren_x / self.width() * self.maximum())
+            self.sliderMoved.emit(value)
+            self.update()
         return super().mouseMoveEvent(event)
 
 
-class WidgetMp4ToGif(QtWidgets.QWidget): 
-    def __init__(self, parent=None, app=None):
-        super().__init__(parent)
+class WidgetRecordGifFromApp(QtWidgets.QWidget): 
+    signal_get_path_gif = QtCore.pyqtSignal(str)
+    signal_close = QtCore.pyqtSignal()
 
+    def __init__(self, parent=None, app=None, full_file_gif_name=None):
+        super().__init__(parent, QtCore.Qt.Window)
+        self.setWindowModality(QtCore.Qt.WindowModal)
         self.app = app
+        self.full_file_gif_name = full_file_gif_name
         self.is_recording = False
         self.is_show_capture = False
         self.current_frame = 0
@@ -333,7 +372,8 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.frames: list[QtGui.QImage] = []
         self.fps = 20
         self.qimg_cursor: QtGui.QImage = None
-        # self.__load_frames()
+        if self.parent() is None:
+            self.__load_frames()
 
         self.__init_window()
         self.__init_widgets()
@@ -357,20 +397,21 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.label_video = QtWidgets.QLabel(self)
         self.label_video.setText('Укажите область захвата')
         self.label_video.setAlignment(QtCore.Qt.AlignCenter)
-        self.grid_layout.addWidget(self.label_video, 0, 0, 1, 5)
+        self.grid_layout.addWidget(self.label_video, 0, 0, 1, 6)
 
         self.slider = MarkerSlider(parent=self, orientation=QtCore.Qt.Horizontal)
         self.slider.sliderMoved.connect(self.slider_moved)
         # self.slider.setEnabled(False)
-        self.grid_layout.addWidget(self.slider, 1, 0, 1, 5)
+        self.grid_layout.addWidget(self.slider, 1, 0, 1, 6)
         self.slider.set_frames(self.frames)
 
         self.h_line_separate = QHLineSeparate(self)
-        self.grid_layout.addWidget(self.h_line_separate, 2, 0, 1, 5)
+        self.grid_layout.addWidget(self.h_line_separate, 2, 0, 1, 6)
         
         self.btn_play = QtWidgets.QPushButton("▶️")
         self.btn_play.setMaximumWidth(50)
         self.btn_play.clicked.connect(self.toggle_play)
+        self.btn_play.setShortcut('space')
         self.grid_layout.addWidget(self.btn_play, 3, 0, 1, 1)
 
         self.btn_select_rect = QtWidgets.QPushButton("[..]")
@@ -379,26 +420,33 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         self.grid_layout.addWidget(self.btn_select_rect, 3, 1, 1, 1)
 
         self.btn_rec = QtWidgets.QPushButton("🔴 Начать запись")
-        m = QtGui.QFontMetricsF(self.font())
-        self.btn_rec.setMaximumWidth(m.width(self.btn_rec.text()) + 20)
+        self.btn_rec.setMinimumWidth(125)
+        self.btn_rec.setMaximumWidth(125)
         self.btn_rec.setObjectName('btn_rec')
         self.btn_rec.clicked.connect(self.toggle_recording)
+        self.btn_rec.setShortcut('Ctrl+R')
         self.grid_layout.addWidget(self.btn_rec, 3, 2, 1, 1)
 
         self.btn_screenshot = QtWidgets.QPushButton("🖼️")
         self.btn_screenshot.setObjectName('btn_screenshot')
         self.btn_screenshot.setMaximumWidth(25)
-        self.btn_screenshot.clicked.connect(self.set_screenshot)
+        self.btn_screenshot.setToolTip('Сделать скриншот')
+        self.btn_screenshot.clicked.connect(self.save_screenshot)
         self.grid_layout.addWidget(self.btn_screenshot, 3, 3, 1, 1)
+
+        self.btn_convert_gif = QtWidgets.QPushButton("💾 Сохранить gif")
+        self.btn_convert_gif.setObjectName('btn_convert_gif')
+        self.btn_convert_gif.setMaximumWidth(100)
+        self.btn_convert_gif.clicked.connect(self.save_gif)
+        self.grid_layout.addWidget(self.btn_convert_gif, 3, 4, 1, 1)
 
         self.label_time = QtWidgets.QLabel(self)
         self.set_time_label()
         self.label_time.setAlignment(QtCore.Qt.AlignRight)
-        self.grid_layout.addWidget(self.label_time, 3, 4, 1, 1)
+        self.grid_layout.addWidget(self.label_time, 3, 5, 1, 1)
         
     def __init_capture_video(self):
         self.frame_capture_video = FrameCaptureVideo(self.app)
-        self.app.layout().addWidget(self.frame_capture_video)
         self.frame_capture_video.hide()
 
         with open(os.path.join(os.getcwd(), 'projects\\tools\\window_cursor.png'), 'rb') as img_file:
@@ -417,7 +465,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
     
     def desable_event_widgets(self, parent=None) -> None:
         if parent is None:
-            parent = self.parent
+            parent = self.parent()
         for child in parent.children():
             if child == self.frame_capture_video:
                 continue
@@ -527,6 +575,9 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
             if self.is_show_capture:
                 self.toggle_draw_capture_rect()
             self.btn_select_rect.setEnabled(False)
+            start_pos, end_pos = self.slider.get_slice()
+            if end_pos > 0:
+                self.current_frame = start_pos
             self.btn_play.setText('⏸️')
             self.playback_timer.start(1000 // self.fps)
         else:
@@ -555,7 +606,7 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
             self.slider.setValue(self.current_frame)
             self.set_time_label()
 
-    def set_screenshot(self) -> None:
+    def save_screenshot(self) -> None:
         count = len(tuple(file for file in os.listdir() if 'screenshot' in file))
                 
         self.frame_capture_video.hide_rect_angle()
@@ -565,9 +616,45 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
         pixmap.toImage().save(f'screenshot_{count + 1}.png', format='png', quality=1)
         self.frame_capture_video.show_rect_angle()
 
+    def save_gif(self):
+        if self.frames:
+            start_pos, end_pos = self.slider.get_slice()     
+            if end_pos > 0:   
+                self.btn_convert_gif.setEnabled(False)
+                pil_images = []
+                
+                for qimage in self.frames[start_pos: end_pos + 1]:
+                    qimage = qimage.convertToFormat(QtGui.QImage.Format.Format_RGBA8888)
+                    ptr = qimage.constBits()
+                    ptr.setsize(qimage.byteCount())
+                    pil_image = Image.frombytes(
+                        'RGBA', 
+                        (qimage.width(), qimage.height()), 
+                        ptr.asstring(),
+                    )
+                    pil_images.append(pil_image)
+                
+
+                if self.full_file_gif_name is None:
+                    count = len(tuple(file for file in os.listdir() if 'capture' in file))
+                    full_filename = f'capture_{self.app.__class__.__name__}_{count + 1}.gif'
+                else:
+                    full_filename = self.full_file_gif_name
+
+                pil_images[0].save(
+                    full_filename,
+                    save_all=True,
+                    append_images=[] + pil_images + [],
+                    duration=(end_pos - start_pos),
+                    loop=0,
+                )
+                self.btn_convert_gif.setEnabled(True)
+                self.signal_get_path_gif.emit(self.full_file_gif_name)
+
     def __run_application(self) -> None:
-        self.app = TempWindow(self)
-        self.app.show()
+        if self.parent() is None:
+            self.app = self.app()
+            self.app.show()
 
     def __save_frames(self) -> None:
         if not os.path.exists('_image'): 
@@ -582,15 +669,30 @@ class WidgetMp4ToGif(QtWidgets.QWidget):
                 qimg.loadFromData(file.read())
                 self.frames.append(qimg)
         self.count_frame = len(self.frames)
-                                
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key.Key_Escape:
+            self.frame_capture_video.hide()
+            self.close()
+        return super().keyPressEvent(event)
+
     def showEvent(self, a0):
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
         geom = self.geometry()
-        self.app.setGeometry(geom.x() + geom.width() + 50, self.app.y(), self.app.width(), self.app.height())
+        if self.parent() is None:
+            self.app.setGeometry(geom.x() + geom.width() + 50, self.app.y(), self.app.width(), self.app.height())
         return super().showEvent(a0)
+    
+    def closeEvent(self, a0):
+        self.signal_close.emit()
+        self.frames.clear()
+        self.desable_event_widgets(self.app)
+        self.frame_capture_video.deleteLater()
+        return super().closeEvent(a0)
 
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    player = WidgetMp4ToGif()
+    player = WidgetRecordGifFromApp(app=PreparedAssemblyWindow)
     player.show()
     sys.exit(app.exec_())

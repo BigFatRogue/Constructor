@@ -29,9 +29,9 @@ class ToolTipMessage(QtWidgets.QWidget):
 
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
         self.installEventFilter(self)
-        self.initWidgets()
+        self.init_widgets()
     
-    def initWidgets(self) -> None:
+    def init_widgets(self) -> None:
         self.setMinimumSize(100, 100)
         self.setStyleSheet('''
                    ToolTipMessage {
@@ -75,7 +75,6 @@ class ToolTipMessage(QtWidgets.QWidget):
                                         #btn_end_tour {
                                         border: none;
                                         border-radius: 5px;
-                                        padding: 7px;
                                         }
                                         #btn_end_tour:hover {
                                         background-color: rgb(209, 235, 255);
@@ -108,28 +107,31 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.btn_next_step.clicked.connect(self.next_step)
         self.grid_layout.addWidget(self.btn_next_step, row_counter.next(), 0, 1, 2)
     
-    def set_text(self, title: str, text: str, content_path: str, button_is_wait=False) -> None:
+    def set_title(self, title: str) -> None:
         self.label_title.setText(title)
+
+    def set_text(self, text: str) -> None:
         self.label_message.setText(text)
-        
+        QtCore.QTimer.singleShot(10, self.adjustSize)
+
+    def set_content(self, content_path: str) -> None:
         if content_path:
             gif = QtGui.QMovie(content_path)
-            gif.setScaledSize(QtCore.QSize(100, 100))
             self.label_content.setMovie(gif)
-            self.label_content.setMaximumSize(100, 100)
             gif.start()
         else:
             self.label_content.clear()
+        QtCore.QTimer.singleShot(10, self.adjustSize)
+            
 
-        if button_is_wait:
+    def set_is_button_wait(self, value: bool=False) -> None:
+        if value:
             self.btn_next_step.setEnabled(False)
             self.btn_next_step.setText('Ожидание..')
         else:
             self.btn_next_step.setEnabled(True)
             self.btn_next_step.setText('Продолжить')
-        
-        self.adjustSize()
-    
+
     def set_pos(self, point: QtCore.QPointF) -> None:
         self.setGeometry(int(point.x()), int(point.y()), self.width(), self.height()) 
 
@@ -151,7 +153,7 @@ class ToolTipMessage(QtWidgets.QWidget):
         elif tp == 3:
             self.flag_move = False
         if tp == 5:
-            pos = self.geometry().topLeft() + (event.pos()- self.old_pos)
+            pos = self.geometry().topLeft() + (event.pos() - self.old_pos)
             self.set_pos(pos)
 
         return super().eventFilter(obj, event)
@@ -226,13 +228,22 @@ class WidgetBackground(QtWidgets.QWidget):
 class HelperInteractive:
     def __init__(self, parent: QtWidgets.QWidget):
         self.parent = parent
+        self.parent.moveEvent = self.move
         self.__is_visible = False
+
+        self.old_pos_tool_tip = self.parent.x(), self.parent.y()
 
         self.dict_data: dict[int, dict[dict[str, list]]] = None
         self.curent_index_step = 0
 
-        self.widget_background = WidgetBackground(parent)
-        self.widget_tool_tip = ToolTipMessage(parent)
+        self.widget_background = None
+        self.widget_tool_tip = None
+
+        self.__init_widget()
+
+    def __init_widget(self) -> None:
+        self.widget_background = WidgetBackground(self.parent)
+        self.widget_tool_tip = ToolTipMessage(self.parent)
         self.widget_tool_tip.signal_next_step.connect(self.next_step)
         self.widget_tool_tip.signal_end.connect(self.close)
 
@@ -251,7 +262,7 @@ class HelperInteractive:
                         rect = self.__get_rect_tree_header(widget, int(column_number))
                         data_step['widgets'].append(rect)                                  
         self.dict_data = data
-
+    
     def load_config(self, filepath: str) -> None:
         with open(filepath, 'r', encoding='utf-8') as config:
             steps: dict = json.load(config).get('steps')
@@ -290,18 +301,19 @@ class HelperInteractive:
 
         if self.curent_index_step + 1 < len(self.dict_data):
             self.curent_index_step += 1
+        
         self.widget_background.set_list_widget(self.dict_data[str(self.curent_index_step)]['widgets'])
-        self.widget_tool_tip.set_text(title=f'Шаг {self.curent_index_step + 1}', 
-                                      text=self.dict_data[str(self.curent_index_step)]['message'], 
-                                      content_path=self.dict_data[str(self.curent_index_step)]['content_path'],
-                                      button_is_wait=self.dict_data[str(self.curent_index_step)]['button_is_wait'])
-       
+        self.widget_tool_tip.set_title(title=f'Шаг {self.curent_index_step + 1}')
+        self.widget_tool_tip.set_text(text=self.dict_data[str(self.curent_index_step)]['message'])
+        self.widget_tool_tip.set_is_button_wait(value=self.dict_data[str(self.curent_index_step)]['button_is_wait'])
+        self.widget_tool_tip.set_content(content_path=self.dict_data[str(self.curent_index_step)]['content_path'])
+        QtCore.QTimer.singleShot(20, lambda: self.widget_tool_tip.set_pos(self.calc_pos_tool_tiip()))
+        # self.widget_tool_tip.set_pos(self.calc_pos_tool_tiip())
         self.enable_event_widgets()
         self.desable_event_widgets()
 
-        self.widget_tool_tip.set_pos(self.calc_pos_tool_tiip())
-        
         self.widget_background.update()
+        
         
     def desable_event_widgets(self, parent=None) -> None:
         if parent is None:
@@ -339,7 +351,9 @@ class HelperInteractive:
 
             return QtCore.QPointF(x + self.parent.geometry().x(), y + self.parent.geometry().y())
         else:
-            return QtCore.QPointF((self.parent.width() - self.widget_tool_tip.width())/2, (self.parent.height() - self.widget_tool_tip.height())/2)
+            x = self.parent.x() + (self.parent.width()  - self.widget_tool_tip.width())/2
+            y = self.parent.y() + (self.parent.height() - self.widget_tool_tip.height())/2
+            return QtCore.QPointF(x, y)
 
     def isVisible(self) -> bool:
         return self.__is_visible       
@@ -352,12 +366,13 @@ class HelperInteractive:
         self.desable_event_widgets()
 
         self.widget_background.set_list_widget(self.dict_data[str(self.curent_index_step)]['widgets'])
-        self.widget_tool_tip.set_text(title=f'Шаг {self.curent_index_step + 1}', 
-                                      text=self.dict_data[str(self.curent_index_step)]['message'], 
-                                      content_path=self.dict_data[str(self.curent_index_step)]['content_path'],
-                                      button_is_wait=self.dict_data[str(self.curent_index_step)]['button_is_wait'])
-        self.widget_tool_tip.set_pos(self.calc_pos_tool_tiip())
 
+        self.widget_tool_tip.set_title(title=f'Шаг {self.curent_index_step + 1}')
+        self.widget_tool_tip.set_text(text=self.dict_data[str(self.curent_index_step)]['message'])
+        self.widget_tool_tip.set_content(content_path=self.dict_data[str(self.curent_index_step)]['content_path'])
+        self.widget_tool_tip.set_is_button_wait(value=self.dict_data[str(self.curent_index_step)]['button_is_wait'])
+        QtCore.QTimer.singleShot(20, lambda: self.widget_tool_tip.set_pos(self.calc_pos_tool_tiip()))
+        
         self.widget_background.show()
         self.widget_tool_tip.show()
         
@@ -376,10 +391,19 @@ class HelperInteractive:
     def resize(self, size) -> None:
         self.widget_background.resize(size)
 
-    
     def delete(self) -> None:
         del self.widget_background
         del self.widget_tool_tip
+
+        self.widget_background = None
+        self.widget_tool_tip = None
+
+    def move(self, event: QtGui.QMoveEvent) -> None:
+        if self.widget_tool_tip:
+            d_pos = event.pos() - event.oldPos()
+            dx, dy = d_pos.x(), d_pos.y()
+            xt, yt, wt, ht = self.widget_tool_tip.geometry().getRect()
+            self.widget_tool_tip.setGeometry(xt + dx, yt + dy, wt, ht)
 
 
 class Window(QtWidgets.QMainWindow):
@@ -393,9 +417,9 @@ class Window(QtWidgets.QMainWindow):
         self.central_widget.setObjectName("centra_lwidget")
 
         self.vl = QtWidgets.QVBoxLayout(self.central_widget)
-        self.initWidgets()
+        self.init_widgets()
 
-    def initWidgets(self) -> None:
+    def init_widgets(self) -> None:
         self.btn_1 = QtWidgets.QPushButton(self)
         self.btn_1.setObjectName('btn_choose_path_assembly')
         self.btn_1.setText('Кнопка 1') 
@@ -414,13 +438,9 @@ class Window(QtWidgets.QMainWindow):
         self.vl.addWidget(self.btn_3)
 
         self.helper = HelperInteractive(self)
-        self.helper.load_config(os.path.join(os.path.dirname(__file__), 'config_helper_interactive.json'))
+        self.helper.load_config(r'D:\Python\AlfaServis\Constructor\projects\copy_assembly\resources\config_helper_interactive.json')
         self.helper.hide()
-        # self.helper.add_step([], 'Программа предназначена для копирование сборок Autodesk Inventor с возможностью переименования файлов и компонентов')
-        # self.helper.add_step([self.btn_1], 'Шаг 1', os.path.join(ICO_FOLDER, 'gif.gif'), False)
-        # self.helper.add_step([self.btn_2], 'Шаг 2')
-        # self.helper.show()
-    
+
     def open_help(self) -> None:
         self.helper.show()
     
@@ -440,6 +460,8 @@ class Window(QtWidgets.QMainWindow):
             self.helper.resize(self.size())
         return super().resizeEvent(event)
 
+    def moveEvent(self, a0):
+        return super().moveEvent(a0)
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)

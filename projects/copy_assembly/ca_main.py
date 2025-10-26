@@ -991,8 +991,7 @@ class Window(QtWidgets.QMainWindow):
     def start_help_interective(self) -> None:
         if self.interactive_helper is None:
             self.interactive_helper = HelperInteractive(self)
-            print(os.path.join(Path(PROJECT_ROOT), 'ca_widgets\config_helper_interactive.json'))
-            self.interactive_helper.load_config(os.path.join(Path(PROJECT_ROOT), 'ca_widgets\config_helper_interactive.json'))
+            self.interactive_helper.load_config(os.path.join(PROJECT_ROOT, 'resources\\config_helper_interactive.json'))
         # self.initHelper()
         self.interactive_helper.show()
 

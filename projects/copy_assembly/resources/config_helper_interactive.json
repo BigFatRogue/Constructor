@@ -1,13 +1,13 @@
 {
     "steps": {
         "0": {
-            "object_names": ["btn_choose_path_assembly"],
-            "message": "Нажмите кнопку <b>Выбрать</b>, чтобы выбрать сборку (файл формата .iam)",
+            "object_names": [],
+            "message": "Какой-то текст",
             "content_path": "",
             "button_is_wait": false
         },
         "1": {
-            "object_names": ["Tree.1"],
+            "object_names": ["btn_choose_path_assembly"],
             "message": "Нажмите кнопку 'Выбрать', чтобы выбрать сборку (файл формата .iam)",
             "content_path": "",
             "button_is_wait": false
