@@ -10,7 +10,7 @@ from settings import *
 
 from ca_widgets.h_line_separate import QHLineSeparate
 from ca_widgets.messege_box_question import MessegeBoxQuestion
-from ca_widgets.helper_interactive import HelperInteractive
+from ca_helper.helper_interactive import HelperInteractive
 
 from ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
 from ca_other_window.window_rules import WindowsViewerRules

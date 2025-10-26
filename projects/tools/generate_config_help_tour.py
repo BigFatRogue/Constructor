@@ -15,7 +15,7 @@ sys.path.append(PATH_PROJCETS)
 sys.path.append(PATH_APPLICATION)
 
 from copy_assembly.ca_main import Window
-from copy_assembly.ca_widgets.helper_interactive import HelperInteractive
+from copy_assembly.ca_helper.helper_interactive import HelperInteractive
 
 
 
@@ -196,6 +196,70 @@ class ToolTipMessage(QtWidgets.QWidget):
             self.btn_next_step.setText('Продолжить')
 
 
+class TextEditToolTipObjectName(QtWidgets.QTextEdit):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.is_move = False
+        self.old_pos = QtCore.QPoint(0, 0)
+        self.setReadOnly(True)
+        self.setStyleSheet('TextEditToolTipObjectName {border: 1px solid black; background-color: white;}')
+    
+        self.textChanged.connect(self.updateSize)
+
+    def updateSize(self):
+        doc_size = self.document().size().toSize()
+        margins = self.contentsMargins()
+        self.setFixedSize(QtCore.QSize(
+            doc_size.width() + margins.left() + margins.right(),
+            doc_size.height() + margins.top() + margins.bottom()
+        ))
+
+    def sizeHint(self):
+        doc_size = self.document().size().toSize()
+        margins = self.contentsMargins()
+        return QtCore.QSize(
+            doc_size.width() + margins.left() + margins.right(),
+            doc_size.height() + margins.top() + margins.bottom()
+        )
+
+    def set_pos(self, x: int, y: int) -> None:
+        x += 10
+        y += 10
+        if x + self.width() > self.parent().width():
+            x = self.parent().width() - self.width() - 10
+        if y + self.height()  > self.parent().height():
+            y = self.parent().height() - self.height() - 10
+
+        self.setGeometry(x, y, self.width(), self.height())
+
+    def keyPressEvent(self, e: QtGui.QKeyEvent):
+        if e.key() == QtCore.Qt.Key_Escape:
+            self.hide()
+        return super().keyPressEvent(e)
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.RightButton:
+            self.is_move = True
+            self.old_pos = event.pos()
+        return super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.RightButton:
+            self.is_move = False
+        return super().mouseReleaseEvent(event)
+    
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        if self.is_move:
+            pos = self.geometry().topLeft() + (event.pos() - self.old_pos)
+            self.setGeometry(pos.x(), pos.y(), self.width(), self.height()) 
+        return super().mouseMoveEvent(event)
+    
+    def keyPressEvent(self, e: QtGui.QKeyEvent):
+        if e.key() == QtCore.Qt.Key_Escape:
+            self.hide()
+        return super().keyPressEvent(e)
+
+
 class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
     def __init__(self, application):
         super().__init__()
@@ -358,6 +422,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.application = self.application()
         self.desable_event_widgets(self.application)
         self.install_event_filters(self.application) 
+
+        self.text_edit_tool_tip = TextEditToolTipObjectName(self.application)
+        self.text_edit_tool_tip.hide()
+
         self.application.show() 
 
     def clear_step(self) -> None:
@@ -537,22 +605,29 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             if self.helper:
                 self.application.moveEvent(event)
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            event: QtGui.QMouseEvent
-            global_pos = event.globalPos()
-            
-            deepest_widget = self.get_deepest_widget_at(parent=self.application, pos=global_pos)
-            if deepest_widget:
-                widget = deepest_widget[-1]
+            if event.button() == QtCore.Qt.LeftButton:
+                event: QtGui.QMouseEvent
+                global_pos = event.globalPos()
                 
-                if self.helper is None:
-                    self.lineedit_list_object_name.setText(self.lineedit_list_object_name.text() + "," + widget.objectName())
-                    self.lineedit_list_object_name.setText(self.lineedit_list_object_name.text().strip(','))
+                deepest_widget = self.get_deepest_widget_at(parent=self.application, pos=global_pos)
+                if deepest_widget:
+                    set_object_name = set()
+                    for widget in deepest_widget:
+                        if self.helper is None:
+                            object_name = widget.objectName()
+                            if object_name:
+                                set_object_name.add(object_name)
+                            self.lineedit_list_object_name.setText(self.lineedit_list_object_name.text() + "," + object_name)
+                            self.lineedit_list_object_name.setText(self.lineedit_list_object_name.text().strip(','))
                     
+                    self.text_edit_tool_tip.setPlainText('\n'.join(set_object_name))
+                    self.text_edit_tool_tip.set_pos(event.x(), event.y())
+                    self.text_edit_tool_tip.show()
             return True
 
         return super().eventFilter(obj, event)
 
-    def get_deepest_widget_at(self, parent, pos, widgets=[]):
+    def get_deepest_widget_at(self, parent, pos, widgets=set()):
         for child in parent.children():
             if isinstance(child, QtWidgets.QWidget):
                 if hasattr(child, 'mapToGlobal'):
@@ -560,7 +635,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                     rect = child.rect()
                     global_rect = QtCore.QRect(point.x(), point.y(), rect.width(), rect.height())
                     if global_rect.contains(pos):
-                        widgets.append(child)
+                        widgets.add(child)
             self.get_deepest_widget_at(child, pos, widgets)
         return widgets
     
