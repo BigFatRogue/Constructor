@@ -1,10 +1,10 @@
 import sys
 import os 
-import shutil
 from typing import Union
 import json
 from PyQt5 import QtCore, QtGui, QtWidgets
 from widget_record_gif_from_app import WidgetRecordGifFromApp
+from custom_combo_box import CustomComboBox
 
 # Добавлене путей к приложению, которое необходимо запустить 
 PATH_PROJCETS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -17,7 +17,6 @@ sys.path.append(PATH_APPLICATION)
 
 from copy_assembly.ca_main import Window
 from copy_assembly.ca_helper.helper_interactive import HelperInteractive
-
 
 
 class RowCounter:
@@ -446,9 +445,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.btn_prev_step.clicked.connect(self.prev_step)
         self.gird_frame_control_step.addWidget(self.btn_prev_step, 0, 0, 1, 1)
 
-        self.combo_box_choose_step = QtWidgets.QComboBox(self.frame_control_step)
+        self.combo_box_choose_step = CustomComboBox(self.frame_control_step)
         self.combo_box_choose_step.addItem(f'Шаг 1')
-        self.combo_box_choose_step.view().pressed.connect(self.choose_step_from_index)
+        self.combo_box_choose_step.signal_select_item.connect(self.choose_step_from_index)
+        self.combo_box_choose_step.signal_is_swap_item.connect(self.swap_step)
         self.gird_frame_control_step.addWidget(self.combo_box_choose_step, 0, 1, 1, 1)
 
         self.btn_netx_step = QtWidgets.QPushButton(self.frame_control_step)
@@ -516,7 +516,9 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         if self.dict_step:
             self.combo_box_choose_step.setCurrentIndex(self.current_number_step)
             step = self.dict_step[str(self.current_number_step)]
-            self.lineedit_list_object_name.setText(*step['object_names'])
+            object_names = step['object_names'] if step['object_names'] else ['']
+            
+            self.lineedit_list_object_name.setText(*object_names)
             self.text_edit.setPlainText(step['message'])
             self.current_path_content = step['content_path']
             self.tool_tip_widget.set_content(self.current_path_content)
@@ -532,9 +534,12 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             self.current_number_step += 1
             self.show_step()
     
-    def choose_step_from_index(self, index) -> None:
-        row = self.combo_box_choose_step.model().itemFromIndex(index).row()
-        self.current_number_step = row
+    def swap_step(self, data) -> None:
+        start_index, end_index = [str(i) for i in data]
+        
+    def choose_step_from_index(self, data) -> None:
+        index, text = data
+        self.current_number_step = index
         self.show_step()
 
     def add_object_name(self, value: str) -> None:
@@ -607,8 +612,13 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.helper.show()
 
     def add_value_in_config(self) -> None:
+        text = self.lineedit_list_object_name.text()
+        object_names = []
+        if text:
+            object_names = [i.strip() for i in self.lineedit_list_object_name.text().split(',')]
+            
         self.dict_step[str(self.current_number_step)] = {
-            "object_names": [*[i.strip() for i in self.lineedit_list_object_name.text().split(',')]],
+            "object_names": object_names,
             "message": self.tool_tip_widget.label_message.text(),
             "content_path": self.current_path_content,
             "button_is_wait": self.check_box_is_wait.isChecked(),
@@ -663,6 +673,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                 dict_step: dict = json.load(config_file) 
             if dict_step:
                 self.dict_step = dict_step.get('steps')
+                self.filepath_config = filename[0]
                 self.combo_box_choose_step.clear()
                 for i in self.dict_step.keys():
                     self.combo_box_choose_step.addItem(f'Шаг {int(i) + 1}')

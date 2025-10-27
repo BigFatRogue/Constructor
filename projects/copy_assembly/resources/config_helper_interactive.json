@@ -1,17 +1,1 @@
-{
-    "steps": {
-        "0": {
-            "object_names": [],
-            "message": "Какой-то текст",
-            "content_path": "",
-            "button_is_wait": false
-        },
-        "1": {
-            "object_names": ["btn_choose_path_assembly"],
-            "message": "Нажмите кнопку 'Выбрать', чтобы выбрать сборку (файл формата .iam)",
-            "content_path": "",
-            "button_is_wait": false
-        }
-    }
-
-}
+{"steps": {"0": {"object_names": [], "message": "Данное приложение предназначено для копирования с возможность переименования сборок Autodesk Inventor", "content_path": "", "button_is_wait": false}, "1": {"object_names": [""], "message": "В выбранном режиме мы с Вами выполним весь цикл работы приложения  ", "content_path": "", "button_is_wait": false}, "2": {"object_names": ["btn_choose_path_assembly"], "message": "Нажмите кнопку <b>Выбрать</b>, чтобы выбрать сборку (файл формата <b>.iam</b>)", "content_path": "", "button_is_wait": true}, "3": {"object_names": [], "message": "dd", "content_path": "", "button_is_wait": false}, "4": {"object_names": [""], "message": "", "content_path": "", "button_is_wait": false}}}
