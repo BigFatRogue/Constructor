@@ -112,6 +112,7 @@ class RectSetSizeCapture(QtWidgets.QFrame):
 class FrameCaptureVideo(QtWidgets.QFrame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
+        self.data_mark = None
 
         self.is_fullscreen = False
         self.old_capture_rect = QtCore.QRect()
@@ -468,7 +469,7 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
         if parent is None:
             parent = self.parent()
         for child in parent.children():
-            if child == self.frame_capture_video:
+            if hasattr(child, 'data_mark'):
                 continue
             if hasattr(child, 'setAttribute'):
                 child.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
@@ -646,7 +647,7 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
                     full_filename,
                     save_all=True,
                     append_images=[] + pil_images + [],
-                    duration=(end_pos - start_pos),
+                    duration=(end_pos - start_pos) // (self.fps / 10),
                     loop=0,
                 )
                 self.btn_convert_gif.setEnabled(True)

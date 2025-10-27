@@ -1,6 +1,7 @@
 import sys
 import os 
 import shutil
+from typing import Union
 import json
 from PyQt5 import QtCore, QtGui, QtWidgets
 from widget_record_gif_from_app import WidgetRecordGifFromApp
@@ -196,42 +197,86 @@ class ToolTipMessage(QtWidgets.QWidget):
             self.btn_next_step.setText('Продолжить')
 
 
-class TextEditToolTipObjectName(QtWidgets.QTextEdit):
+class ToolTipObjectName(QtWidgets.QWidget):
+    signal_choose_widget = QtCore.pyqtSignal(str)
+    signal_clear  = QtCore.pyqtSignal()
+    signal_show_helper = QtCore.pyqtSignal()
+
     def __init__(self, parent):
         super().__init__(parent)
+        self.data_mark = None
+        self.list_label: list[QtWidgets.QLabel] = []
+        
+        self.is_click = False
         self.is_move = False
         self.old_pos = QtCore.QPoint(0, 0)
-        self.setReadOnly(True)
-        self.setStyleSheet('TextEditToolTipObjectName {border: 1px solid black; background-color: white;}')
+
+        self.init_widgets()
     
-        self.textChanged.connect(self.updateSize)
+    def init_widgets(self) -> None:
+        self.v_layout = QtWidgets.QVBoxLayout(self)
+        self.setLayout(self.v_layout)
 
-    def updateSize(self):
-        doc_size = self.document().size().toSize()
-        margins = self.contentsMargins()
-        self.setFixedSize(QtCore.QSize(
-            doc_size.width() + margins.left() + margins.right(),
-            doc_size.height() + margins.top() + margins.bottom()
-        ))
+        self.setStyleSheet('QFrame {border: 1px solid black; border-radius: 3px; background-color: white;}')
 
-    def sizeHint(self):
-        doc_size = self.document().size().toSize()
-        margins = self.contentsMargins()
-        return QtCore.QSize(
-            doc_size.width() + margins.left() + margins.right(),
-            doc_size.height() + margins.top() + margins.bottom()
-        )
+        self.frame_label = QtWidgets.QFrame(self)
+        self.v_layout.addWidget(self.frame_label)
+
+        self.grid_layout_frame = QtWidgets.QGridLayout(self.frame_label)
+        self.grid_layout_frame.setContentsMargins(2, 2, 2, 2)
+        self.grid_layout_frame.setSpacing(2)
+        
+        self.btn_show_helper = QtWidgets.QPushButton(self.frame_label)
+        self.btn_show_helper.setText('🔎')
+        self.btn_show_helper.setShortcut('Ctrl+R')
+        self.btn_show_helper.clicked.connect(self.signal_show_helper.emit)
+        self.btn_show_helper.setMaximumSize(25, 25)
+        self.grid_layout_frame.addWidget(self.btn_show_helper, 0, 0, 1, 1)
+
+        self.btn_clear = QtWidgets.QPushButton(self.frame_label)
+        self.btn_clear.setText('Очистить')
+        self.btn_clear.clicked.connect(self.signal_clear.emit)
+        self.grid_layout_frame.addWidget(self.btn_clear, 0, 1, 1, 1)
+
+        self.btn_close = QtWidgets.QPushButton(self.frame_label)
+        self.btn_close.setText('❌')
+        self.btn_close.setStyleSheet('QPushButton {font-size: 8px; padding: 0px; border: none}')
+        self.btn_close.setMaximumSize(15, 15)
+        self.btn_close.clicked.connect(self.hide)
+        self.grid_layout_frame.addWidget(self.btn_close, 0, 2, 1, 1)
+
+    def __clear_labels(self) -> None:
+        for label in self.list_label:
+            label.setText('')
+            label.hide()
+            
+    def set_object_names(self, object_names: Union[list, set]) -> None:
+        if not self.is_click:
+            self.__clear_labels()
+            for i, obj_name in enumerate(object_names):
+                if i < len(self.list_label):
+                    label = self.list_label[i]
+                    label.setText(obj_name)
+                    label.show()
+                else:
+                    label = QtWidgets.QLabel(self)
+                    label.setStyleSheet('QLabel {border: none; padding: 2px;} QLabel:hover {background-color: #bbebff;}')
+                    label.setText(obj_name)
+                    self.grid_layout_frame.addWidget(label, i + 1, 0, 1, 3)
+                    self.list_label.append(label)
 
     def set_pos(self, x: int, y: int) -> None:
-        x += 10
-        y += 10
-        if x + self.width() > self.parent().width():
-            x = self.parent().width() - self.width() - 10
-        if y + self.height()  > self.parent().height():
-            y = self.parent().height() - self.height() - 10
+        if not self.is_click:
+            x += 10
+            y += 10
+            if x + self.width() > self.parent().width():
+                x = self.parent().width() - self.width() - 10
+            if y + self.height()  > self.parent().height():
+                y = self.parent().height() - self.height() - 10
 
-        self.setGeometry(x, y, self.width(), self.height())
-
+            self.setGeometry(x, y, self.width(), self.height())
+            QtCore.QTimer.singleShot(30, self.adjustSize)
+    
     def keyPressEvent(self, e: QtGui.QKeyEvent):
         if e.key() == QtCore.Qt.Key_Escape:
             self.hide()
@@ -241,11 +286,15 @@ class TextEditToolTipObjectName(QtWidgets.QTextEdit):
         if event.button() == QtCore.Qt.RightButton:
             self.is_move = True
             self.old_pos = event.pos()
+        if event.button() == QtCore.Qt.LeftButton:
+            self.is_click = True
         return super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.RightButton:
             self.is_move = False
+        if event.button() == QtCore.Qt.LeftButton:
+            self.is_click = False
         return super().mouseReleaseEvent(event)
     
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
@@ -258,6 +307,15 @@ class TextEditToolTipObjectName(QtWidgets.QTextEdit):
         if e.key() == QtCore.Qt.Key_Escape:
             self.hide()
         return super().keyPressEvent(e)
+
+    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
+        for label in self.list_label:
+                point = label.mapToGlobal(QtCore.QPoint(0, 0))
+                rect = label.rect()
+                global_rect = QtCore.QRect(point.x(), point.y(), rect.width(), rect.height())
+                if global_rect.contains(event.globalPos()):
+                    self.signal_choose_widget.emit(label.text())
+        return super().mouseDoubleClickEvent(event)
 
 
 class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
@@ -328,6 +386,12 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.lineedit_list_object_name.setPlaceholderText('Введите objectName или кликните в дочернем приложении')
         self.lineedit_list_object_name.returnPressed.connect(self.show_step_in_application)
         self.hl_frame_add_object_name.addWidget(self.lineedit_list_object_name)
+
+        self.btn_clear_lineedit_list_object_name = QtWidgets.QPushButton(self.frame_add_object_name)
+        self.btn_clear_lineedit_list_object_name.setText('×')
+        self.btn_clear_lineedit_list_object_name.clicked.connect(lambda: self.lineedit_list_object_name.setText(''))
+        self.btn_clear_lineedit_list_object_name.setMaximumSize(25, 25)
+        self.hl_frame_add_object_name.addWidget(self.btn_clear_lineedit_list_object_name)
 
         self.btn_add_object_name = QtWidgets.QPushButton(self.frame_add_object_name)
         self.btn_add_object_name.setText('🔎')
@@ -423,8 +487,11 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.desable_event_widgets(self.application)
         self.install_event_filters(self.application) 
 
-        self.text_edit_tool_tip = TextEditToolTipObjectName(self.application)
-        self.text_edit_tool_tip.hide()
+        self.tool_tip_choose_widget = ToolTipObjectName(self.application)
+        self.tool_tip_choose_widget.signal_choose_widget.connect(self.add_object_name)
+        self.tool_tip_choose_widget.signal_clear.connect(lambda: self.lineedit_list_object_name.setText(''))
+        self.tool_tip_choose_widget.signal_show_helper.connect(self.show_step_in_application)
+        self.tool_tip_choose_widget.hide()
 
         self.application.show() 
 
@@ -470,6 +537,19 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.current_number_step = row
         self.show_step()
 
+    def add_object_name(self, value: str) -> None:
+        text = self.lineedit_list_object_name.text()
+        if not text:
+            self.lineedit_list_object_name.setText(value)
+        else:
+            set_obj_name = set()
+            if ',' not in text:
+                set_obj_name.add(self.lineedit_list_object_name.text())
+            else:
+                set_obj_name = set(self.lineedit_list_object_name.text().split(','))
+            set_obj_name.add(value)
+            self.lineedit_list_object_name.setText(','.join(set_obj_name))
+
     def load_content(self) -> None:
         dlg = QtWidgets.QFileDialog()
         dlg.setWindowTitle('Выберете файл')
@@ -507,6 +587,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.widget_record_gif_from_app = None
 
     def show_step_in_application(self) -> None:
+        self.tool_tip_choose_widget.hide()
         self.delete_helper()
         object_name = self.lineedit_list_object_name.text()
         self.helper = HelperInteractive(self.application)
@@ -606,28 +687,28 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                 self.application.moveEvent(event)
         if event.type() == QtCore.QEvent.MouseButtonPress:
             if event.button() == QtCore.Qt.LeftButton:
-                event: QtGui.QMouseEvent
-                global_pos = event.globalPos()
-                
-                deepest_widget = self.get_deepest_widget_at(parent=self.application, pos=global_pos)
-                if deepest_widget:
-                    set_object_name = set()
-                    for widget in deepest_widget:
-                        if self.helper is None:
+                if self.helper is None and self.widget_record_gif_from_app is None:
+                    event: QtGui.QMouseEvent
+                    global_pos = event.globalPos()
+                    
+                    deepest_widget = self.get_deepest_widget_at(parent=self.application, pos=global_pos)
+                    if deepest_widget:
+                        set_object_name = set()
+                        for widget in deepest_widget:
                             object_name = widget.objectName()
                             if object_name:
                                 set_object_name.add(object_name)
-                            self.lineedit_list_object_name.setText(self.lineedit_list_object_name.text() + "," + object_name)
-                            self.lineedit_list_object_name.setText(self.lineedit_list_object_name.text().strip(','))
-                    
-                    self.text_edit_tool_tip.setPlainText('\n'.join(set_object_name))
-                    self.text_edit_tool_tip.set_pos(event.x(), event.y())
-                    self.text_edit_tool_tip.show()
+
+                        self.tool_tip_choose_widget.set_object_names(set_object_name)
+                        self.tool_tip_choose_widget.set_pos(event.x(), event.y())
+                        self.tool_tip_choose_widget.show()
             return True
 
         return super().eventFilter(obj, event)
 
-    def get_deepest_widget_at(self, parent, pos, widgets=set()):
+    def get_deepest_widget_at(self, parent, pos, widgets=None):
+        if widgets is None:
+            widgets = set()
         for child in parent.children():
             if isinstance(child, QtWidgets.QWidget):
                 if hasattr(child, 'mapToGlobal'):

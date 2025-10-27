@@ -1,7 +1,7 @@
 import pathlib
 import json
 
-DEBUG = False
+DEBUG = True
 PROJECT_ROOT = pathlib.Path(__file__).parent
 
 

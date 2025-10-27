@@ -23,7 +23,7 @@ from ca_logging.my_logging import loging_sys, loging_try
 from ca_functions.logger_changes_qtree import LoggerChangesQTree, TypeItemQTree
 from ca_functions.preprocess_inventor import get_app_inventor, kill_process_for_pid
 from ca_functions.copy_and_rename_assembly import move_file_inventor_project, copy_file_assembly, get_tree_assembly, copy_and_rename_file_assembly, replace_reference_file, rename_display_name_and_set_rules, rename_component_name_in_assembly, create_folder_rename_assembly
-from ca_functions.my_function import strip_path
+from ca_functions.my_function import strip_path, decorater_set_object_name
 from ca_functions.RowCounter import RowCounter
 
 
@@ -206,7 +206,7 @@ class IThread(QtCore.QObject):
                 loging_try()
         self.signal_close.emit()
 
-
+@decorater_set_object_name
 class LoadRingWidget(QtWidgets.QWidget):
     def __init__(self, parent, color, ring_offset_x, ring_offset_y, max_size):
         super().__init__(parent)
@@ -258,7 +258,7 @@ class LoadRingWidget(QtWidgets.QWidget):
     def stop_load(self):
         self.timer.stop()
 
-
+@decorater_set_object_name
 class LoadRing(QtWidgets.QWidget):
     def __init__(self, parent, color=None, ring_offset_x=0.2, ring_offset_y=0.2, max_size=(25, 25)):
         super().__init__(parent)
@@ -339,7 +339,7 @@ class HighlightDelegate(QtWidgets.QStyledItemDelegate):
     def setModeRegister(self, value: bool) -> None:
         self.mode_register = value
     
-
+@decorater_set_object_name
 class ButtonShowRules(QtWidgets.QPushButton):
     signal_remove_rule = QtCore.pyqtSignal()
 
@@ -371,7 +371,7 @@ class ButtonShowRules(QtWidgets.QPushButton):
             self.item_rules_ilogic.rules = {}
             self.hide()
             
-
+@decorater_set_object_name
 class Tree(QtWidgets.QTreeView):
     signal_click_btn_rules = QtCore.pyqtSignal(tuple)
 
@@ -450,7 +450,7 @@ class Tree(QtWidgets.QTreeView):
 
         super().keyPressEvent(event)
 
-
+@decorater_set_object_name
 class FrameTreeFromDict(QtWidgets.QFrame):
     signal_rename = QtCore.pyqtSignal(tuple)
     signal_update_tree = QtCore.pyqtSignal(str)
@@ -810,7 +810,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
                 return
         os.system(f"explorer {PATH_TMP}")
 
-
+@decorater_set_object_name
 class ElidedLabel(QtWidgets.QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -822,7 +822,7 @@ class ElidedLabel(QtWidgets.QLabel):
     def minimumSizeHint(self):
         return QtCore.QSize(0, 0)
     
-
+@decorater_set_object_name
 class Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
