@@ -683,6 +683,8 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             self.save_as_config()
         else:
             self.__save_config(filename=self.filepath_config)
+        now = datetime.now()
+        self.label_info.setText(f'Автосохранение: вкл      💾 Сохранено (в {now.hour}:{now.minute}:{now.second})')
 
     def save_as_config(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
@@ -698,8 +700,6 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
 
     def __auto_save(self) -> None:
         if self.is_autosave and self.filepath_config:
-            now = datetime.now()
-            self.label_info.setText(f'Автосохранение: вкл      💾 Сохранено (в {now.hour}:{now.minute}:{now.second})')
             self.save_config()
         
     def load_config(self) -> None:
