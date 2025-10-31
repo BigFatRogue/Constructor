@@ -18,7 +18,7 @@ sys.path.append(PATH_PROJCETS)
 sys.path.append(PATH_APPLICATION)
 
 from copy_assembly.ca_main import Window
-from projects.copy_assembly.ca_helper.helper_interactive import HelperInteractive
+from copy_assembly.ca_helper.helper_interactive import HelperInteractive
 
 
 class RowCounter:

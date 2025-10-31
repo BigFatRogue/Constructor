@@ -86,13 +86,18 @@ class RectSetSizeCapture(QtWidgets.QFrame):
             self.setMaximumWidth(self.wh_size)
 
     def __init_style(self) -> None:
-        if self.tp in (TypeRectSize.LT, TypeRectSize.RB):
-            self.setStyleSheet('RectSetSizeCapture {background-color: rgb(100, 100, 100);}')
-            self.setCursor(QtCore.Qt.SizeBDiagCursor)
+        if self.tp == TypeRectSize.LT:
+            self.setStyleSheet('RectSetSizeCapture {border: solid black; border-width: 5px 0px 0px 5px;}')
             self.setCursor(QtCore.Qt.SizeFDiagCursor)
-        elif self.tp in (TypeRectSize.RT, TypeRectSize.LB):
-            self.setStyleSheet('RectSetSizeCapture {background-color: rgb(100, 100, 100);}')
+        elif self.tp == TypeRectSize.RT:
+            self.setStyleSheet('RectSetSizeCapture {border: solid black; border-width: 5px 5px 0px 0px;}')
             self.setCursor(QtCore.Qt.SizeBDiagCursor)
+        elif self.tp == TypeRectSize.LB:
+            self.setStyleSheet('RectSetSizeCapture {border: solid black; border-width: 0px 0px 5px 5px;}')
+            self.setCursor(QtCore.Qt.SizeBDiagCursor)
+        elif self.tp == TypeRectSize.RB:
+            self.setStyleSheet('RectSetSizeCapture {border: solid black; border-width: 0px 5px 5px 0px;}')
+            self.setCursor(QtCore.Qt.SizeFDiagCursor)
         elif self.tp in (TypeRectSize.CT, TypeRectSize.CB):
             self.setCursor(QtCore.Qt.SizeVerCursor)
         elif self.tp in (TypeRectSize.LC, TypeRectSize.RC):
@@ -197,9 +202,9 @@ class FrameCaptureVideo(QtWidgets.QFrame):
             limit_rigth = self.parent().geometry().width() + self.cc.wh_size
             limit_top = -self.cc.wh_size
             limit_bottom = self.parent().geometry().height() + self.cc.wh_size
-            
-            if x < limit_left or x > limit_rigth or y < limit_top or x > limit_bottom:
-                return
+
+            # if x < limit_left or x > limit_rigth or y < limit_top or x > limit_bottom:
+            #     return
             if self.tp_press_rect_size == TypeRectSize.LT:
                 self.x0, self.y0 = x, y
             elif self.tp_press_rect_size == TypeRectSize.CT:
@@ -691,7 +696,7 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
         self.desable_event_widgets(self.app)
         self.frame_capture_video.deleteLater()
         return super().closeEvent(a0)
-
+        
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
