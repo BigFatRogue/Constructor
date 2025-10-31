@@ -52,8 +52,8 @@ class CustomComboBox(QtWidgets.QWidget):
         super().__init__(parent)
         self.is_drag_item: bool = False
         self.current_item_index: int = 0
-        self.start_drag_index: int = 0
-        self.end_drag_index: int = 0
+        self.start_drag_index: int = None
+        self.end_drag_index: int = None
         self.has_swap = False
         self.is_show_list = False
         self.seek_index = 0
@@ -125,6 +125,7 @@ class CustomComboBox(QtWidgets.QWidget):
         if self.seek_index < len(self.list_item):
             item = self.list_item[self.seek_index]
             item.setText(text)
+            print(item.index, item.text(), item.y())
             item.show()
         else:
             self.__addItem(text)
@@ -181,6 +182,10 @@ class CustomComboBox(QtWidgets.QWidget):
         if self.end_drag_index is not None:
             drag_item = self.list_item.pop(self.start_drag_index)
             self.list_item.insert(self.end_drag_index, drag_item)
+
+            self.vl_frame_items.removeWidget(drag_item)
+            self.vl_frame_items.insertWidget(self.end_drag_index, drag_item)
+
             drag_item.setGeometry(drag_item.x(), drag_item.start_y, drag_item.width(), drag_item.height())
             self.__update_index()
             self.signal_is_swap_item.emit((self.start_drag_index, self.end_drag_index))
@@ -225,34 +230,40 @@ class CustomComboBox(QtWidgets.QWidget):
         return super().leaveEvent(event)
 
 
-class Widget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.init_widget()
-
-    def init_widget(self):
-        self.v_layout = QtWidgets.QVBoxLayout(self)
-        self.setLayout(self.v_layout)
-
-        self.combo_box = CustomComboBox(self)
-        for i in range(1, 10):
-            self.combo_box.addItem(f'Элемент {i}')
-        self.combo_box.signal_is_swap_item.connect(self.swap_item)
-        self.v_layout.addWidget(self.combo_box)
-
-    def swap_item(self, data):
-        s, e = data
-        si = self.combo_box.list_item[s]
-        ei = self.combo_box.list_item[e]
-        print(si.index, si.text(), ei.index, ei.text())
-        for i in self.combo_box.list_item:
-            print(i.index, i.text())
-
 if __name__ == '__main__':
+    class TestWidget(QtWidgets.QWidget):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+
+            self.init_widget()
+
+        def init_widget(self):
+            self.v_layout = QtWidgets.QVBoxLayout(self)
+            self.setLayout(self.v_layout)
+
+            self.combo_box = CustomComboBox(self)
+            self.populate_combo_box()
+            self.combo_box.signal_is_swap_item.connect(self.swap_item)
+            self.v_layout.addWidget(self.combo_box)
+
+        def populate_combo_box(self):
+            for i in range(1, 10):
+                self.combo_box.addItem(f'Элемент {i}')
+
+        def swap_item(self, data):
+            self.combo_box.addItem('AAAAAA')
+            # for item in self.combo_box.list_item:
+                # print(item.text(), item.index, item.y())
+            # self.combo_box.clear()
+            # self.populate_combo_box()
+            # # for item in self.combo_box.list_item:
+            # #     print(item.text(), item.index)
+
+
+
     import sys
     app = QtWidgets.QApplication(sys.argv)
 
-    window = Widget()
+    window = TestWidget()
     window.show()
     sys.exit(app.exec_())

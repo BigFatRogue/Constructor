@@ -1,5 +1,7 @@
 import sys
 import os 
+from collections import OrderedDict
+from datetime import datetime, time
 from typing import Union
 import json
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -16,7 +18,7 @@ sys.path.append(PATH_PROJCETS)
 sys.path.append(PATH_APPLICATION)
 
 from copy_assembly.ca_main import Window
-from copy_assembly.ca_helper.helper_interactive import HelperInteractive
+from projects.copy_assembly.ca_helper.helper_interactive import HelperInteractive
 
 
 class RowCounter:
@@ -324,9 +326,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.helper = None
         self.current_path_content = ""
         self.current_number_step = 0
-        self.dict_step = {}
+        self.dict_step = OrderedDict()
         self.widget_record_gif_from_app = None
         self.filepath_config = None
+        self.is_autosave = True
 
         self.init_window()
         self.init_widgets()
@@ -346,13 +349,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.grid.setSpacing(5)
         self.grid.setObjectName("gridLayoutCentral")
 
-    def init_widgets(self) -> None:
-        row_counter = RowCounter()
-
         #--------------------------- Меню  -------------------------------
-        menuBar = self.menuBar()
+        menu_bar = self.menuBar()
 
-        file_menu = menuBar.addMenu('&Файл')
+        file_menu = menu_bar.addMenu('&Файл')
 
         file_open = QtWidgets.QAction("&📁 Открыть", self)
         file_open.setShortcut('Ctrl+O')
@@ -368,6 +368,17 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         file_save_as.setShortcut(QtGui.QKeySequence('Ctrl+Alt+S'))
         file_save_as.triggered.connect(self.save_as_config)
         file_menu.addAction(file_save_as)
+
+        sitting_menu = menu_bar.addMenu('&Инструмены')
+
+        has_autosave = QtWidgets.QAction("&Включить автосхранение", self)
+        has_autosave.setCheckable(True)
+        has_autosave.setChecked(True)
+        has_autosave.triggered.connect(self.toggle_autosave)
+        sitting_menu.addAction(has_autosave)
+
+    def init_widgets(self) -> None:
+        row_counter = RowCounter()
 
         #--------------------------- add Object Name -------------------------------
         self.frame_add_object_name = QtWidgets.QFrame(self)
@@ -478,6 +489,16 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.btn_del_value_in_config.clicked.connect(self.del_value_in_config)
         self.gird_frame_control_step.addWidget(self.btn_del_value_in_config, 3, 2, 1, 1)
         
+        #--------------------------- Control / View step  -------------------------------
+        self.timer_save = QtCore.QTimer()
+        self.timer_save.setInterval(1000 * 3 * 60)
+        self.timer_save.timeout.connect(self.__auto_save)
+        self.timer_save.start()
+
+        self.label_info = QtWidgets.QLabel(self)
+        self.label_info.setText('Автосохранение: Вкл')
+        self.grid.addWidget(self.label_info, 3, 0, 1, 2)
+        
     def text_change(self) -> None:
         text = self.text_edit.toPlainText()
         self.tool_tip_widget.set_text(text)
@@ -535,8 +556,18 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             self.show_step()
     
     def swap_step(self, data) -> None:
-        start_index, end_index = [str(i) for i in data]
+        self.combo_box_choose_step.clear()
+        start_index, end_index = data
+        steps_value = list(self.dict_step.values())
+        start_item = steps_value.pop(start_index)
+        steps_value.insert(end_index, start_item)
         
+        new_dict = OrderedDict()
+        for i, value in enumerate(steps_value):
+            new_dict[str(i)] = value
+            self.combo_box_choose_step.addItem(f'Шаг {i + 1}')
+        self.dict_step = new_dict
+
     def choose_step_from_index(self, data) -> None:
         index, text = data
         self.current_number_step = index
@@ -665,6 +696,12 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         with open(filename, 'w', encoding='utf-8') as config_file:
             json.dump(dict_step, config_file, ensure_ascii=False)
 
+    def __auto_save(self) -> None:
+        if self.is_autosave and self.filepath_config:
+            now = datetime.now()
+            self.label_info.setText(f'Автосохранение: вкл      💾 Сохранено (в {now.hour}:{now.minute}:{now.second})')
+            self.save_config()
+        
     def load_config(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
         filename = dlg.getOpenFileName(self, 'Выбрать файл', filter='JSON файл (*.json)')
@@ -679,6 +716,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                     self.combo_box_choose_step.addItem(f'Шаг {int(i) + 1}')
             self.current_number_step = 0
             self.show_step()
+
+    def toggle_autosave(self, value: bool) -> None:
+        self.is_autosave = value
+        self.label_info.setText('Автосохранение: ' + ('Вкл' if value else 'Выкл'))
 
     def desable_event_widgets(self, parent=None) -> None:
         for child in parent.children():
@@ -749,6 +790,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         return super().showEvent(event)
 
     def closeEvent(self, event):
+        if self.dict_step:
+            dlg = MessegeBoxQuestion(self, 'Сохранить конфиг?')
+            if dlg.exec(): 
+                self.save_config()
         try:
             if self.application:
                 self.application.close()

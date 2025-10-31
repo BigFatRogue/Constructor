@@ -8,6 +8,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from settings import *
 
+
 from ca_widgets.h_line_separate import QHLineSeparate
 from ca_widgets.messege_box_question import MessegeBoxQuestion
 from ca_helper.helper_interactive import HelperInteractive
