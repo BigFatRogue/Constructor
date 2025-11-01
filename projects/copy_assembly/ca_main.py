@@ -344,7 +344,8 @@ class HighlightDelegate(QtWidgets.QStyledItemDelegate):
     
     def setModeRegister(self, value: bool) -> None:
         self.mode_register = value
-    
+
+
 @decorater_set_object_name
 class ButtonShowRules(QtWidgets.QPushButton):
     signal_remove_rule = QtCore.pyqtSignal()
@@ -376,7 +377,8 @@ class ButtonShowRules(QtWidgets.QPushButton):
         if msg.exec() == QtWidgets.QDialog.Accepted:
             self.item_rules_ilogic.rules = {}
             self.hide()
-            
+
+
 @decorater_set_object_name
 class Tree(QtWidgets.QTreeView):
     signal_click_btn_rules = QtCore.pyqtSignal(tuple)
@@ -802,7 +804,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         if self.dict_rename:
             self.signal_update_tree.emit(os.path.join(self.dict_rename['root_assembly'], self.dict_rename['name_assembly']))
 
-
     def switch_enabled_widgets(self, value: bool) -> None:
         for widgets in self.children():
             if isinstance(widgets, QtWidgets.QPushButton) or isinstance(widgets, QtWidgets.QLineEdit) or isinstance(widgets, QtWidgets.QFrame):
@@ -837,12 +838,11 @@ class Window(QtWidgets.QMainWindow):
         self.prepared_assembly_window = PreparedAssemblyWindow(self)
         self.prepared_assembly_window.signal_get_data.connect(self.get_data_from_prepared_assembly)
         self.thread_inventor = IThread()
-        self.interactive_helper = None
 
-        self.initWindow()
-        self.initWidgets()
-        self.initThread()
-        # self.initHelper()
+        self.init_window()
+        self.init_widgets()
+        self.init_thread()
+        self.init_helper_interective()
                 
         if DEBUG:
             self.label_load_ring.setText(r'\\pdm\pkodocs\Inventor Project\ООО ЛебедяньМолоко\1642_24\5.3.X5. Порошковый миксер Inoxpa ME-4105_ME-4110\05 проект INVENTOR\ALS.1642.5.3.06.01-Рама\ALS.1642.5.3.06.01.00.000 СБ\Frame')
@@ -850,7 +850,7 @@ class Window(QtWidgets.QMainWindow):
             with open(os.path.join(Path(PROJECT_ROOT).parent, 'DEBUG\data_assembly.txt'), 'r', encoding='utf-8') as file_data_assembly: 
                 self.fill_trees(eval(file_data_assembly.read()))
 
-    def initWindow(self):
+    def init_window(self):
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.setWindowIcon(QtGui.QIcon(os.path.join(ICO_FOLDER, 'CopyAssembly.png')))
@@ -892,25 +892,25 @@ class Window(QtWidgets.QMainWindow):
         self.shortcut_search_focus = QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+F'), self)
         self.shortcut_search_focus.activated.connect(self.set_focus_search_line_edit)
 
-    def initWidgets(self):
-        # ------------------------------------------------------------------------------------------------#
-        self.label_choose_assembly = QtWidgets.QLabel(self)
-        self.label_choose_assembly.setText('Выберите сборку')
-        self.grid.addWidget(self.label_choose_assembly, 0, 0, 1, 1)
-
+    def init_widgets(self):
         self.lineedit_choose_assembly = QtWidgets.QLineEdit(self)
         self.lineedit_choose_assembly.setObjectName('lineedit_choose_assembly')
         self.lineedit_choose_assembly.textChanged.connect(lambda event: self.lineedit_choose_assembly.setStyleSheet("#lineedit_choose_assembly {border: 1px solid gray;}"))
-        self.grid.addWidget(self.lineedit_choose_assembly, 0, 1, 1, 1)
+        self.lineedit_choose_assembly.setPlaceholderText('Выберите сборку (файл формата .iam)')
+        self.grid.addWidget(self.lineedit_choose_assembly, 0, 0, 1, 1)
         self.lineedit_choose_assembly.setEnabled(False)
 
         self.btn_choose_path_assembly = QtWidgets.QPushButton(self)
         self.btn_choose_path_assembly.setObjectName('btn_choose_path_assembly')
-        self.btn_choose_path_assembly.setMinimumSize(50, 20)
-        self.btn_choose_path_assembly.setText('Выбрать')
+        self.btn_choose_path_assembly.setMinimumSize(30, 20)
+        self.btn_choose_path_assembly.setMaximumSize(30, 20)
         self.btn_choose_path_assembly.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.btn_choose_path_assembly.clicked.connect(self.click_choose_assembly)
-        self.grid.addWidget(self.btn_choose_path_assembly, 0, 2, 1, 1)
+        self.btn_choose_path_assembly.setToolTip('Выбрать сборку в проводнике')
+        icon = QtGui.QIcon()
+        icon.addFile(os.path.join(ICO_FOLDER, 'icon_folder.png'))
+        self.btn_choose_path_assembly.setIcon(icon)
+        self.grid.addWidget(self.btn_choose_path_assembly, 0, 1, 1, 1)
         # ------------------------------------------------------------------------------------------------#
         self.line_1 = QHLineSeparate(self)
         self.grid.addWidget(self.line_1, 2, 0, 1, 3)
@@ -944,7 +944,7 @@ class Window(QtWidgets.QMainWindow):
         self.label_load_ring.setText('Готово')
         self.layout_frame_load.addWidget(self.label_load_ring)
 
-    def initThread(self):
+    def init_thread(self):
         self.thread_inventor.signal_text_pb.connect(self.change_text_pb)
         self.thread_inventor.signal_pb.connect(self.set_state_pb)
         self.thread_inventor.signal_dict_assembly.connect(self.fill_trees)
@@ -994,13 +994,15 @@ class Window(QtWidgets.QMainWindow):
         #                       self.frame_tree_assembly.check_box_register], 
         #                       'Шаг 2')       
 
-    def start_help_interective(self) -> None:
-        if self.interactive_helper is None:
-            self.interactive_helper = HelperInteractive(self)
-            self.interactive_helper.load_config(os.path.join(PROJECT_ROOT, 'resources\\config_helper_interactive.json'))
-        # self.initHelper()
-        self.interactive_helper.show()
+    def init_helper_interective(self) -> None:
+        self.interactive_helper = HelperInteractive(self)
+        self.interactive_helper.hide()
 
+    def start_help_interective(self) -> None:
+        if self.interactive_helper and not self.interactive_helper.isVisible():
+            self.interactive_helper.load_config(os.path.join(PROJECT_ROOT, 'resources\\config_helper_interactive.json'))
+            self.interactive_helper.show()
+        
     def thread_inventor_error(self, error_code: ErrorCode) -> None:
         if error_code == ErrorCode.SUCCESS:
             return

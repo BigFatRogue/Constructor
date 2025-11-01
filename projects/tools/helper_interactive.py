@@ -5,9 +5,12 @@ from typing import Union
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
+
 if __name__ == '__main__':
-    # Для тестирования модуля
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # Для запуска через IDE
+    from pathlib import Path
+    test_path = str(Path(__file__).parent.parent.parent)
+    sys.path.append(test_path)
 
 from projects.tools.settings import ICO_FOLDER
 from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
@@ -21,7 +24,7 @@ class ToolTipMessage(QtWidgets.QWidget):
     signal_end = QtCore.pyqtSignal()
 
     TEXT_BTN_NEXT_STEP = 'Продолжить'
-    TEXT_BTN_WAIT = 'Ожидание...'
+    TEXT_BTN_WAIT = 'Пожалуйста, подождите...'
     TEXT_BTN_END = 'Завершить'
 
     def __init__(self, parent):
@@ -148,7 +151,7 @@ class ToolTipMessage(QtWidgets.QWidget):
             
     def set_is_button_wait(self, value: bool=False) -> None:
         if value:
-            # self.btn_next_step.setEnabled(False)
+            self.btn_next_step.setEnabled(False)
             self.btn_next_step.setText(self.TEXT_BTN_WAIT)
         else:
             self.btn_next_step.setEnabled(True)
@@ -276,6 +279,7 @@ class HelperInteractive:
         self.parent = parent
         self.parent.moveEvent = self.move
         self.__is_visible = False
+        self.path_config: str = None
 
         self.old_pos_tool_tip = self.parent.x(), self.parent.y()
 
@@ -311,6 +315,7 @@ class HelperInteractive:
         self.dict_data = data
     
     def load_config(self, filepath: str) -> None:
+        self.path_config = filepath
         with open(filepath, 'r', encoding='utf-8') as config:
             steps: dict = json.load(config).get('steps')
             if steps:
@@ -412,6 +417,9 @@ class HelperInteractive:
             x = self.parent.x() + (self.parent.width()  - self.widget_tool_tip.width())/2
             y = self.parent.y() + (self.parent.height() - self.widget_tool_tip.height())/2
             return QtCore.QPointF(x, y)
+
+    def reset(self) -> None:
+        self.load_config(self.path_config)
 
     def isVisible(self) -> bool:
         return self.__is_visible       
