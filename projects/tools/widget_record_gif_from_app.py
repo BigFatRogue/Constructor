@@ -4,10 +4,13 @@ from PIL import Image
 from enum import Enum, auto
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'copy_assembly'))
-from copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
+if __name__ == '__main__':
+    # Для запуска через IDE
+    from pathlib import Path
+    test_path = str(Path(__file__).parent.parent.parent)
+    sys.path.append(test_path)
 
+from projects.copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
 
 
 class TempWindow(QtWidgets.QMainWindow):
@@ -456,7 +459,7 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
         self.frame_capture_video = FrameCaptureVideo(self.app)
         self.frame_capture_video.hide()
 
-        with open(os.path.join(os.getcwd(), 'projects\\tools\\window_cursor.png'), 'rb') as img_file:
+        with open(os.path.join(os.getcwd(), 'projects\\tools\\resources\\window_cursor.png'), 'rb') as img_file:
             qimg = QtGui.QImage()
             qimg.loadFromData(img_file.read())
             qimg = qimg.scaled(25, 25)

@@ -1,8 +1,16 @@
 import pathlib
 import json
+import sys
+import os
 
 DEBUG = False
-PROJECT_ROOT = pathlib.Path(__file__).parent
+
+def get_root_path() -> str:
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(__file__) 
+
+PROJECT_ROOT = get_root_path()
 
 
 with open(f'{PROJECT_ROOT}\\resources\\parameters_copy_assembly.json', 'r', encoding='utf-8') as param:

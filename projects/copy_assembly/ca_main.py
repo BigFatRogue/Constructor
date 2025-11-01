@@ -6,26 +6,31 @@ from pathlib import Path
 from typing import Optional, Any
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from settings import *
+if __name__ == '__main__':
+    # Для запуска через IDE
+    from pathlib import Path
+    test_path = str(Path(__file__).parent.parent.parent)
+    sys.path.append(test_path)
 
+from projects.copy_assembly.settings import *
 
-from ca_widgets.h_line_separate import QHLineSeparate
-from ca_widgets.messege_box_question import MessegeBoxQuestion
-from ca_helper.helper_interactive import HelperInteractive
+from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
+from projects.tools.helper_interactive import HelperInteractive
 
-from ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
-from ca_other_window.window_rules import WindowsViewerRules
+from projects.copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
+from projects.copy_assembly.ca_other_window.window_rules import WindowsViewerRules
 
-from ca_modes.error_code import ErrorCode
-from ca_modes.mode_code import Mode
+from projects.copy_assembly.ca_modes.error_code import ErrorCode
+from projects.copy_assembly.ca_modes.mode_code import Mode
 
-from ca_logging.my_logging import loging_sys, loging_try
+from projects.copy_assembly.ca_logging.my_logging import loging_sys, loging_try
 
-from ca_functions.logger_changes_qtree import LoggerChangesQTree, TypeItemQTree
-from ca_functions.preprocess_inventor import get_app_inventor, kill_process_for_pid
-from ca_functions.copy_and_rename_assembly import move_file_inventor_project, copy_file_assembly, get_tree_assembly, copy_and_rename_file_assembly, replace_reference_file, rename_display_name_and_set_rules, rename_component_name_in_assembly, create_folder_rename_assembly
-from ca_functions.my_function import strip_path, decorater_set_object_name
-from ca_functions.RowCounter import RowCounter
+from projects.copy_assembly.ca_functions.logger_changes_qtree import LoggerChangesQTree, TypeItemQTree
+from projects.copy_assembly.ca_functions.preprocess_inventor import get_app_inventor, kill_process_for_pid
+from projects.copy_assembly.ca_functions.copy_and_rename_assembly import move_file_inventor_project, copy_file_assembly, get_tree_assembly, copy_and_rename_file_assembly, replace_reference_file, rename_display_name_and_set_rules, rename_component_name_in_assembly, create_folder_rename_assembly
+from projects.copy_assembly.ca_functions.my_function import strip_path, decorater_set_object_name
+from projects.copy_assembly.ca_functions.RowCounter import RowCounter
 
 
 class IThread(QtCore.QObject):

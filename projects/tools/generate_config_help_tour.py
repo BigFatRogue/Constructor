@@ -5,11 +5,20 @@ from datetime import datetime, time
 from typing import Union
 import json
 from PyQt5 import QtCore, QtGui, QtWidgets
-from widget_record_gif_from_app import WidgetRecordGifFromApp
-from custom_combo_box import CustomComboBox
+
+if __name__ == '__main__':
+    # Для запуска через IDE
+    from pathlib import Path
+    test_path = str(Path(__file__).parent.parent.parent)
+    sys.path.append(test_path)
+
+from projects.tools.widget_record_gif_from_app import WidgetRecordGifFromApp
+from projects.tools.custom_qwidget.custom_combo_box import CustomComboBox
+
 
 # Добавлене путей к приложению, которое необходимо запустить 
 PATH_PROJCETS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print(PATH_PROJCETS)
 PATH_APPLICATION = os.path.join(PATH_PROJCETS, 'copy_assembly')
 PATH_SAVE_CONTENT_GIF = os.path.join(PATH_APPLICATION, 'resources', 'gif')
 PATH_SAVE_CONTENT_IMAGE = os.path.join(PATH_APPLICATION, 'resources', 'image')
@@ -18,7 +27,7 @@ sys.path.append(PATH_PROJCETS)
 sys.path.append(PATH_APPLICATION)
 
 from copy_assembly.ca_main import Window
-from copy_assembly.ca_helper.helper_interactive import HelperInteractive
+from projects.tools.helper_interactive import HelperInteractive
 
 
 class RowCounter:

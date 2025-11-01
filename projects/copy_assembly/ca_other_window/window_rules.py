@@ -2,10 +2,11 @@ from copy import deepcopy
 import sys
 from typing import Optional
 
-from ca_functions.RowCounter import RowCounter
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ca_widgets.h_line_separate import QHLineSeparate
-from ca_widgets.messege_box_question import MessegeBoxQuestion
+
+from projects.tools.row_counter import RowCounter
+from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 
 
 class QTextBoxWithZoom(QtWidgets.QTextEdit):

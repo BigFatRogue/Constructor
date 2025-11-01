@@ -8,15 +8,17 @@ from typing import Union, Optional
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 if __name__ == '__main__':
-    # Для тестирования модуля
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # Для запуска через IDE
+    from pathlib import Path
+    test_path = str(Path(__file__).parent.parent.parent.parent)
+    sys.path.append(test_path)
 
-from settings import *
-from ca_modes.error_code import ErrorCode
-from ca_modes.mode_code import Mode
-from ca_logging.my_logging import loging_try
-from ca_widgets.messege_box_question import MessegeBoxQuestion
-from ca_functions.get_preview_file import get_bytes_png_from_inventor_file
+from projects.copy_assembly.settings import *
+from projects.copy_assembly.ca_modes.error_code import ErrorCode
+from projects.copy_assembly.ca_modes.mode_code import Mode
+from projects.copy_assembly.ca_logging.my_logging import loging_try
+from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
+from projects.copy_assembly.ca_functions.get_preview_file import get_bytes_png_from_inventor_file
 
 
 def set_alarm_border(widget: QtWidgets.QWidget, label_error: Optional[QtWidgets.QLabel]=None) -> None:
@@ -635,7 +637,6 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.full_viewer.hide()
 
     def load_parameters(self) -> dict:
-        return {}
         sitting_file = os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json')
         if os.path.exists(sitting_file):
             with open(sitting_file, 'r', encoding='utf-8') as file:

@@ -2,9 +2,9 @@ import psutil
 import pythoncom
 import win32com.client as wc32
 from typing import Union, Any
-from settings import *
-from ca_modes.error_code import ErrorCode
-from ca_logging.my_logging import loging_try
+from projects.copy_assembly.settings import *
+from projects.copy_assembly.ca_modes.error_code import ErrorCode
+from projects.copy_assembly.ca_logging.my_logging import loging_try
 
 
 def check_open_process(name_process: str) -> bool:

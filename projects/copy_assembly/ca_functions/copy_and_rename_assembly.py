@@ -26,8 +26,8 @@ from typing import Any, Optional
 from pathlib import Path
 from datetime import datetime
 
-from settings import *
-from ca_logging.my_logging import loging_try
+from projects.copy_assembly.settings import *
+from projects.copy_assembly.ca_logging.my_logging import loging_try
 
 
 def mkdir_tree(path: str):

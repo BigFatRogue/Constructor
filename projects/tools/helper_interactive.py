@@ -9,10 +9,10 @@ if __name__ == '__main__':
     # Для тестирования модуля
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from settings import ICO_FOLDER, PROJECT_ROOT
-from ca_widgets.h_line_separate import QHLineSeparate
-from ca_widgets.messege_box_question import MessegeBoxQuestion
-from ca_functions.RowCounter import RowCounter
+from projects.tools.settings import ICO_FOLDER
+from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
+from projects.tools.row_counter import RowCounter
 
 
 class ToolTipMessage(QtWidgets.QWidget): 

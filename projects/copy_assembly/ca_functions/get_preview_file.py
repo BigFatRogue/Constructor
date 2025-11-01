@@ -1,4 +1,4 @@
-from settings import PROJECT_ROOT
+from projects.copy_assembly.settings import PROJECT_ROOT
 import os
 from PIL import Image
 
