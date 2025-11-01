@@ -497,8 +497,11 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
 
         self.label_info = QtWidgets.QLabel(self)
         self.label_info.setText('Автосохранение: Вкл')
-        self.grid.addWidget(self.label_info, 3, 0, 1, 2)
+        self.grid.addWidget(self.label_info, 3, 0, 1, 1)
         
+        self.label_info_2 = QtWidgets.QLabel(self)
+        self.grid.addWidget(self.label_info_2, 3, 1, 1, 1)
+
     def text_change(self) -> None:
         text = self.text_edit.toPlainText()
         self.tool_tip_widget.set_text(text)
@@ -658,7 +661,23 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.current_number_step += 1
         self.add_empty_step()
         self.tool_tip_widget.set_title(f'Шаг {self.current_number_step + 1}')
+        self.show_info_add_step()
     
+    def show_info_add_step(self) -> None:
+        if not self.label_info_2.text():
+            self.label_info_2.setText('Шаг добавлен')
+        
+        opacity = QtWidgets.QGraphicsOpacityEffect(self)
+        opacity.setOpacity(1.0)
+        self.label_info_2.setGraphicsEffect(opacity)
+
+        animation = QtCore.QVariantAnimation(self)
+        animation.setDuration(3000)
+        animation.setStartValue(1.0)
+        animation.setEndValue(0.0)
+        animation.valueChanged.connect(opacity.setOpacity)
+        animation.start()
+
     def del_value_in_config(self) -> None:
         if str(self.current_number_step) in self.dict_step:
             dlg = MessegeBoxQuestion(self, title='Удалить шаг?')
@@ -683,8 +702,6 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             self.save_as_config()
         else:
             self.__save_config(filename=self.filepath_config)
-        now = datetime.now()
-        self.label_info.setText(f'Автосохранение: вкл      💾 Сохранено (в {now.hour}:{now.minute}:{now.second})')
 
     def save_as_config(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
@@ -694,12 +711,20 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             self.__save_config(filename=self.filepath_config )
 
     def __save_config(self, filename) -> None:
+        len_dict_step = str(len(self.dict_step) - 1)
+        if len_dict_step in self.dict_step:
+            last_step = self.dict_step[len_dict_step]
+            if not last_step['message']:
+                del self.dict_step[len_dict_step]
+
         dict_step = {'steps': self.dict_step}
         with open(filename, 'w', encoding='utf-8') as config_file:
             json.dump(dict_step, config_file, ensure_ascii=False)
 
     def __auto_save(self) -> None:
         if self.is_autosave and self.filepath_config:
+            now = datetime.now()
+            self.label_info.setText(f'Автосохранение: вкл      💾 Сохранено (в {now.hour}:{now.minute}:{now.second})')
             self.save_config()
         
     def load_config(self) -> None:

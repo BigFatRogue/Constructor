@@ -17,7 +17,12 @@ from ca_functions.RowCounter import RowCounter
 
 class ToolTipMessage(QtWidgets.QWidget): 
     signal_next_step = QtCore.pyqtSignal()
+    signal_prev_step = QtCore.pyqtSignal()
     signal_end = QtCore.pyqtSignal()
+
+    TEXT_BTN_NEXT_STEP = 'Продолжить'
+    TEXT_BTN_WAIT = 'Ожидание...'
+    TEXT_BTN_END = 'Завершить'
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -52,17 +57,36 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.v_layout.addWidget(self.frame_tool_tip)
         
         self.grid_layout = QtWidgets.QGridLayout(self.frame_tool_tip)
-        self.grid_layout.setSpacing(2)
+        self.grid_layout.setSpacing(5)
         self.grid_layout.setContentsMargins(2, 2, 2, 2)
         
         row_counter = RowCounter()
+
+        self.btn_prev_step = QtWidgets.QPushButton(self)
+        self.btn_prev_step.setMaximumSize(20, 20)
+        self.btn_prev_step.setObjectName('btn_prev_step')
+        self.btn_prev_step.setStyleSheet('''
+                                #btn_prev_step {
+                                border: none;
+                                border-radius: 5px;
+                                }
+                                #btn_prev_step:hover {
+                                background-color: rgb(209, 235, 255);
+                                }
+                                ''')
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_back.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.btn_prev_step.setIcon(icon)
+        self.btn_prev_step.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.btn_prev_step.clicked.connect(self.prev_step)
+        self.grid_layout.addWidget(self.btn_prev_step, row_counter.value, 0, 1, 1)
 
         self.label_title = QtWidgets.QLabel(self.frame_tool_tip)
         self.label_title.setMaximumHeight(20)
         self.label_title.setObjectName('label_title')
         self.label_title.setStyleSheet('#label_title {}')
-        self.grid_layout.addWidget(self.label_title, row_counter.value, 0, 1, 1)
-
+        self.grid_layout.addWidget(self.label_title, row_counter.value, 1, 1, 1)
+    
         self.btn_end_tour = QtWidgets.QPushButton(self.frame_tool_tip)
         self.btn_end_tour.setObjectName('btn_end_tour')
         self.btn_end_tour.setMaximumSize(20, 20)
@@ -81,10 +105,10 @@ class ToolTipMessage(QtWidgets.QWidget):
                                         ''')
         self.btn_end_tour.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.btn_end_tour.clicked.connect(self.end)
-        self.grid_layout.addWidget(self.btn_end_tour, row_counter.value, 1, 1, 1)
+        self.grid_layout.addWidget(self.btn_end_tour, row_counter.value, 2, 1, 1)
 
         self.line_separate = QHLineSeparate(self.frame_tool_tip)
-        self.grid_layout.addWidget(self.line_separate, row_counter.next(), 0, 1, 2)
+        self.grid_layout.addWidget(self.line_separate, row_counter.next(), 0, 1, 3)
 
         self.label_message = QtWidgets.QLabel(self.frame_tool_tip)
         self.label_message.setObjectName('label_message')
@@ -101,10 +125,10 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.grid_layout.addWidget(self.label_content, row_counter.next(), 0, 1, 2)
 
         self.btn_next_step = QtWidgets.QPushButton(self)
-        self.btn_next_step.setText('Продолжить')
+        self.btn_next_step.setText(self.TEXT_BTN_NEXT_STEP)
         self.btn_next_step.setObjectName('btn_next_step')
         self.btn_next_step.clicked.connect(self.next_step)
-        self.grid_layout.addWidget(self.btn_next_step, row_counter.next(), 0, 1, 2)
+        self.grid_layout.addWidget(self.btn_next_step, row_counter.next(), 0, 1, 3)
     
     def set_title(self, title: str) -> None:
         self.label_title.setText(title)
@@ -122,23 +146,31 @@ class ToolTipMessage(QtWidgets.QWidget):
             self.label_content.clear()
         QtCore.QTimer.singleShot(10, self.adjustSize)
             
-
     def set_is_button_wait(self, value: bool=False) -> None:
         if value:
-            self.btn_next_step.setEnabled(False)
-            self.btn_next_step.setText('Ожидание..')
+            # self.btn_next_step.setEnabled(False)
+            self.btn_next_step.setText(self.TEXT_BTN_WAIT)
         else:
             self.btn_next_step.setEnabled(True)
-            self.btn_next_step.setText('Продолжить')
+            self.btn_next_step.setText(self.TEXT_BTN_NEXT_STEP)
 
     def set_pos(self, point: QtCore.QPointF) -> None:
         self.setGeometry(int(point.x()), int(point.y()), self.width(), self.height()) 
 
     def next_step(self) -> None:
-        self.signal_next_step.emit()
+        if self.btn_next_step.text() == self.TEXT_BTN_NEXT_STEP:
+            self.signal_next_step.emit()
+        elif self.btn_next_step.text() == self.TEXT_BTN_END:
+            self.end()
+
+    def prev_step(self) -> None:
+        self.signal_prev_step.emit()
 
     def end(self) -> None:
         self.signal_end.emit()
+
+    def set_text_button(self, text: str) -> None:
+        self.btn_next_step.setText(text)
 
     def eventFilter(self, obj, event):
         tp = event.type()
@@ -259,6 +291,7 @@ class HelperInteractive:
         self.widget_background = WidgetBackground(self.parent)
         self.widget_tool_tip = ToolTipMessage(self.parent)
         self.widget_tool_tip.signal_next_step.connect(self.next_step)
+        self.widget_tool_tip.signal_prev_step.connect(self.prev_step)
         self.widget_tool_tip.signal_end.connect(self.close)
 
     def __init_data(self, data: dict) -> None:
@@ -298,36 +331,48 @@ class HelperInteractive:
         header_pos = header.mapTo(self.parent, QtCore.QPoint(0, 0))
         return QtCore.QRect(header.x() + prev_column_width, header_pos.y(), column_width, header_rect.height())
 
-    def add_step(self, widgets: list[QtWidgets.QWidget], message: str, content_path: str='', button_is_wait=False) -> None:
-        if self.dict_data is None:
-            return
-        
-        self.dict_data[len(self.dict_data) ] = {
-            'widgets': widgets, 
-            'message': message, 
-            'content_path': content_path, 
-            'button_is_wait': button_is_wait
-            }
-
     def next_step(self) -> None:
-        if self.dict_data is None:
+        if self.dict_data is None or not str(self.curent_index_step) in self.dict_data:
             return
 
         if self.curent_index_step + 1 < len(self.dict_data):
             self.curent_index_step += 1
         
+        self.show_step()
+
+    def prev_step(self) -> None:
+        if self.dict_data is None:
+            return
+        
+        if self.curent_index_step - 1 >= 0:
+            self.curent_index_step -= 1
+        
+        self.show_step(button_is_wait=False)
+    
+    def show_step(self, button_is_wait=None) -> None:
+        if not str(self.curent_index_step) in self.dict_data:
+            return
+        
+        if button_is_wait is None:
+            button_is_wait = self.dict_data[str(self.curent_index_step)]['button_is_wait']
+        if 'is_check' in self.dict_data[str(self.curent_index_step)]:
+            button_is_wait = False
+
         self.widget_background.set_list_widget(self.dict_data[str(self.curent_index_step)]['widgets'])
         self.widget_tool_tip.set_title(title=f'Шаг {self.curent_index_step + 1}')
         self.widget_tool_tip.set_text(text=self.dict_data[str(self.curent_index_step)]['message'])
-        self.widget_tool_tip.set_is_button_wait(value=self.dict_data[str(self.curent_index_step)]['button_is_wait'])
+        self.widget_tool_tip.set_is_button_wait(button_is_wait)
         self.widget_tool_tip.set_content(content_path=self.dict_data[str(self.curent_index_step)]['content_path'])
+
+        if self.curent_index_step + 1 == len(self.dict_data):
+            self.widget_tool_tip.set_text_button('Завершить')
+
         QtCore.QTimer.singleShot(20, lambda: self.widget_tool_tip.set_pos(self.calc_pos_tool_tiip()))
-        # self.widget_tool_tip.set_pos(self.calc_pos_tool_tiip())
         self.enable_event_widgets()
         self.desable_event_widgets()
 
         self.widget_background.update()
-            
+
     def desable_event_widgets(self, parent=None) -> None:
         if parent is None:
             parent = self.parent
