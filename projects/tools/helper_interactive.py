@@ -12,7 +12,7 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.tools.settings import ICO_FOLDER
+from projects.tools.settings import ICO_FOLDER_HELPER
 from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 from projects.tools.row_counter import RowCounter
@@ -21,9 +21,9 @@ from projects.tools.row_counter import RowCounter
 class ToolTipMessage(QtWidgets.QWidget): 
     signal_next_step = QtCore.pyqtSignal()
     signal_prev_step = QtCore.pyqtSignal()
-    signal_end = QtCore.pyqtSignal()
+    signal_end = QtCore.pyqtSignal(bool)
 
-    TEXT_BTN_NEXT_STEP = 'Продолжить'
+    TEXT_BTN_NEXT_STEP = 'Следующий шаг'
     TEXT_BTN_WAIT = 'Пожалуйста, подождите...'
     TEXT_BTN_END = 'Завершить'
 
@@ -78,7 +78,7 @@ class ToolTipMessage(QtWidgets.QWidget):
                                 }
                                 ''')
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_back.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER_HELPER, 'icon_back.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_prev_step.setIcon(icon)
         self.btn_prev_step.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.btn_prev_step.clicked.connect(self.prev_step)
@@ -95,7 +95,7 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.btn_end_tour.setMaximumSize(20, 20)
         self.btn_end_tour.setToolTip('Завершить')
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_red_close.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER_HELPER, 'icon_red_close.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_end_tour.setIcon(icon)
         self.btn_end_tour.setStyleSheet('''
                                         #btn_end_tour {
@@ -107,7 +107,7 @@ class ToolTipMessage(QtWidgets.QWidget):
                                         }
                                         ''')
         self.btn_end_tour.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        self.btn_end_tour.clicked.connect(self.end)
+        self.btn_end_tour.clicked.connect(lambda: self.end(True))
         self.grid_layout.addWidget(self.btn_end_tour, row_counter.value, 2, 1, 1)
 
         self.line_separate = QHLineSeparate(self.frame_tool_tip)
@@ -164,13 +164,13 @@ class ToolTipMessage(QtWidgets.QWidget):
         if self.btn_next_step.text() == self.TEXT_BTN_NEXT_STEP:
             self.signal_next_step.emit()
         elif self.btn_next_step.text() == self.TEXT_BTN_END:
-            self.end()
+            self.end(False)
 
     def prev_step(self) -> None:
         self.signal_prev_step.emit()
 
-    def end(self) -> None:
-        self.signal_end.emit()
+    def end(self, value: bool) -> None:
+        self.signal_end.emit(value)
 
     def set_text_button(self, text: str) -> None:
         self.btn_next_step.setText(text)
@@ -275,8 +275,9 @@ class WidgetBackground(QtWidgets.QWidget):
 
 
 class HelperInteractive:
-    def __init__(self, parent: QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget, project_root_parent: str):
         self.parent = parent
+        self.project_root_parent = project_root_parent
         self.parent.moveEvent = self.move
         self.__is_visible = False
         self.path_config: str = None
@@ -358,16 +359,24 @@ class HelperInteractive:
         if not str(self.curent_index_step) in self.dict_data:
             return
         
+        self.dict_data[str(self.curent_index_step)]['widgets'] = self.get_widget_from_object_name()
+
         if button_is_wait is None:
             button_is_wait = self.dict_data[str(self.curent_index_step)]['button_is_wait']
         if 'is_check' in self.dict_data[str(self.curent_index_step)]:
             button_is_wait = False
+        
+        rel_content_path = self.dict_data[str(self.curent_index_step)]['content_path']
+        if rel_content_path:
+            content_path = os.path.join(self.project_root_parent, rel_content_path)
+        else:
+            content_path = ''
 
         self.widget_background.set_list_widget(self.dict_data[str(self.curent_index_step)]['widgets'])
         self.widget_tool_tip.set_title(title=f'Шаг {self.curent_index_step + 1}')
         self.widget_tool_tip.set_text(text=self.dict_data[str(self.curent_index_step)]['message'])
         self.widget_tool_tip.set_is_button_wait(button_is_wait)
-        self.widget_tool_tip.set_content(content_path=self.dict_data[str(self.curent_index_step)]['content_path'])
+        self.widget_tool_tip.set_content(content_path=content_path)
 
         if self.curent_index_step + 1 == len(self.dict_data):
             self.widget_tool_tip.set_text_button('Завершить')
@@ -377,6 +386,23 @@ class HelperInteractive:
         self.desable_event_widgets()
 
         self.widget_background.update()
+
+    def get_widget_from_object_name(self, list_object_name: list[str]=None) -> list:
+        if list_object_name is None:
+            list_object_name = self.dict_data[str(self.curent_index_step)]['object_names']
+        list_widgets = []
+        for object_name in list_object_name:
+            if '.' not in object_name:
+                widget = self.parent.findChild(QtCore.QObject, object_name)
+                if widget:
+                    list_widgets.append(widget)
+            else:
+                object_name, column_number = object_name.split('.')
+                widget = self.parent.findChild(QtCore.QObject, object_name)
+                if widget:
+                    rect = self.__get_rect_tree_header(widget, int(column_number))
+                    list_widgets.append(rect)    
+        return list_widgets
 
     def desable_event_widgets(self, parent=None) -> None:
         if parent is None:
@@ -441,6 +467,7 @@ class HelperInteractive:
         
         self.widget_background.show()
         self.widget_tool_tip.show()
+        self.show_step()
         
     def hide(self) -> None:
         self.__is_visible = False
@@ -449,9 +476,12 @@ class HelperInteractive:
         self.widget_background.hide()
         self.widget_tool_tip.hide()
     
-    def close(self) -> None:
-        mbq = MessegeBoxQuestion(self.parent, title='Завершить', question='Завершить показ интерактивной спраки?')
-        if mbq.exec() == QtWidgets.QDialog.Accepted:
+    def close(self, with_dialog_window=True) -> None:
+        if with_dialog_window:
+            mbq = MessegeBoxQuestion(self.parent, title='Завершить', question='Завершить показ интерактивной спраки?')
+            if mbq.exec() == QtWidgets.QDialog.Accepted:
+                self.hide()
+        else:
             self.hide()
 
     def resize(self, size) -> None:

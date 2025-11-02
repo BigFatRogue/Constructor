@@ -32,6 +32,8 @@ from projects.copy_assembly.ca_functions.copy_and_rename_assembly import move_fi
 from projects.copy_assembly.ca_functions.my_function import strip_path, decorater_set_object_name
 from projects.copy_assembly.ca_functions.RowCounter import RowCounter
 
+from projects.copy_assembly.ca_helper.helper_widgets import WindowHelper
+
 
 class IThread(QtCore.QObject):
     __instance = None
@@ -458,6 +460,7 @@ class Tree(QtWidgets.QTreeView):
 
         super().keyPressEvent(event)
 
+
 @decorater_set_object_name
 class FrameTreeFromDict(QtWidgets.QFrame):
     signal_rename = QtCore.pyqtSignal(tuple)
@@ -466,6 +469,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.dict_rename = None
+        self.column_name = ['Имя компонента в сборке', 'Имя компонента в файле', 'Относительный путь', 'Правила Ilogic']
         self.window_rules = WindowsViewerRules(self)
         self.logger_changes = LoggerChangesQTree()
         self.init()
@@ -592,6 +596,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.hl_frame_frame_btn_control.addItem(self.horizont_spacer)
         # ------------------------------------------------------------------------------------------------#
         self.model = QtGui.QStandardItemModel()
+        self.model.setHorizontalHeaderLabels(self.column_name)
         self.tree = Tree(self, self.model)
         self.tree.signal_click_btn_rules.connect(self.open_window_rules)
         self.grid.addWidget(self.tree, counter_row.next(), 0, 1, 4)
@@ -607,8 +612,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
     def fill_tree(self, dict_from_assembly: dict):
         self.model.clear()
-        self.model.setHorizontalHeaderLabels(['Имя компонента в сборке', 'Имя компонента в файле', 'Относительный путь', 'Правила Ilogic'])
-        
+        self.model.setHorizontalHeaderLabels(self.column_name)
         self.dict_rename = {
             'root_assembly': dict_from_assembly['root_assembly'],
             'name_assembly': dict_from_assembly['name_assembly'],
@@ -817,6 +821,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
                 return
         os.system(f"explorer {PATH_TMP}")
 
+
 @decorater_set_object_name
 class ElidedLabel(QtWidgets.QLabel):
     def __init__(self, parent=None):
@@ -830,10 +835,11 @@ class ElidedLabel(QtWidgets.QLabel):
         return QtCore.QSize(0, 0)
     
 @decorater_set_object_name
-class Window(QtWidgets.QMainWindow):
+class WindowCopyAssembly(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.tmp_assembly_path: Optional[str] = None
+        self.helper = None
 
         self.prepared_assembly_window = PreparedAssemblyWindow(self)
         self.prepared_assembly_window.signal_get_data.connect(self.get_data_from_prepared_assembly)
@@ -843,7 +849,7 @@ class Window(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_thread()
         self.init_helper_interective()
-                
+
         if DEBUG:
             self.label_load_ring.setText(r'\\pdm\pkodocs\Inventor Project\ООО ЛебедяньМолоко\1642_24\5.3.X5. Порошковый миксер Inoxpa ME-4105_ME-4110\05 проект INVENTOR\ALS.1642.5.3.06.01-Рама\ALS.1642.5.3.06.01.00.000 СБ\Frame')
 
@@ -881,6 +887,7 @@ class Window(QtWidgets.QMainWindow):
         help_menu = menuBar.addMenu('&Помощь')
 
         help_action_doc = QtWidgets.QAction("&Справка", self)
+        help_action_doc.setShortcut('F1')
         help_action_doc.triggered.connect(self.open_instruction)
         help_menu.addAction(help_action_doc)
 
@@ -995,7 +1002,7 @@ class Window(QtWidgets.QMainWindow):
         #                       'Шаг 2')       
 
     def init_helper_interective(self) -> None:
-        self.interactive_helper = HelperInteractive(self)
+        self.interactive_helper = HelperInteractive(self, PROJECT_ROOT)
         self.interactive_helper.hide()
 
     def start_help_interective(self) -> None:
@@ -1024,7 +1031,10 @@ class Window(QtWidgets.QMainWindow):
         self.frame_tree_assembly.switch_enabled_widgets(True)
 
     def open_instruction(self, event):
-        os.startfile(os.path.join(PROJECT_ROOT, URL_INSTRUCTION_OFFLINE))
+        if self.helper is None:
+            self.helper = WindowHelper(self)
+        self.helper.show()
+        # os.startfile(os.path.join(PROJECT_ROOT, URL_INSTRUCTION_OFFLINE))
 
     def show_window_prepared_assembly(self):
         self.prepared_assembly_window.show()
@@ -1226,6 +1236,6 @@ if __name__ == '__main__':
     sys.excepthook = my_excepthook
     app = QtWidgets.QApplication(sys.argv)
 
-    window = Window()
+    window = WindowCopyAssembly()
     window.show()
     sys.exit(app.exec_())
