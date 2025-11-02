@@ -1,3 +1,2 @@
-
 D:/Python/AlfaServis/Constructor/config_helper_interactive.json
 D:/Python/AlfaServis/Constructor/projects/copy_assembly/resources/config_helper_interactive.json
