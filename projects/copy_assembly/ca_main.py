@@ -18,6 +18,7 @@ from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 from projects.tools.helper_interactive import HelperInteractive
 from projects.tools.custom_qwidget.helper_widgets import WindowHelper
+from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button, decorater_set_object_name
 
 from projects.copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
 from projects.copy_assembly.ca_other_window.window_rules import WindowsViewerRules
@@ -30,8 +31,8 @@ from projects.copy_assembly.ca_logging.my_logging import loging_sys, loging_try
 from projects.copy_assembly.ca_functions.logger_changes_qtree import LoggerChangesQTree, TypeItemQTree
 from projects.copy_assembly.ca_functions.preprocess_inventor import get_app_inventor, kill_process_for_pid
 from projects.copy_assembly.ca_functions.copy_and_rename_assembly import move_file_inventor_project, copy_file_assembly, get_tree_assembly, copy_and_rename_file_assembly, replace_reference_file, rename_display_name_and_set_rules, rename_component_name_in_assembly, create_folder_rename_assembly
-from projects.copy_assembly.ca_functions.my_function import strip_path, decorater_set_object_name
-from projects.copy_assembly.ca_functions.RowCounter import RowCounter
+from projects.copy_assembly.ca_functions.ca_function import strip_path
+from projects.tools.row_counter import RowCounter
 
 
 
@@ -363,7 +364,6 @@ class ButtonShowRules(QtWidgets.QPushButton):
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_rules.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setIcon(icon)
-        self.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_context_menu)
@@ -382,6 +382,7 @@ class ButtonShowRules(QtWidgets.QPushButton):
             self.hide()
 
 
+@decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 @decorater_set_object_name
 class Tree(QtWidgets.QTreeView):
     signal_click_btn_rules = QtCore.pyqtSignal(tuple)
@@ -462,6 +463,7 @@ class Tree(QtWidgets.QTreeView):
         super().keyPressEvent(event)
 
 
+@decorater_set_hand_cursor_button([QtWidgets.QPushButton, QtWidgets.QCheckBox])
 @decorater_set_object_name
 class FrameTreeFromDict(QtWidgets.QFrame):
     signal_rename = QtCore.pyqtSignal(tuple)
@@ -507,7 +509,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.btn_replace.setObjectName('btn_replace')
         self.btn_replace.setText('Заменить')
         self.btn_replace.clicked.connect(self.__click_btn_replace)
-        self.btn_replace.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.grid.addWidget(self.btn_replace, counter_row.value, 2, 1, 1)
 
         # ------------------------------------------------------------------------------------------------#
@@ -521,18 +522,15 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         
         self.check_box_suffix = QtWidgets.QCheckBox(self.frame_check_box)
         self.check_box_suffix.setText('Добавить вначале')
-        self.check_box_suffix.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.check_box_suffix.clicked.connect(self.click_check_box_suffix)
         self.hl_frame_check_box.addWidget(self.check_box_suffix)
 
         self.check_box_preffix = QtWidgets.QCheckBox(self.frame_check_box)
         self.check_box_preffix.setText('Добавить в конец')
-        self.check_box_preffix.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.check_box_preffix.clicked.connect(self.click_check_box_preffix)
         self.hl_frame_check_box.addWidget(self.check_box_preffix)
 
         self.check_box_change_in_rules = QtWidgets.QCheckBox(self.frame_check_box)
-        self.check_box_change_in_rules.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.check_box_change_in_rules.setText('Изменять в правилах автоматически')
         self.check_box_change_in_rules.setCheckState(QtCore.Qt.CheckState(2))
         self.hl_frame_check_box.addWidget(self.check_box_change_in_rules)
@@ -553,7 +551,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
         self.btn_return_back = QtWidgets.QPushButton(self.frame_btn_control)
         icon = QtGui.QIcon()
-        self.btn_return_back.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_return_back.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_return_back.setIconSize(QtCore.QSize(12, 12))
         self.btn_return_back.setIcon(icon)
@@ -562,7 +559,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.hl_frame_frame_btn_control.addWidget(self.btn_return_back)
 
         self.btn_return_forward = QtWidgets.QPushButton(self.frame_btn_control)
-        self.btn_return_forward.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_return_forward.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_return_forward.setIconSize(QtCore.QSize(12, 12))
@@ -573,7 +569,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         # ------------------------------------------------------------------------------------------------#
         self.btn_update_tree = QtWidgets.QPushButton(self)
         self.btn_update_tree.setObjectName('btn_update_tree')
-        self.btn_update_tree.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_update.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_update_tree.setIcon(icon)
@@ -584,7 +579,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         # ------------------------------------------------------------------------------------------------#
         self.btn_open_tmp_folder = QtWidgets.QPushButton(self)
         self.btn_open_tmp_folder.setObjectName('btn_open_tmp_folder')
-        self.btn_open_tmp_folder.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_folder.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_open_tmp_folder.setIcon(icon)
@@ -834,7 +828,9 @@ class ElidedLabel(QtWidgets.QLabel):
         
     def minimumSizeHint(self):
         return QtCore.QSize(0, 0)
-    
+
+
+@decorater_set_hand_cursor_button([QtWidgets.QPushButton, QtWidgets.QCheckBox])    
 @decorater_set_object_name
 class WindowCopyAssembly(QtWidgets.QMainWindow):
     def __init__(self):
@@ -912,7 +908,6 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
         self.btn_choose_path_assembly.setObjectName('btn_choose_path_assembly')
         self.btn_choose_path_assembly.setMinimumSize(30, 20)
         self.btn_choose_path_assembly.setMaximumSize(30, 20)
-        self.btn_choose_path_assembly.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.btn_choose_path_assembly.clicked.connect(self.click_choose_assembly)
         self.btn_choose_path_assembly.setToolTip('Выбрать сборку в проводнике')
         icon = QtGui.QIcon()
@@ -933,7 +928,6 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
         self.btn_continue.setText('Продолжить')
         self.btn_continue.setMinimumHeight(20)
         self.btn_continue.clicked.connect(self.click_continue)
-        self.btn_continue.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.grid.addWidget(self.btn_continue, 4, 0, 1, 3)
         # ------------------------------------------------------------------------------------------------#
         self.frame_load = QtWidgets.QFrame(self)
@@ -1003,6 +997,7 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
         #                       'Шаг 2')       
 
     def init_helper_interective(self) -> None:
+        print(PROJECT_ROOT)
         self.interactive_helper = HelperInteractive(self, PROJECT_ROOT)
         self.interactive_helper.hide()
 

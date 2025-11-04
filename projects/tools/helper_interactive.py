@@ -16,8 +16,10 @@ from projects.tools.settings import ICO_FOLDER_HELPER
 from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 from projects.tools.row_counter import RowCounter
+from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
 
+@decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class ToolTipMessage(QtWidgets.QWidget): 
     signal_next_step = QtCore.pyqtSignal()
     signal_prev_step = QtCore.pyqtSignal()
@@ -68,6 +70,7 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.btn_prev_step = QtWidgets.QPushButton(self)
         self.btn_prev_step.setMaximumSize(20, 20)
         self.btn_prev_step.setObjectName('btn_prev_step')
+        self.btn_prev_step.setToolTip('Предыдущий шаг')
         self.btn_prev_step.setStyleSheet('''
                                 #btn_prev_step {
                                 border: none;
@@ -80,7 +83,6 @@ class ToolTipMessage(QtWidgets.QWidget):
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER_HELPER, 'icon_back.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_prev_step.setIcon(icon)
-        self.btn_prev_step.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.btn_prev_step.clicked.connect(self.prev_step)
         self.grid_layout.addWidget(self.btn_prev_step, row_counter.value, 0, 1, 1)
 
@@ -106,7 +108,7 @@ class ToolTipMessage(QtWidgets.QWidget):
                                         background-color: rgb(209, 235, 255);
                                         }
                                         ''')
-        self.btn_end_tour.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+
         self.btn_end_tour.clicked.connect(lambda: self.end(True))
         self.grid_layout.addWidget(self.btn_end_tour, row_counter.value, 2, 1, 1)
 
@@ -126,10 +128,23 @@ class ToolTipMessage(QtWidgets.QWidget):
 
         self.label_content = QtWidgets.QLabel(self.frame_tool_tip)
         self.grid_layout.addWidget(self.label_content, row_counter.next(), 0, 1, 2)
-
+        "#1c9dff"
         self.btn_next_step = QtWidgets.QPushButton(self)
         self.btn_next_step.setText(self.TEXT_BTN_NEXT_STEP)
+        self.btn_next_step.setMinimumHeight(20)
         self.btn_next_step.setObjectName('btn_next_step')
+        self.btn_next_step.setStyleSheet("""
+                                         #btn_next_step {
+                                            border: 1px solid gray;
+                                            border-radius: 6px;
+                                            min-height: 20px;
+                                            background-color: rgb(209, 235, 255);
+                                         
+                                        }
+                                        #btn_next_step:hover {
+                                            border: 1px solid #0078d4;
+                                            background-color: rgb(180, 215, 255);
+                                        }""")
         self.btn_next_step.clicked.connect(self.next_step)
         self.grid_layout.addWidget(self.btn_next_step, row_counter.next(), 0, 1, 3)
     
@@ -261,7 +276,7 @@ class WidgetBackground(QtWidgets.QWidget):
         path.addRect(QtCore.QRectF(self.rect()))
         path.addRoundedRect(self.highlight_rect, 5, 5)
 
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 128, 255, self.__highlight_color_transparency), 5))
+        painter.setPen(QtGui.QPen(QtGui.QColor(220, 80, 0, self.__highlight_color_transparency), 5))
         painter.drawRect(self.highlight_rect)
 
         painter.fillPath(path, QtGui.QBrush(QtGui.QColor(0, 0, 0, 220)))
@@ -451,20 +466,10 @@ class HelperInteractive:
         return self.__is_visible       
 
     def show(self) -> None:
-        if self.dict_data is None:
-            return
 
         self.__is_visible = True
-        self.desable_event_widgets()
-
-        self.widget_background.set_list_widget(self.dict_data[str(self.curent_index_step)]['widgets'])
-
-        self.widget_tool_tip.set_title(title=f'Шаг {self.curent_index_step + 1}')
-        self.widget_tool_tip.set_text(text=self.dict_data[str(self.curent_index_step)]['message'])
-        self.widget_tool_tip.set_content(content_path=self.dict_data[str(self.curent_index_step)]['content_path'])
-        self.widget_tool_tip.set_is_button_wait(value=self.dict_data[str(self.curent_index_step)]['button_is_wait'])
-        QtCore.QTimer.singleShot(20, lambda: self.widget_tool_tip.set_pos(self.calc_pos_tool_tiip()))
         
+        self.widget_background.resize(self.parent.size())
         self.widget_background.show()
         self.widget_tool_tip.show()
         self.show_step()
@@ -533,9 +538,9 @@ class Window(QtWidgets.QMainWindow):
         self.btn_3.clicked.connect(self.open_help)
         self.vl.addWidget(self.btn_3)
 
-        self.helper = HelperInteractive(self)
+        self.helper = HelperInteractive(self, 'd:\Python\AlfaServis\Constructor\projects\copy_assembly')
         self.helper.load_config(r'D:\Python\AlfaServis\Constructor\projects\copy_assembly\resources\config_helper_interactive.json')
-        self.helper.hide()
+        self.helper.show()
 
     def open_help(self) -> None:
         self.helper.show()
