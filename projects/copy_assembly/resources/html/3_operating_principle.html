@@ -1,0 +1,68 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Общий принцип работы</title>
+    <style>
+        * {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        #header {
+            display: inline-block;
+            padding: 10px;
+            margin: 10px;  
+        }
+
+        .number {
+            font-weight: bold;
+        }
+
+        table {
+            margin: 10px;
+            width: 100%;
+        }
+
+        td.header {
+            border-bottom: 1px solid black;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding-top: 20px;
+        }
+        .marker-list {
+            margin-left: 35px;
+        }
+        code {
+            background-color: rgb(223, 223, 223);
+        }
+    </style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td class="header">
+                <h1>Общий принцип работы</h1>
+            </td>
+        </tr>
+        <tr>
+            <td class="content">
+                <div class="marker-list">
+                    <p><span class="number">1. </span>Запуск отдельного экземпляра Inventor</p>
+                    <p><span class="number">2. </span>Создание временного проекта Inventor <code>.ipj</code></p>
+                    <p><span class="number">3. </span>Копирование выбранной исходной сборки во временную рабочую папку</p>
+                    <p><span class="number">4. </span>Открытие и анализ сборки</p>
+                    <p><span class="number">5. </span>Отображение структуры файлов в дереве программы</p>
+                    <p><span class="number">6. </span>Переименование компонентов пользователем</p>
+                    <p><span class="number">7. </span>Копирование и переименование файлов в новую папку проекта</p>
+                    <p><span class="number">8. </span>Обновление ссылок и замена компонентов на переименованные версии</p>
+                    <p><span class="number">9. </span>Выбор пользователем конечной папки размещения новой сборки</p>
+                    <p><span class="number">10. </span>Удаление временной рабочей папки после закрытия приложения</p>
+                    <p><span class="number">11. </span>Завершение созданного экземпляра Inventor после закрытия приложения</p>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

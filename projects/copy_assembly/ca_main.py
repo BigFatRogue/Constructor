@@ -17,6 +17,7 @@ from projects.copy_assembly.settings import *
 from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 from projects.tools.helper_interactive import HelperInteractive
+from projects.tools.custom_qwidget.helper_widgets import WindowHelper
 
 from projects.copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
 from projects.copy_assembly.ca_other_window.window_rules import WindowsViewerRules
@@ -32,7 +33,7 @@ from projects.copy_assembly.ca_functions.copy_and_rename_assembly import move_fi
 from projects.copy_assembly.ca_functions.my_function import strip_path, decorater_set_object_name
 from projects.copy_assembly.ca_functions.RowCounter import RowCounter
 
-from projects.copy_assembly.ca_helper.helper_widgets import WindowHelper
+
 
 
 class IThread(QtCore.QObject):
@@ -1032,9 +1033,8 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
 
     def open_instruction(self, event):
         if self.helper is None:
-            self.helper = WindowHelper(self)
+            self.helper = WindowHelper(self, path_resources=os.path.join(PROJECT_ROOT, 'resources'))
         self.helper.show()
-        # os.startfile(os.path.join(PROJECT_ROOT, URL_INSTRUCTION_OFFLINE))
 
     def show_window_prepared_assembly(self):
         self.prepared_assembly_window.show()
