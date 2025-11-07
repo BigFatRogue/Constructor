@@ -17,6 +17,8 @@ from projects.copy_assembly.settings import *
 from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 from projects.tools.helper_interactive import HelperInteractive
+from projects.tools.custom_qwidget.helper_widgets import WindowHelper
+from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button, decorater_set_object_name
 
 from projects.copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
 from projects.copy_assembly.ca_other_window.window_rules import WindowsViewerRules
@@ -29,8 +31,10 @@ from projects.copy_assembly.ca_logging.my_logging import loging_sys, loging_try
 from projects.copy_assembly.ca_functions.logger_changes_qtree import LoggerChangesQTree, TypeItemQTree
 from projects.copy_assembly.ca_functions.preprocess_inventor import get_app_inventor, kill_process_for_pid
 from projects.copy_assembly.ca_functions.copy_and_rename_assembly import move_file_inventor_project, copy_file_assembly, get_tree_assembly, copy_and_rename_file_assembly, replace_reference_file, rename_display_name_and_set_rules, rename_component_name_in_assembly, create_folder_rename_assembly
-from projects.copy_assembly.ca_functions.my_function import strip_path, decorater_set_object_name
-from projects.copy_assembly.ca_functions.RowCounter import RowCounter
+from projects.copy_assembly.ca_functions.ca_function import strip_path
+from projects.tools.row_counter import RowCounter
+
+
 
 
 class IThread(QtCore.QObject):
@@ -344,7 +348,8 @@ class HighlightDelegate(QtWidgets.QStyledItemDelegate):
     
     def setModeRegister(self, value: bool) -> None:
         self.mode_register = value
-    
+
+
 @decorater_set_object_name
 class ButtonShowRules(QtWidgets.QPushButton):
     signal_remove_rule = QtCore.pyqtSignal()
@@ -359,7 +364,6 @@ class ButtonShowRules(QtWidgets.QPushButton):
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_rules.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.setIcon(icon)
-        self.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_context_menu)
@@ -376,7 +380,9 @@ class ButtonShowRules(QtWidgets.QPushButton):
         if msg.exec() == QtWidgets.QDialog.Accepted:
             self.item_rules_ilogic.rules = {}
             self.hide()
-            
+
+
+@decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 @decorater_set_object_name
 class Tree(QtWidgets.QTreeView):
     signal_click_btn_rules = QtCore.pyqtSignal(tuple)
@@ -456,6 +462,8 @@ class Tree(QtWidgets.QTreeView):
 
         super().keyPressEvent(event)
 
+
+@decorater_set_hand_cursor_button([QtWidgets.QPushButton, QtWidgets.QCheckBox])
 @decorater_set_object_name
 class FrameTreeFromDict(QtWidgets.QFrame):
     signal_rename = QtCore.pyqtSignal(tuple)
@@ -464,6 +472,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.dict_rename = None
+        self.column_name = ['Имя компонента в сборке', 'Имя компонента в файле', 'Относительный путь', 'Правила Ilogic']
         self.window_rules = WindowsViewerRules(self)
         self.logger_changes = LoggerChangesQTree()
         self.init()
@@ -500,7 +509,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.btn_replace.setObjectName('btn_replace')
         self.btn_replace.setText('Заменить')
         self.btn_replace.clicked.connect(self.__click_btn_replace)
-        self.btn_replace.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.grid.addWidget(self.btn_replace, counter_row.value, 2, 1, 1)
 
         # ------------------------------------------------------------------------------------------------#
@@ -514,18 +522,15 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         
         self.check_box_suffix = QtWidgets.QCheckBox(self.frame_check_box)
         self.check_box_suffix.setText('Добавить вначале')
-        self.check_box_suffix.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.check_box_suffix.clicked.connect(self.click_check_box_suffix)
         self.hl_frame_check_box.addWidget(self.check_box_suffix)
 
         self.check_box_preffix = QtWidgets.QCheckBox(self.frame_check_box)
         self.check_box_preffix.setText('Добавить в конец')
-        self.check_box_preffix.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.check_box_preffix.clicked.connect(self.click_check_box_preffix)
         self.hl_frame_check_box.addWidget(self.check_box_preffix)
 
         self.check_box_change_in_rules = QtWidgets.QCheckBox(self.frame_check_box)
-        self.check_box_change_in_rules.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.check_box_change_in_rules.setText('Изменять в правилах автоматически')
         self.check_box_change_in_rules.setCheckState(QtCore.Qt.CheckState(2))
         self.hl_frame_check_box.addWidget(self.check_box_change_in_rules)
@@ -546,7 +551,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
         self.btn_return_back = QtWidgets.QPushButton(self.frame_btn_control)
         icon = QtGui.QIcon()
-        self.btn_return_back.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_return_back.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_return_back.setIconSize(QtCore.QSize(12, 12))
         self.btn_return_back.setIcon(icon)
@@ -555,7 +559,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.hl_frame_frame_btn_control.addWidget(self.btn_return_back)
 
         self.btn_return_forward = QtWidgets.QPushButton(self.frame_btn_control)
-        self.btn_return_forward.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_return_forward.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_return_forward.setIconSize(QtCore.QSize(12, 12))
@@ -566,7 +569,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         # ------------------------------------------------------------------------------------------------#
         self.btn_update_tree = QtWidgets.QPushButton(self)
         self.btn_update_tree.setObjectName('btn_update_tree')
-        self.btn_update_tree.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_update.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_update_tree.setIcon(icon)
@@ -577,7 +579,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         # ------------------------------------------------------------------------------------------------#
         self.btn_open_tmp_folder = QtWidgets.QPushButton(self)
         self.btn_open_tmp_folder.setObjectName('btn_open_tmp_folder')
-        self.btn_open_tmp_folder.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(ICO_FOLDER, 'icon_folder.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.btn_open_tmp_folder.setIcon(icon)
@@ -590,6 +591,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.hl_frame_frame_btn_control.addItem(self.horizont_spacer)
         # ------------------------------------------------------------------------------------------------#
         self.model = QtGui.QStandardItemModel()
+        self.model.setHorizontalHeaderLabels(self.column_name)
         self.tree = Tree(self, self.model)
         self.tree.signal_click_btn_rules.connect(self.open_window_rules)
         self.grid.addWidget(self.tree, counter_row.next(), 0, 1, 4)
@@ -605,8 +607,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
 
     def fill_tree(self, dict_from_assembly: dict):
         self.model.clear()
-        self.model.setHorizontalHeaderLabels(['Имя компонента в сборке', 'Имя компонента в файле', 'Относительный путь', 'Правила Ilogic'])
-        
+        self.model.setHorizontalHeaderLabels(self.column_name)
         self.dict_rename = {
             'root_assembly': dict_from_assembly['root_assembly'],
             'name_assembly': dict_from_assembly['name_assembly'],
@@ -802,7 +803,6 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         if self.dict_rename:
             self.signal_update_tree.emit(os.path.join(self.dict_rename['root_assembly'], self.dict_rename['name_assembly']))
 
-
     def switch_enabled_widgets(self, value: bool) -> None:
         for widgets in self.children():
             if isinstance(widgets, QtWidgets.QPushButton) or isinstance(widgets, QtWidgets.QLineEdit) or isinstance(widgets, QtWidgets.QFrame):
@@ -816,6 +816,7 @@ class FrameTreeFromDict(QtWidgets.QFrame):
                 return
         os.system(f"explorer {PATH_TMP}")
 
+
 @decorater_set_object_name
 class ElidedLabel(QtWidgets.QLabel):
     def __init__(self, parent=None):
@@ -827,30 +828,32 @@ class ElidedLabel(QtWidgets.QLabel):
         
     def minimumSizeHint(self):
         return QtCore.QSize(0, 0)
-    
+
+
+@decorater_set_hand_cursor_button([QtWidgets.QPushButton, QtWidgets.QCheckBox])    
 @decorater_set_object_name
-class Window(QtWidgets.QMainWindow):
+class WindowCopyAssembly(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.tmp_assembly_path: Optional[str] = None
+        self.helper = None
 
         self.prepared_assembly_window = PreparedAssemblyWindow(self)
         self.prepared_assembly_window.signal_get_data.connect(self.get_data_from_prepared_assembly)
         self.thread_inventor = IThread()
-        self.interactive_helper = None
 
-        self.initWindow()
-        self.initWidgets()
-        self.initThread()
-        # self.initHelper()
-                
+        self.init_window()
+        self.init_widgets()
+        self.init_thread()
+        self.init_helper_interective()
+
         if DEBUG:
             self.label_load_ring.setText(r'\\pdm\pkodocs\Inventor Project\ООО ЛебедяньМолоко\1642_24\5.3.X5. Порошковый миксер Inoxpa ME-4105_ME-4110\05 проект INVENTOR\ALS.1642.5.3.06.01-Рама\ALS.1642.5.3.06.01.00.000 СБ\Frame')
 
             with open(os.path.join(Path(PROJECT_ROOT).parent, 'DEBUG\data_assembly.txt'), 'r', encoding='utf-8') as file_data_assembly: 
                 self.fill_trees(eval(file_data_assembly.read()))
 
-    def initWindow(self):
+    def init_window(self):
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.setWindowIcon(QtGui.QIcon(os.path.join(ICO_FOLDER, 'CopyAssembly.png')))
@@ -881,6 +884,7 @@ class Window(QtWidgets.QMainWindow):
         help_menu = menuBar.addMenu('&Помощь')
 
         help_action_doc = QtWidgets.QAction("&Справка", self)
+        help_action_doc.setShortcut('F1')
         help_action_doc.triggered.connect(self.open_instruction)
         help_menu.addAction(help_action_doc)
 
@@ -892,25 +896,24 @@ class Window(QtWidgets.QMainWindow):
         self.shortcut_search_focus = QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+F'), self)
         self.shortcut_search_focus.activated.connect(self.set_focus_search_line_edit)
 
-    def initWidgets(self):
-        # ------------------------------------------------------------------------------------------------#
-        self.label_choose_assembly = QtWidgets.QLabel(self)
-        self.label_choose_assembly.setText('Выберите сборку')
-        self.grid.addWidget(self.label_choose_assembly, 0, 0, 1, 1)
-
+    def init_widgets(self):
         self.lineedit_choose_assembly = QtWidgets.QLineEdit(self)
         self.lineedit_choose_assembly.setObjectName('lineedit_choose_assembly')
         self.lineedit_choose_assembly.textChanged.connect(lambda event: self.lineedit_choose_assembly.setStyleSheet("#lineedit_choose_assembly {border: 1px solid gray;}"))
-        self.grid.addWidget(self.lineedit_choose_assembly, 0, 1, 1, 1)
+        self.lineedit_choose_assembly.setPlaceholderText('Выберите сборку (файл формата .iam)')
+        self.grid.addWidget(self.lineedit_choose_assembly, 0, 0, 1, 1)
         self.lineedit_choose_assembly.setEnabled(False)
 
         self.btn_choose_path_assembly = QtWidgets.QPushButton(self)
         self.btn_choose_path_assembly.setObjectName('btn_choose_path_assembly')
-        self.btn_choose_path_assembly.setMinimumSize(50, 20)
-        self.btn_choose_path_assembly.setText('Выбрать')
-        self.btn_choose_path_assembly.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.btn_choose_path_assembly.setMinimumSize(30, 20)
+        self.btn_choose_path_assembly.setMaximumSize(30, 20)
         self.btn_choose_path_assembly.clicked.connect(self.click_choose_assembly)
-        self.grid.addWidget(self.btn_choose_path_assembly, 0, 2, 1, 1)
+        self.btn_choose_path_assembly.setToolTip('Выбрать сборку в проводнике')
+        icon = QtGui.QIcon()
+        icon.addFile(os.path.join(ICO_FOLDER, 'icon_folder.png'))
+        self.btn_choose_path_assembly.setIcon(icon)
+        self.grid.addWidget(self.btn_choose_path_assembly, 0, 1, 1, 1)
         # ------------------------------------------------------------------------------------------------#
         self.line_1 = QHLineSeparate(self)
         self.grid.addWidget(self.line_1, 2, 0, 1, 3)
@@ -925,7 +928,6 @@ class Window(QtWidgets.QMainWindow):
         self.btn_continue.setText('Продолжить')
         self.btn_continue.setMinimumHeight(20)
         self.btn_continue.clicked.connect(self.click_continue)
-        self.btn_continue.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
         self.grid.addWidget(self.btn_continue, 4, 0, 1, 3)
         # ------------------------------------------------------------------------------------------------#
         self.frame_load = QtWidgets.QFrame(self)
@@ -944,7 +946,7 @@ class Window(QtWidgets.QMainWindow):
         self.label_load_ring.setText('Готово')
         self.layout_frame_load.addWidget(self.label_load_ring)
 
-    def initThread(self):
+    def init_thread(self):
         self.thread_inventor.signal_text_pb.connect(self.change_text_pb)
         self.thread_inventor.signal_pb.connect(self.set_state_pb)
         self.thread_inventor.signal_dict_assembly.connect(self.fill_trees)
@@ -994,13 +996,16 @@ class Window(QtWidgets.QMainWindow):
         #                       self.frame_tree_assembly.check_box_register], 
         #                       'Шаг 2')       
 
-    def start_help_interective(self) -> None:
-        if self.interactive_helper is None:
-            self.interactive_helper = HelperInteractive(self)
-            self.interactive_helper.load_config(os.path.join(PROJECT_ROOT, 'resources\\config_helper_interactive.json'))
-        # self.initHelper()
-        self.interactive_helper.show()
+    def init_helper_interective(self) -> None:
+        print(PROJECT_ROOT)
+        self.interactive_helper = HelperInteractive(self, PROJECT_ROOT)
+        self.interactive_helper.hide()
 
+    def start_help_interective(self) -> None:
+        if self.interactive_helper and not self.interactive_helper.isVisible():
+            self.interactive_helper.load_config(os.path.join(PROJECT_ROOT, 'resources\\config_helper_interactive.json'))
+            self.interactive_helper.show()
+        
     def thread_inventor_error(self, error_code: ErrorCode) -> None:
         if error_code == ErrorCode.SUCCESS:
             return
@@ -1022,7 +1027,9 @@ class Window(QtWidgets.QMainWindow):
         self.frame_tree_assembly.switch_enabled_widgets(True)
 
     def open_instruction(self, event):
-        os.startfile(os.path.join(PROJECT_ROOT, URL_INSTRUCTION_OFFLINE))
+        if self.helper is None:
+            self.helper = WindowHelper(self, path_resources=os.path.join(PROJECT_ROOT, 'resources'))
+        self.helper.show()
 
     def show_window_prepared_assembly(self):
         self.prepared_assembly_window.show()
@@ -1224,6 +1231,6 @@ if __name__ == '__main__':
     sys.excepthook = my_excepthook
     app = QtWidgets.QApplication(sys.argv)
 
-    window = Window()
+    window = WindowCopyAssembly()
     window.show()
     sys.exit(app.exec_())

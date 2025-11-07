@@ -115,17 +115,17 @@ class CustomComboBox(QtWidgets.QWidget):
         return self.lineedit.text()
 
     def setCurrentIndex(self, index: int) -> None:
-        if 0 <= index < len(self.list_item):
-            self.current_item_index = index
-            self.lineedit.setText(self.list_item[index].text())
-        else:
-            raise IndexError
+        if index is not None:
+            if 0 <= index < len(self.list_item):
+                self.current_item_index = index
+                self.lineedit.setText(self.list_item[index].text())
+            else:
+                raise IndexError
 
     def addItem(self, text: str) -> None:
         if self.seek_index < len(self.list_item):
             item = self.list_item[self.seek_index]
             item.setText(text)
-            print(item.index, item.text(), item.y())
             item.show()
         else:
             self.__addItem(text)
@@ -147,10 +147,11 @@ class CustomComboBox(QtWidgets.QWidget):
         self.frame_items.setMaximumHeight((self.seek_index + 1) * self.custom_heigth)
     
     def view_curent_item(self) -> None:
-        self.lineedit.setText(self.list_item[self.current_item_index].text())
-        if not self.has_swap:
-            self.frame_items.hide()
-        self.has_swap = False
+        if self.current_item_index:
+            self.lineedit.setText(self.list_item[self.current_item_index].text())
+            if not self.has_swap:
+                self.frame_items.hide()
+            self.has_swap = False
         
     def toggle_view_list(self) -> None:
         self.has_swap = False

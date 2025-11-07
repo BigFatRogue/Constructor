@@ -10,6 +10,7 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent)
     sys.path.append(test_path)
 
+from projects.tools.settings import ICO_FOLDER_HELPER
 from projects.copy_assembly.ca_other_window.window_prepared_assembly import PreparedAssemblyWindow
 
 
@@ -459,7 +460,7 @@ class WidgetRecordGifFromApp(QtWidgets.QWidget):
         self.frame_capture_video = FrameCaptureVideo(self.app)
         self.frame_capture_video.hide()
 
-        with open(os.path.join(os.getcwd(), 'projects\\tools\\resources\\window_cursor.png'), 'rb') as img_file:
+        with open(os.path.join(ICO_FOLDER_HELPER, 'window_cursor.png'), 'rb') as img_file:
             qimg = QtGui.QImage()
             qimg.loadFromData(img_file.read())
             qimg = qimg.scaled(25, 25)

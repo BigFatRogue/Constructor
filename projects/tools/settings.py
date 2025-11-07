@@ -1,9 +1,11 @@
 import pathlib
-import json
+
 
 DEBUG = False
 PROJECT_ROOT = pathlib.Path(__file__).parent
-ICO_FOLDER = f'{PROJECT_ROOT}\\resources\\icon'
+ICO_FOLDER_HELPER = f'{PROJECT_ROOT}\\resources\\icon'
+LAST_FILE_GEN_CONFIG = f'{PROJECT_ROOT}\\resources\\gen_conf_last_file.txt'
+
 
 
 

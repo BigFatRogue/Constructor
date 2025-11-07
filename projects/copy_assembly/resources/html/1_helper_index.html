@@ -1,0 +1,48 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Назначение программы</title>
+    <style>
+
+        * {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        table {
+            margin: 10px;
+            width: 100%;
+        }
+
+        .header {
+            border-bottom: 1px solid black;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td class="header">
+                <h1>Назначение программы</h1>
+            </td>
+        </tr>
+        <tr>
+            <td class="content">
+                Программа предназначена для копирования сборок <i>Autodesk Inventor</i> с возможностью автоматического и ручного переименования файлов и компонентов, а также корректного обновления ссылок внутри новой сборки.
+            </td>
+        </tr>
+        <tr>
+            <td class="content">
+                <h2>Содержание</h2>
+                <ul>
+                    {{ ITEM_LIST_BOX }}
+                </ul>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

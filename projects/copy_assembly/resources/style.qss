@@ -123,6 +123,16 @@ QHeaderView::section {
     border-top: 1px solid gray;
 }
 
+#btn_ok {
+    border: 1px solid gray;
+    border-radius: 6px;
+    min-height: 20px;
+    background-color: rgb(209, 235, 255);
+}
+#btn_ok:hover {
+    border: 1px solid #0078d4;
+    background-color: rgb(180, 215, 255);
+}
 QTextEdit,
 QListWidget {
     border: 1px solid #d1d5db;

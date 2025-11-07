@@ -1,24 +1,26 @@
 import sys
 import os 
+from pathlib import Path
 from collections import OrderedDict
-from datetime import datetime, time
+from datetime import datetime
 from typing import Union
 import json
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 if __name__ == '__main__':
     # Для запуска через IDE
-    from pathlib import Path
     test_path = str(Path(__file__).parent.parent.parent)
     sys.path.append(test_path)
 
+from projects.tools.settings import LAST_FILE_GEN_CONFIG
 from projects.tools.widget_record_gif_from_app import WidgetRecordGifFromApp
 from projects.tools.custom_qwidget.custom_combo_box import CustomComboBox
-
+from projects.tools.row_counter import RowCounter
+from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 
 # Добавлене путей к приложению, которое необходимо запустить 
 PATH_PROJCETS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print(PATH_PROJCETS)
 PATH_APPLICATION = os.path.join(PATH_PROJCETS, 'copy_assembly')
 PATH_SAVE_CONTENT_GIF = os.path.join(PATH_APPLICATION, 'resources', 'gif')
 PATH_SAVE_CONTENT_IMAGE = os.path.join(PATH_APPLICATION, 'resources', 'image')
@@ -26,75 +28,17 @@ PATH_SAVE_CONTENT_IMAGE = os.path.join(PATH_APPLICATION, 'resources', 'image')
 sys.path.append(PATH_PROJCETS)
 sys.path.append(PATH_APPLICATION)
 
-from copy_assembly.ca_main import Window
+from copy_assembly.ca_main import WindowCopyAssembly
 from projects.tools.helper_interactive import HelperInteractive
-
-
-class RowCounter:
-    def __init__(self, start=0):
-        self.__value = 0
-    
-    def next(self) -> int:
-        self.__value += 1
-        return self.value
-    
-    def __call__(self) -> int:
-        return self.next()
-    
-    @property
-    def value(self) -> int:
-        return self.__value
-
-
-class QHLineSeparate(QtWidgets.QFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setFrameShape(QtWidgets.QFrame.HLine)
-        self.setFrameShadow(QtWidgets.QFrame.Sunken)
-
-
-class MessegeBoxQuestion(QtWidgets.QDialog):
-    def __init__(self, parent, question=None, answer_accept=None, answer_reject=None, title='Сохранения изменений'):
-        super().__init__(parent)
-        self.question = 'Сохранить изменения?' if question is None else question
-        self.text_answer_accept = 'Да' if answer_accept is None else answer_accept
-        self.text_answer_reject = 'Нет' if answer_reject is None else answer_reject
-        
-        self.setWindowTitle(title)
-        self.resize(300, 50)
-
-        vbox = QtWidgets.QVBoxLayout()
-        vbox.addSpacing(20)
-
-        label_dialog = QtWidgets.QLabel()
-        label_dialog.setText(self.question)
-        vbox.addWidget(label_dialog)
-        
-        layout = QtWidgets.QHBoxLayout()
-        vbox.addLayout(layout)
-
-        button_accept = QtWidgets.QPushButton(self)
-        button_accept.setText(self.text_answer_accept)
-        button_accept.clicked.connect(self.__accept)
-        layout.addWidget(button_accept)
-
-        button_reject = QtWidgets.QPushButton(self)
-        button_reject.setText(self.text_answer_reject)
-        button_reject.clicked.connect(self.__reject)
-        layout.addWidget(button_reject)
-
-        self.setLayout(vbox)
-
-    def __accept(self) -> None:
-        self.accept()
-    
-    def __reject(self) -> None:
-        self.reject()
 
 
 class ToolTipMessage(QtWidgets.QWidget): 
     signal_next_step = QtCore.pyqtSignal()
     signal_end = QtCore.pyqtSignal()
+
+    TEXT_BTN_NEXT_STEP = 'Следующий шаг'
+    TEXT_BTN_WAIT = 'Пожалуйста, подождите...'
+    TEXT_BTN_END = 'Завершить'
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -102,8 +46,6 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.old_pos: QtCore.QPoint = None
         self.new_pos: QtCore.QPoint = None
         self.flag_move = False
-
-        # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         self.installEventFilter(self)
         self.init_widgets()
@@ -178,7 +120,7 @@ class ToolTipMessage(QtWidgets.QWidget):
         self.grid_layout.addWidget(self.label_content, row_counter.next(), 0, 1, 2)
 
         self.btn_next_step = QtWidgets.QPushButton(self)
-        self.btn_next_step.setText('Продолжить')
+        self.btn_next_step.setText(self.TEXT_BTN_NEXT_STEP)
         self.btn_next_step.setObjectName('btn_next_step')
         self.grid_layout.addWidget(self.btn_next_step, row_counter.next(), 0, 1, 2)
 
@@ -201,10 +143,10 @@ class ToolTipMessage(QtWidgets.QWidget):
     def set_button_is_wait(self, value: bool=False) -> None:
         if value:
             self.btn_next_step.setEnabled(False)
-            self.btn_next_step.setText('Ожидание..')
+            self.btn_next_step.setText(self.TEXT_BTN_WAIT)
         else:
             self.btn_next_step.setEnabled(True)
-            self.btn_next_step.setText('Продолжить')
+            self.btn_next_step.setText(self.TEXT_BTN_NEXT_STEP)
 
 
 class ToolTipObjectName(QtWidgets.QWidget):
@@ -359,15 +301,18 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.grid.setObjectName("gridLayoutCentral")
 
         #--------------------------- Меню  -------------------------------
-        menu_bar = self.menuBar()
+        self.menu_bar = self.menuBar()
 
-        file_menu = menu_bar.addMenu('&Файл')
+        file_menu = self.menu_bar.addMenu('&Файл')
 
-        file_open = QtWidgets.QAction("&📁 Открыть", self)
+        file_open = QtWidgets.QAction("&📄 Открыть", self)
         file_open.setShortcut('Ctrl+O')
         file_open.triggered.connect(self.load_config)
         file_menu.addAction(file_open)
 
+        load_last_file_menu = file_menu.addMenu("&📄 Последние файлы")
+        self.fill_menu_last_file(load_last_file_menu)
+        
         file_save = QtWidgets.QAction("&💾 Сохранить", self)
         file_save.setShortcut('Ctrl+S')
         file_save.triggered.connect(self.save_config)
@@ -378,7 +323,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         file_save_as.triggered.connect(self.save_as_config)
         file_menu.addAction(file_save_as)
 
-        sitting_menu = menu_bar.addMenu('&Инструмены')
+        sitting_menu = self.menu_bar.addMenu('&Инструмены')
 
         has_autosave = QtWidgets.QAction("&Включить автосхранение", self)
         has_autosave.setCheckable(True)
@@ -488,7 +433,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
 
         self.btn_add_value_in_config = QtWidgets.QPushButton(self)
         self.btn_add_value_in_config.setText('Добавить шаг')
-        self.btn_add_value_in_config.clicked.connect(self.add_value_in_config)
+        self.btn_add_value_in_config.clicked.connect(lambda: self.add_value_in_config(True))
         self.gird_frame_control_step.addWidget(self.btn_add_value_in_config, 3, 0, 1, 2)
 
         self.btn_del_value_in_config = QtWidgets.QPushButton(self)
@@ -511,12 +456,31 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.label_info_2 = QtWidgets.QLabel(self)
         self.grid.addWidget(self.label_info_2, 3, 1, 1, 1)
 
+    def fill_menu_last_file(self, submenu: QtWidgets.QMenu) -> None:
+        if os.path.exists(LAST_FILE_GEN_CONFIG):
+            with open(LAST_FILE_GEN_CONFIG, 'r', encoding='utf-8') as last_files:
+                for filepath in last_files.readlines():
+                    btn_action = QtWidgets.QAction(filepath, self)
+                    btn_action.triggered.connect(lambda: self.__load_config(filepath))
+                    submenu.addAction(btn_action)
+
+    def write_last_file(self) -> None:
+        if self.filepath_config:
+            with open(LAST_FILE_GEN_CONFIG, 'r+', encoding='utf-8') as last_files:
+                if self.filepath_config not in last_files.readlines():
+                    last_files.write(f'\n{self.filepath_config}')
+
     def text_change(self) -> None:
         text = self.text_edit.toPlainText()
         self.tool_tip_widget.set_text(text)
 
     def run_application(self) -> None:
         self.application = self.application()
+
+        for var, value in self.application.__dict__.items():
+            if isinstance(value, HelperInteractive):
+                setattr(self.application, var, None)
+        
         self.desable_event_widgets(self.application)
         self.install_event_filters(self.application) 
 
@@ -546,16 +510,19 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.show_step()
 
     def show_step(self) -> None:
-        if self.dict_step:
-            self.combo_box_choose_step.setCurrentIndex(self.current_number_step)
-            step = self.dict_step[str(self.current_number_step)]
-            object_names = step['object_names'] if step['object_names'] else ['']
-            
-            self.lineedit_list_object_name.setText(*object_names)
-            self.text_edit.setPlainText(step['message'])
-            self.current_path_content = step['content_path']
-            self.tool_tip_widget.set_content(self.current_path_content)
-            self.tool_tip_widget.set_title(f'Шаг {self.current_number_step + 1}')
+        if self.dict_step and self.current_number_step is not None:
+            if str(self.current_number_step) in self.dict_step:
+                self.combo_box_choose_step.setCurrentIndex(self.current_number_step)
+                step = self.dict_step[str(self.current_number_step)]
+                object_names = step['object_names'] if step['object_names'] else ['']
+                path_content = os.path.join(PATH_APPLICATION, step['content_path'])
+                self.current_path_content = path_content
+
+                self.lineedit_list_object_name.setText(','.join(object_names))
+                self.text_edit.setPlainText(step['message'])
+                self.tool_tip_widget.set_content(path_content)
+                self.tool_tip_widget.set_title(f'Шаг {self.current_number_step + 1}')
+                self.check_box_is_wait.setCheckState(step['button_is_wait'])
 
     def prev_step(self) -> None:
         if self.current_number_step - 1 >= 0:
@@ -575,10 +542,42 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         steps_value.insert(end_index, start_item)
         
         new_dict = OrderedDict()
-        for i, value in enumerate(steps_value):
+        for i, value in enumerate(steps_value):                        
             new_dict[str(i)] = value
             self.combo_box_choose_step.addItem(f'Шаг {i + 1}')
         self.dict_step = new_dict
+
+        self.rename_content_path()
+
+    def rename_content_path(self) -> None:
+        dict_queue_rename: dict[str, tuple] = {}
+        for step, value in self.dict_step.items():
+            if value['content_path']:
+                content_path = value['content_path']
+                base_name = os.path.basename(content_path)
+                stem, suffix = base_name.split('.')
+
+                list_content_path = stem.split('_')
+                if list_content_path[-1] != step:
+                    new_filename = f'{"_".join(list_content_path[:-1])}_{step}.{suffix}'
+                    new_content_path = os.path.join(os.path.dirname(content_path), new_filename)
+                    try:
+                        self.del_content()
+                        os.rename(value['content_path'], new_content_path)
+                        value['content_path'] = new_content_path
+                    except Exception:
+                        dict_queue_rename[step] = (value['content_path'], new_content_path)
+        
+        if dict_queue_rename:
+            for _ in range(len(dict_queue_rename)):
+                for step, (old_name, new_name) in dict_queue_rename.items():
+                    try:
+                        os.rename(old_name, new_name)
+                        self.dict_step[step]['content_path'] = new_content_path
+                        dict_queue_rename.pop(step)
+                        break
+                    except Exception:
+                        continue
 
     def choose_step_from_index(self, data) -> None:
         index, text = data
@@ -612,7 +611,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
     def create_content(self) -> None:
         if self.widget_record_gif_from_app is None:
             self.delete_helper()
-            name = f'helper_inter_step_{self.current_number_step}.gif'
+            name = f'{self.application.__class__.__name__}_helper_inter_step_{self.current_number_step}.gif'
             full_file_name = os.path.join(PATH_SAVE_CONTENT_GIF, name)
             self.widget_record_gif_from_app = WidgetRecordGifFromApp(self, app=self.application, full_file_gif_name=full_file_name)
             self.widget_record_gif_from_app.signal_close.connect(self.close_widget_mp4_to_gif)
@@ -628,6 +627,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.current_path_content = ''
 
     def set_content_from_widgets(self, full_file_name) -> None:
+        print(full_file_name)
         self.tool_tip_widget.set_content(full_file_name)
         self.current_path_content = full_file_name
 
@@ -638,7 +638,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.tool_tip_choose_widget.hide()
         self.delete_helper()
         object_name = self.lineedit_list_object_name.text()
-        self.helper = HelperInteractive(self.application)
+        self.helper = HelperInteractive(self.application, PATH_APPLICATION)
         object_names = [] if not object_name else [i.strip() for i in object_name.split(',')]
 
         data = {
@@ -654,23 +654,29 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.helper.curent_index_step = self.current_number_step
         self.helper.show()
 
-    def add_value_in_config(self) -> None:
+    def add_value_in_config(self, is_create_step=True) -> None:
         text = self.lineedit_list_object_name.text()
         object_names = []
         if text:
             object_names = [i.strip() for i in self.lineedit_list_object_name.text().split(',')]
-            
+        
+        if self.current_path_content:
+            content_path = os.path.relpath(self.current_path_content, PATH_APPLICATION)
+        else:
+            content_path = self.current_path_content
+
         self.dict_step[str(self.current_number_step)] = {
             "object_names": object_names,
             "message": self.tool_tip_widget.label_message.text(),
-            "content_path": self.current_path_content,
+            "content_path": content_path,
             "button_is_wait": self.check_box_is_wait.isChecked(),
         }
         
-        self.current_number_step += 1
-        self.add_empty_step()
-        self.tool_tip_widget.set_title(f'Шаг {self.current_number_step + 1}')
-        self.show_info_add_step()
+        if is_create_step:
+            self.current_number_step += 1
+            self.add_empty_step()
+            self.tool_tip_widget.set_title(f'Шаг {self.current_number_step + 1}')
+            self.show_info_add_step()
     
     def show_info_add_step(self) -> None:
         if not self.label_info_2.text():
@@ -702,6 +708,8 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                 self.clear_step()
                 self.current_number_step = len(self.dict_step) - 1
                 self.show_step()
+        
+        self.rename_content_path()
 
     def click_check_box_is_wait(self) -> None:
         self.tool_tip_widget.set_button_is_wait(self.check_box_is_wait.isChecked())
@@ -711,6 +719,11 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             self.save_as_config()
         else:
             self.__save_config(filename=self.filepath_config)
+        self.add_value_in_config(is_create_step=False)
+        self.rename_content_path()
+        now = datetime.now()
+        self.label_info.setText(f'Автосохранение: вкл      💾 Сохранено (в {now.hour}:{now.minute}:{now.second})')
+        self.write_last_file()
 
     def save_as_config(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
@@ -732,22 +745,23 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
 
     def __auto_save(self) -> None:
         if self.is_autosave and self.filepath_config:
-            now = datetime.now()
-            self.label_info.setText(f'Автосохранение: вкл      💾 Сохранено (в {now.hour}:{now.minute}:{now.second})')
             self.save_config()
         
     def load_config(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
         filename = dlg.getOpenFileName(self, 'Выбрать файл', filter='JSON файл (*.json)')
         if filename[0]:
-            with open(filename[0], 'r', encoding='utf-8') as config_file:
-                dict_step: dict = json.load(config_file) 
-            if dict_step:
-                self.dict_step = dict_step.get('steps')
-                self.filepath_config = filename[0]
-                self.combo_box_choose_step.clear()
-                for i in self.dict_step.keys():
-                    self.combo_box_choose_step.addItem(f'Шаг {int(i) + 1}')
+            self.__load_config(filename[0])
+
+    def __load_config(self, filepath: str) -> dict:
+        with open(filepath, 'r', encoding='utf-8') as config_file:
+            dict_step: dict = json.load(config_file)
+        if dict_step:
+            self.dict_step = dict_step.get('steps')
+            self.filepath_config = filepath
+            self.combo_box_choose_step.clear()
+            for i in self.dict_step.keys():
+                self.combo_box_choose_step.addItem(f'Шаг {int(i) + 1}')
             self.current_number_step = 0
             self.show_step()
 
@@ -839,6 +853,6 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
 
-    window = WindowCreaterConfigHelpTour(application=Window)
+    window = WindowCreaterConfigHelpTour(application=WindowCopyAssembly)
     window.show()
     sys.exit(app.exec_())
