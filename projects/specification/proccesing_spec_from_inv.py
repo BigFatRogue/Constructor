@@ -15,7 +15,14 @@ COL_COUNT = 'C'
 COL_GROUP = 'H'
 
 
-def get_dict_from_sheet(sheet) -> dict:
+def get_dict_from_sheet(sheet, dict_sheet_after:dict=None) -> dict:
+    """
+    Получение dict из лист, где одинаковые позиции суммируются\n
+    dict[key] = value\n
+    key = tuple(COL_NAMES_PROPERTY)\n
+    value = list(COL_COUNT, COL_GROUP)\n
+    returt: dict
+    """
     dict_current_sheet = {}
     for y in range(2, 1000):
         key = tuple(sheet[f'{col_adrs}{y}'].value for col_adrs in COL_NAMES_PROPERTY.keys())
@@ -37,15 +44,51 @@ def get_dict_from_sheet(sheet) -> dict:
         count = float(count.replace(',', '.'))
         value = {
             'count': count,
-            'unit': unit
+            'unit': unit,
+            'after': 0
             }
 
         if key in dict_current_sheet:
             dict_current_sheet[key]['count'] += count
         else:
             dict_current_sheet[key] = value
+        
+        if dict_sheet_after:
+            if key in dict_sheet_after:
+                dict_current_sheet[key]['after'] = dict_sheet_after[key]['count']
+            else:
+                dict_current_sheet[key]['after'] = None
 
     return dict_current_sheet
+
+def create_preprocess_sheet(sheet_name: str, book: Workbook, book_path: str, dict_sheet_after: dict=None) -> dict:
+    """Создание на основе get_dict_from_sheet нового листа"""
+    sheet = book[sheet_name]
+    dict_sheet = get_dict_from_sheet(sheet=sheet, dict_sheet_after=dict_sheet_after)
+    new_sheet = book.create_sheet(f'_{sheet.title}')
+
+    for x, title_column in enumerate(COL_NAMES_PROPERTY.values(), 1):
+        new_sheet.cell(row=1, column=x).value = title_column
+    new_sheet.cell(row=1, column=len(COL_NAMES_PROPERTY) + 1).value = 'Количество'
+    new_sheet.cell(row=1, column=len(COL_NAMES_PROPERTY) + 2).value = 'Единичная величина'
+
+    for y, (key, value) in enumerate(dict_sheet.items(), 2):
+        for x, prop in enumerate(key, 1):
+            new_sheet.cell(row=y, column=x).value = prop
+        new_sheet.cell(row=y, column=len(key) + 1).value = value['count']
+        new_sheet.cell(row=y, column=len(key) + 2).value = value['unit']
+        
+        if value['after'] is None:
+            new_sheet.cell(row=y, column=len(key) + 3).value = 'new'
+        else:
+            diff = value['count'] - value['after']
+            if diff != 0:
+                new_sheet.cell(row=y, column=len(key) + 3).value = diff
+
+    book.save(book_path)
+    return dict_sheet
+
+
 
 def proccesing_last_sheet(book: Workbook, book_path: str) -> tuple:
     sheet_names = book.sheetnames
@@ -78,30 +121,19 @@ def proccesing_last_sheet(book: Workbook, book_path: str) -> tuple:
     book.save(book_path)
 
 
-def preprocess_sheet(sheet_name: str, book: Workbook, book_path: str) -> None:
-    sheet = book[sheet_name]
-    dict_sheet = get_dict_from_sheet(sheet=sheet)
-    new_sheet = book.create_sheet(f'_{sheet.title}')
 
-    for x, title_column in enumerate(COL_NAMES_PROPERTY.values(), 1):
-        new_sheet.cell(row=1, column=x).value = title_column
-    new_sheet.cell(row=1, column=len(COL_NAMES_PROPERTY) + 1).value = 'Количество'
-    new_sheet.cell(row=1, column=len(COL_NAMES_PROPERTY) + 2).value = 'Единичная величина'
-
-    for y, (key, value) in enumerate(dict_sheet.items(), 2):
-        for x, prop in enumerate(key, 1):
-            new_sheet.cell(row=y, column=x).value = prop
-        new_sheet.cell(row=y, column=len(key) + 1).value = value['count']
-        new_sheet.cell(row=y, column=len(key) + 2).value = value['unit']
-
-    book.save(book_path)
  
 def main() -> None:
     path = r'\\PDM\PKODocs\Inventor Project\ООО ЛебедяньМолоко\1648_25\4.1. УРП ALS.P.01.06.02.A\04 Исходящие\ALS.1648.4.1.01. Из инвентора.xlsx'
+
+    name_sheet_after = '16.10.2025'
+    name_sheet_before = '31.10.2025'
+
     book: Workbook = load_workbook(path)
     
     # proccesing_last_sheet(book, path)
-    preprocess_sheet(sheet_name='16.10.2025', book=book, book_path=path)
+    dict_sheet_after = create_preprocess_sheet(sheet_name=name_sheet_after, book=book, book_path=path)
+    dict_sheet_before = create_preprocess_sheet(sheet_name=name_sheet_before, book=book, book_path=path, dict_sheet_after=dict_sheet_after)
 
 
 if __name__ == '__main__':
