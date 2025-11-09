@@ -65,5 +65,3 @@ if __name__ == '__main__':
     inventor_table_config = TableConfigInventor()
     data = get_data_from_xl(p, inventor_table_config)
     print(data)
-
-    # __dict_data_to_2list(None)
