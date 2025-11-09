@@ -1,6 +1,5 @@
 from typing import Union
 from tables import TableConfigInventor, TableConfigBuy, TableConfigProd
-from data_loader import get_data_from_xl
 import sqlite3
 
 
@@ -31,7 +30,7 @@ class DataBase:
         self.conn.commit()
 
     def fill_table_from_data(self, table: Union[TableConfigInventor, TableConfigBuy, TableConfigProd], data: list[list]) -> None:
-        fields = table.get_fileds()
+        fields = table.get_fileds(is_ignore=True)
 
         str_filed = ','.join(fields)
         values = ','.join(['?' for _ in fields])
@@ -39,9 +38,18 @@ class DataBase:
             self.cur.execute(f'''INSERT INTO {table.name} ({str_filed}) VALUES({values})''', row)
         self.conn.commit()
 
+    def get_list_tables(self) -> list[str]:
+        list_names = self.cur.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+        return [i[0] for i in list_names]
+
     def close(self) -> None:
         self.conn.commit()
         self.conn.close()
         self.conn = None
 
 
+if __name__ == '__main__':
+    import os
+    p_db = os.path.join(os.path.dirname(__file__), 'DEBUG\\ALS.1642.4.2.01.00.00.000 СБ.db')
+    db = DataBase(p_db)
+    print(db.get_list_tables())

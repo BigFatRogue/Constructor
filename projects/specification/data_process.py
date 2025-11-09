@@ -14,6 +14,8 @@ def load_data_to_db(filepath_xl: str, filepath_db: str) -> None:
         db.create_table(table=inventor_table_config)
         db.fill_table_from_data(table=inventor_table_config, data=data_list)
 
+        list_inv_table = [table_name for table_name in db.get_list_tables() if 'inv' in table_name]
+
 
 if __name__ == '__main__':
     p_db = os.path.join(os.path.dirname(__file__), 'DEBUG\\ALS.1642.4.2.01.00.00.000 СБ.db')

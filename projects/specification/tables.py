@@ -37,22 +37,39 @@ class TableConfigInventor(TableConfig):
             ColumnConfig('articul', 'TEXT', 'Инвентарный номер'),
             ColumnConfig('description', 'TEXT', 'Описание'),
             ColumnConfig('specifications', 'TEXT', 'Технические характеристики'),
-            ColumnConfig('count', 'REAL', 'КОЛ.'),
+            ColumnConfig('quantity', 'REAL', 'КОЛ.'),
             ColumnConfig('unit', 'TEXT', 'Единичная величина'),
             ColumnConfig('material', 'TEXT', 'Материал'),
             ColumnConfig('name', 'TEXT', 'Обозначение'),
             ColumnConfig('groups', 'TEXT', 'Раздел'),
+            ColumnConfig('diff', 'FLOAT', 'Изменение количества')
         ]
         
         super().__init__(name, columns)
 
         self.index_keys: tuple[int] = (1, 2, 3, 6, 7, 8)
         self.index_values: tuple[int] = (4, 5)
+        self.list_ignore_field = ('id', 'diff')
     
     def __set_name(self) -> str:
         now = datetime.now()
         now_str = f'{now.hour}_{now.minute}_{now.day}_{now.month}_{now.year}'
         return f'inv_{now_str}'
+
+    def get_fileds(self, is_ignore=False) -> tuple[str]:
+        list_ignore = self.list_ignore_field if is_ignore else tuple()
+        return tuple(tp.field for tp in self.columns if tp.field not in list_ignore)
+
+    def update_diff(self, name_table_1) -> None:
+        f"""UPDATE {self.name} as t2
+            SET diff = quantity - (
+            SELECT t1.quantity
+            FROM {name_table_1} as t1
+            WHERE t1.articul = t2.articul
+            AND t1.specifications = t2.specifications
+            AND t1.description = t2.description
+            AND t1.material = t2.material
+            AND t1.name = t2.name)"""
 
 
 class TableConfigBuy(TableConfig):

@@ -19,6 +19,7 @@ def __get_dict_from_xl(filepath: str, inventor_table: TableConfigInventor) -> li
         column_name = inventor_table.get_columns_name()
         number_key_column_name = [dict_name_number_col[column_name[i]] for i in inventor_table.index_keys]
         key = tuple(sheet.cell(row=row, column=col).value for col in number_key_column_name)
+        key = tuple('' if k is None else k for k in key)
 
         column_name = inventor_table.get_columns_name()[inventor_table.index_values[0]]
         count_value = str(sheet.cell(row=row, column=dict_name_number_col[column_name]).value).split()
@@ -61,7 +62,7 @@ def get_data_from_xl(filepath: str, inventor_table_config: TableConfigInventor) 
 
 
 if __name__ == '__main__':
-    p = r'D:\Python\AlfaServis\Constructor\projects\specification\ALS.1642.4.2.01.00.00.000 СБ - нивентор.xlsx'
+    p = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.4.2.01.00.00.000 СБ - нивентор.xlsx'
     inventor_table_config = TableConfigInventor()
     data = get_data_from_xl(p, inventor_table_config)
     print(data)
