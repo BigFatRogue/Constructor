@@ -14,7 +14,7 @@ _temp
 *.exe
 *.ini
 *.spec
-
 build
 setup
 _*
+DEBUG

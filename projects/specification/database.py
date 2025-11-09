@@ -1,0 +1,47 @@
+from typing import Union
+from tables import TableConfigInventor, TableConfigBuy, TableConfigProd
+from data_loader import get_data_from_xl
+import sqlite3
+
+
+
+class DataBase:
+    __instance = None
+    def __new__(cls, *args, **kwargs):
+        if cls.__instance is None:
+            cls.__instance = super().__new__(cls)
+        return cls.__instance    
+
+    def __init__(self, path_db: str):
+        if not hasattr(self, '_initialized') or not self._initialized:
+            self.path_db = path_db
+            self.conn = None
+            self.cur = None
+            self._initialized = True
+    
+            self.__connect_db()
+
+    def __connect_db(self) -> None:
+        if self.conn is None:
+            self.conn = sqlite3.connect(self.path_db)
+            self.cur = self.conn.cursor()
+
+    def create_table(self, table: Union[TableConfigInventor, TableConfigBuy, TableConfigProd]) -> None:
+        self.cur.execute(table.create_sql())
+        self.conn.commit()
+
+    def fill_table_from_data(self, table: Union[TableConfigInventor, TableConfigBuy, TableConfigProd], data: list[list]) -> None:
+        fields = table.get_fileds()
+
+        str_filed = ','.join(fields)
+        values = ','.join(['?' for _ in fields])
+        for row in data:
+            self.cur.execute(f'''INSERT INTO {table.name} ({str_filed}) VALUES({values})''', row)
+        self.conn.commit()
+
+    def close(self) -> None:
+        self.conn.commit()
+        self.conn.close()
+        self.conn = None
+
+
