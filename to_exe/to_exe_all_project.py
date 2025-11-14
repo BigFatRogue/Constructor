@@ -6,7 +6,7 @@ import zipfile
 import PyInstaller.__main__ as PyInst
 
 
-VERSION = 1.05
+VERSION = 1.06
 PROJECTS = {
     # 'CopyDrinage': 'drainage_tray',
     '_CopyAssembly': 'projects\\copy_assembly'

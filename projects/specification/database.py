@@ -1,35 +1,29 @@
 from typing import Union
-from tables import TableConfigInventor, TableConfigBuy, TableConfigProd
+from projects.specification.tables_config import TablePropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd
 import sqlite3
 
 
 
 class DataBase:
-    __instance = None
-    def __new__(cls, *args, **kwargs):
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-        return cls.__instance    
-
-    def __init__(self, path_db: str):
-        if not hasattr(self, '_initialized') or not self._initialized:
-            self.path_db = path_db
-            self.conn = None
-            self.cur = None
-            self._initialized = True
+    def __init__(self):
+        self.path_db = None
+        self.conn = None
+        self.cur = None
     
-            self.__connect_db()
+    def set_path(self, path_db: str) -> None:
+        self.path_db = path_db
 
-    def __connect_db(self) -> None:
+    def connect(self, filepath: str) -> None:
         if self.conn is None:
+            self.path_db = filepath
             self.conn = sqlite3.connect(self.path_db)
             self.cur = self.conn.cursor()
 
-    def create_table(self, table: Union[TableConfigInventor, TableConfigBuy, TableConfigProd]) -> None:
+    def create_table(self, table: Union[TablePropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd]) -> None:
         self.cur.execute(table.create_sql())
         self.conn.commit()
 
-    def fill_table_from_data(self, table: Union[TableConfigInventor, TableConfigBuy, TableConfigProd], data: list[list]) -> None:
+    def fill_table_from_data(self, table: Union[TablePropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd], data: list[list]) -> None:
         fields = table.get_fileds(is_ignore=True)
 
         str_filed = ','.join(fields)
@@ -50,6 +44,10 @@ class DataBase:
 
 if __name__ == '__main__':
     import os
-    p_db = os.path.join(os.path.dirname(__file__), 'DEBUG\\ALS.1642.4.2.01.00.00.000 СБ.db')
-    db = DataBase(p_db)
+    p_db = os.path.join(os.path.dirname(__file__), 'DEBUG\\ALS.1642.4.2.01.00.00.000 СБ.spec')
+
+    db = DataBase()
+    db.set_path(p_db)
+    db.connect()
+
     print(db.get_list_tables())

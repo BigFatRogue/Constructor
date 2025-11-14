@@ -29,6 +29,17 @@ class TableConfig:
         return f"CREATE TABLE IF NOT EXISTS {self.name} ({columns_sql})"
 
 
+class TablePropertyProject(TableConfig):
+    def __init__(self):
+        name = 'property_project'
+        columns = [
+            ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ColumnConfig('property_name', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ColumnConfig('value_name', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+        ]
+        super().__init__(name, columns)
+
+
 class TableConfigInventor(TableConfig):
     def __init__(self):
         name = self.__set_name()

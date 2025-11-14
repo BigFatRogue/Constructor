@@ -1,4 +1,4 @@
-from tables import TableConfigInventor
+from projects.specification.tables_config import TableConfigInventor
 
 from openpyxl import load_workbook
 from collections import OrderedDict
