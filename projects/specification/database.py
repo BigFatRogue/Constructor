@@ -1,5 +1,5 @@
 from typing import Union
-from projects.specification.tables_config import TablePropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd
+from projects.specification.tables_config import TableConfigPropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd
 import sqlite3
 
 
@@ -19,11 +19,11 @@ class DataBase:
             self.conn = sqlite3.connect(self.path_db)
             self.cur = self.conn.cursor()
 
-    def create_table(self, table: Union[TablePropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd]) -> None:
+    def create_table(self, table: Union[TableConfigPropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd]) -> None:
         self.cur.execute(table.create_sql())
         self.conn.commit()
 
-    def fill_table_from_data(self, table: Union[TablePropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd], data: list[list]) -> None:
+    def fill_table_from_data(self, table: Union[TableConfigPropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd], data: list[list]) -> None:
         fields = table.get_fileds(is_ignore=True)
 
         str_filed = ','.join(fields)

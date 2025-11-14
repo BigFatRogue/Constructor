@@ -29,13 +29,19 @@ class TableConfig:
         return f"CREATE TABLE IF NOT EXISTS {self.name} ({columns_sql})"
 
 
-class TablePropertyProject(TableConfig):
+class TableConfigPropertyProject(TableConfig):
     def __init__(self):
         name = 'property_project'
         columns = [
             ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
-            ColumnConfig('property_name', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
-            ColumnConfig('value_name', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ColumnConfig('project_number', 'TEXT', 'Номер проекта'),
+            ColumnConfig('number_contract', 'TEXT', 'Пункт договора'),
+            ColumnConfig('address', 'TEXT', 'Адрес объекта'),
+            ColumnConfig('manager', 'TEXT', 'Руководитель проекта'),
+            ColumnConfig('technologist', 'TEXT', 'Инженер-технолог'),
+            ColumnConfig('constructor', 'TEXT', 'Инженер-конструктор'),
+            ColumnConfig('name_model', 'TEXT', 'Модель установки'),
+            ColumnConfig('name_drawing', 'TEXT', 'Обозначение чертежа'),
         ]
         super().__init__(name, columns)
 
@@ -53,11 +59,12 @@ class TableConfigInventor(TableConfig):
             ColumnConfig('material', 'TEXT', 'Материал'),
             ColumnConfig('name', 'TEXT', 'Обозначение'),
             ColumnConfig('groups', 'TEXT', 'Раздел'),
-            ColumnConfig('diff', 'FLOAT', 'Изменение количества')
+            ColumnConfig('diff', 'REAL', 'Изменение количества')
         ]
         
         super().__init__(name, columns)
 
+        # Индексы для сортировки значений в таблицы и формирования ключей 
         self.index_keys: tuple[int] = (1, 2, 3, 6, 7, 8)
         self.index_values: tuple[int] = (4, 5)
         self.list_ignore_field = ('id', 'diff')

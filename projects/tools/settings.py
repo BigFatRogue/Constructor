@@ -2,7 +2,6 @@ import sys
 import os
 
 
-
 if getattr(sys, 'frozen', False):
     PROJECT_ROOT = os.path.dirname(sys.executable)
     RESOURCES_PATH = os.path.join(PROJECT_ROOT, 'resources\\tool_resources')

@@ -1,11 +1,11 @@
 import sys
 import os
 
-def get_root_path() -> str:
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(__file__) 
+if getattr(sys, 'frozen', False):
+    PROJECT_ROOT = os.path.dirname(sys.executable)
+    RESOURCES_PATH = os.path.join(PROJECT_ROOT, 'resources\\spec_resources')
+else:
+    PROJECT_ROOT = os.path.dirname(__file__) 
+    RESOURCES_PATH = os.path.join(os.path.dirname(PROJECT_ROOT), 'resources\\spec_resources')
 
-
-PROJECT_ROOT = get_root_path()
-ICO_FOLDER = f'{PROJECT_ROOT}\\resources\\icon'
+ICO_FOLDER = f'{RESOURCES_PATH}\\icon'
