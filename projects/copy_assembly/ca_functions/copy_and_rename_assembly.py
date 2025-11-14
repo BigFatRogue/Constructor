@@ -173,14 +173,12 @@ def copy_and_rename_file_assembly(dict_from_application: dict) -> None:
     """
     Копирование файлов входящих в сборку Inventor и их переименование 
     """
-
     for old_full_filename, value in dict_from_application['item'].items():
         _, new_short_filename = value['short_filename']
         new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
     
         mkdir_tree(new_full_filename)
         if not os.path.exists(new_full_filename) and os.path.exists(old_full_filename):
-            print(old_full_filename, new_full_filename)
             shutil.copy(old_full_filename, new_full_filename)
             
     old_full_filename_assembly = os.path.join(dict_from_application['root_assembly'], dict_from_application['name_assembly'])
@@ -195,18 +193,33 @@ def replace_reference_file(application: Any, document: Any, options_open_documen
     for ref_file in document.File.ReferencedFileDescriptors:
         full_filename: str = ref_file.FullFileName
         item = dict_from_application['item'].get(full_filename)
+        if not item:
+            item = search_item(full_filename, dict_from_application)
         if item:
             _, new_short_filename = item['short_filename']
             new_full_filename = dict_from_application['new_root_assembly'] + new_short_filename
             if os.path.exists(new_full_filename):
                 if '.ipt' in full_filename:
                     ref_file.ReplaceReference(new_full_filename)
-                    
                 elif '.iam' in full_filename:
                     wrapper_doc = application.Documents.OpenWithOptions(new_full_filename, options_open_document, False)
                     replace_reference_file(application=application, document=wrapper_doc, options_open_document=options_open_document, dict_from_application=dict_from_application)
                     ref_file.ReplaceReference(new_full_filename)
                     wrapper_doc.Close(True)
+
+def search_item(full_filename: str, dict_from_application: dict) -> Optional[str]:
+    # При построение дереве все файлы рам или труб указаны как во временной, но при замене вспылвают пути оригинальной сборки
+    """
+    Поиск ключа в словаре из дерева приложения, если путь оказался из родной сборки
+    """
+    list_full_filename = full_filename.split('\\')
+    new_list_full_filename = []
+    for i in list_full_filename[::-1]:
+        new_list_full_filename.append(i)
+        new_full_filename = dict_from_application['root_assembly'] + '\\' + '\\'.join(new_list_full_filename[::-1])
+        item = dict_from_application['item'].get(new_full_filename)
+        if item:
+            return item
 
 def rename_display_name_and_set_rules(application: Any, document: Any, options_open_document: Any, dict_from_application: dict):
     """ Открытие каждого файла входящего в сборку и переименования его имени в браузере (DisplayName) и установка правил"""

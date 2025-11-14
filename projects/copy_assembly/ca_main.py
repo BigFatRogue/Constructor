@@ -36,7 +36,6 @@ from projects.tools.row_counter import RowCounter
 
 
 
-
 class IThread(QtCore.QObject):
     __instance = None
 
@@ -190,12 +189,6 @@ class IThread(QtCore.QObject):
         self.__claer_variable_copy()
         self.signal_complite_thread.emit()
     
-    def remove_tmp_dir(self) -> None:
-        if self.__tmp_assembly_path:
-            dir_name = os.path.dirname(self.__tmp_assembly_path)
-            if os.path.exists(dir_name):
-                shutil.rmtree(dir_name)
-
     @QtCore.pyqtSlot()
     def run(self) -> None:
         if self.__mode == Mode.OPEN_ASSEMBLY:
@@ -215,6 +208,7 @@ class IThread(QtCore.QObject):
             except Exception as error:
                 loging_try()
         self.signal_close.emit()
+
 
 @decorater_set_object_name
 class LoadRingWidget(QtWidgets.QWidget):
@@ -245,7 +239,7 @@ class LoadRingWidget(QtWidgets.QWidget):
         self.len_arc += 5 if self.flag_direction else -5
         self.angle += 5 if self.flag_direction else 10
 
-        self.update()  # вызываем перерисовку виджета
+        self.update()
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -263,7 +257,7 @@ class LoadRingWidget(QtWidgets.QWidget):
         painter.drawArc(QtCore.QRectF(*rect_ring), self.angle * 16, self.len_arc * 16)
 
     def start_load(self):
-        self.timer.start(30)  # обновляем каждые 30 миллисекунд для плавной анимации
+        self.timer.start(30)
 
     def stop_load(self):
         self.timer.stop()
@@ -403,7 +397,7 @@ class Tree(QtWidgets.QTreeView):
         if parent is None:
             parent = self.model().invisibleRootItem()
 
-        for filepath, value in children.items():
+        for _, value in children.items():
             img = value['image']
             icon = QtGui.QIcon()
             icon_path = os.path.join(ICO_FOLDER, img)
@@ -953,51 +947,9 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
         self.thread_inventor.signal_error.connect(self.thread_inventor_error)
         self.thread_inventor.signal_complite_thread.connect(self.thread_inventor_complite)
         self.thread_inventor.signal_complite_copy_assembly.connect(self.move_complite_assembly)
-        self.thread_inventor.signal_is_prepared.connect(self.__full_rename_assembly)
-
-    def initHelper(self) -> None:
-        ...
-        # self.interactive_helper.add_step([self.frame_load], 'В данной части приложения отображается процесс выполнения', False)
-
-        # self.interactive_helper.add_step([
-        #     get_rect_tree_header(0)
-        # ], 'Данный столбец содержит имя компонента внутри сборки')
-
-        # self.interactive_helper.add_step([
-        #     get_rect_tree_header(1)
-        # ], 'Данный столбец содержит имя компонента внутри файла компонента')
-
-        # self.interactive_helper.add_step([
-        #     get_rect_tree_header(2)
-        # ], 'Данный столбец содержит путь относительно копируемой сборки')
-
-        # self.interactive_helper.add_step([
-        #     get_rect_tree_header(2)
-        # ], 'Можно создать новую папку')
-
-    
-        # self.interactive_helper.add_step([
-        #     get_rect_tree_header(2)
-        # ], '"\\" вначале можно удалить, это не повлияет на процесс')
-
-        # self.interactive_helper.add_step([
-        #     get_rect_tree_header(3)
-        # ], 'Данный столбец содержит правила компонента')
-
-        # self.interactive_helper.add_step([
-        #     self.frame_tree_assembly.tree
-        # ], 'Вы можете переименовать любое имя или ')
-
-        # self.interactive_helper.add_step([self.frame_tree_assembly.label_replace_to, 
-        #                       self.frame_tree_assembly.lineedit_replace_to, 
-        #                       self.frame_tree_assembly.label_search_to, 
-        #                       self.frame_tree_assembly.lineedit_search_to, 
-        #                       self.frame_tree_assembly.btn_replace, 
-        #                       self.frame_tree_assembly.check_box_register], 
-        #                       'Шаг 2')       
+        self.thread_inventor.signal_is_prepared.connect(self.__full_rename_assembly)  
 
     def init_helper_interective(self) -> None:
-        print(PROJECT_ROOT)
         self.interactive_helper = HelperInteractive(self, PROJECT_ROOT)
         self.interactive_helper.hide()
 
