@@ -461,8 +461,9 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
             with open(LAST_FILE_GEN_CONFIG, 'r', encoding='utf-8') as last_files:
                 for filepath in last_files.readlines():
                     btn_action = QtWidgets.QAction(filepath, self)
-                    btn_action.triggered.connect(lambda: self.__load_config(filepath))
-                    submenu.addAction(btn_action)
+                    if os.path.exists(filepath):
+                        btn_action.triggered.connect(lambda: self.__load_config(filepath))
+                        submenu.addAction(btn_action)
 
     def write_last_file(self) -> None:
         if self.filepath_config:
@@ -764,6 +765,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                 self.combo_box_choose_step.addItem(f'Шаг {int(i) + 1}')
             self.current_number_step = 0
             self.show_step()
+
 
     def toggle_autosave(self, value: bool) -> None:
         self.is_autosave = value
