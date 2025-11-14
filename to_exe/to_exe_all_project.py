@@ -6,7 +6,7 @@ import zipfile
 import PyInstaller.__main__ as PyInst
 
 
-VERSION = 1.06
+VERSION = 1.07
 PROJECTS = {
     # 'CopyDrinage': 'drainage_tray',
     '_CopyAssembly': 'projects\\copy_assembly'
@@ -21,6 +21,7 @@ EMPTY_FILE_NAME = 'empty'
 EMPTY_PY_NAME = f'{EMPTY_FILE_NAME}.py'
 EMPTY_PY_FULL_FILEPATH = os.path.join(TO_EXE_ROOT, 'build', 'py', EMPTY_PY_NAME)
 EMPTY_EXE_NAME = f'{EMPTY_FILE_NAME}.exe'
+PATH_RESOURCES = os.path.join(TOTAL_PROJECT_ROOT, 'projects\\resources')
 
 
 def init():
@@ -159,7 +160,7 @@ def project_to_exe() -> None:
 
         name_project = dict_config["name_project"]
         root_path_project = os.path.join(TOTAL_PROJECT_ROOT, path_project)
-        ico = os.path.join(TOTAL_PROJECT_ROOT, path_project, dict_config["ico"])
+        ico = os.path.join(PATH_RESOURCES, dict_config["ico"])
         pyfile = os.path.join(TOTAL_PROJECT_ROOT, path_project, dict_config["pyfile"])
 
         exist_exe_project = os.path.join(root_path_project, name_project)
@@ -180,7 +181,7 @@ def project_to_exe() -> None:
                     os.remove(exist_exe_file)
                 shutil.copy(os.path.join(distpath, name_project, file), exist_exe_file)
                 create_exe_runner(name_project, ico)
-        shutil.copytree(os.path.join(root_path_project, 'resources'), os.path.join(path_exe_result, 'resources'),
+        shutil.copytree(PATH_RESOURCES, os.path.join(path_exe_result, 'resources'),
                         dirs_exist_ok=True)
     
     create_file_version()

@@ -22,8 +22,9 @@ from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestio
 # Добавлене путей к приложению, которое необходимо запустить 
 PATH_PROJCETS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PATH_APPLICATION = os.path.join(PATH_PROJCETS, 'copy_assembly')
-PATH_SAVE_CONTENT_GIF = os.path.join(PATH_APPLICATION, 'resources', 'gif')
-PATH_SAVE_CONTENT_IMAGE = os.path.join(PATH_APPLICATION, 'resources', 'image')
+PATH_APPLICATION_RESOURCES = os.path.join(PATH_PROJCETS, 'resources\\ca_resources')
+PATH_SAVE_CONTENT_GIF = os.path.join(PATH_APPLICATION_RESOURCES, 'gif')
+PATH_SAVE_CONTENT_IMAGE = os.path.join(PATH_APPLICATION_RESOURCES, 'image')
 
 sys.path.append(PATH_PROJCETS)
 sys.path.append(PATH_APPLICATION)
@@ -516,7 +517,10 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                 self.combo_box_choose_step.setCurrentIndex(self.current_number_step)
                 step = self.dict_step[str(self.current_number_step)]
                 object_names = step['object_names'] if step['object_names'] else ['']
-                path_content = os.path.join(PATH_APPLICATION, step['content_path'])
+                if step['content_path']:
+                    path_content = os.path.join(PATH_APPLICATION_RESOURCES, step['content_path'])
+                else: 
+                    path_content = ''
                 self.current_path_content = path_content
 
                 self.lineedit_list_object_name.setText(','.join(object_names))
@@ -639,7 +643,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
         self.tool_tip_choose_widget.hide()
         self.delete_helper()
         object_name = self.lineedit_list_object_name.text()
-        self.helper = HelperInteractive(self.application, PATH_APPLICATION)
+        self.helper = HelperInteractive(self.application, PATH_APPLICATION_RESOURCES)
         object_names = [] if not object_name else [i.strip() for i in object_name.split(',')]
 
         data = {
@@ -765,7 +769,7 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
                 self.combo_box_choose_step.addItem(f'Шаг {int(i) + 1}')
             self.current_number_step = 0
             self.show_step()
-
+        print(self.dict_step)
 
     def toggle_autosave(self, value: bool) -> None:
         self.is_autosave = value

@@ -852,7 +852,7 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.setWindowIcon(QtGui.QIcon(os.path.join(ICO_FOLDER, 'CopyAssembly.png')))
         
-        with open(os.path.join(PROJECT_ROOT, r'resources\\style.qss')) as style:
+        with open(os.path.join(RESOURCES_PATH, 'style.qss')) as style:
             text_style = style.read()
             text_style = text_style.replace('{{ICO_FOLDER}}', ICO_FOLDER.replace('\\', '/')) 
             self.setStyleSheet(text_style)
@@ -950,12 +950,12 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
         self.thread_inventor.signal_is_prepared.connect(self.__full_rename_assembly)  
 
     def init_helper_interective(self) -> None:
-        self.interactive_helper = HelperInteractive(self, PROJECT_ROOT)
+        self.interactive_helper = HelperInteractive(self, RESOURCES_PATH)
         self.interactive_helper.hide()
 
     def start_help_interective(self) -> None:
         if self.interactive_helper and not self.interactive_helper.isVisible():
-            self.interactive_helper.load_config(os.path.join(PROJECT_ROOT, 'resources\\config_helper_interactive.json'))
+            self.interactive_helper.load_config(os.path.join(RESOURCES_PATH, 'config_helper_interactive.json'))
             self.interactive_helper.show()
         
     def thread_inventor_error(self, error_code: ErrorCode) -> None:
@@ -980,7 +980,7 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
 
     def open_instruction(self, event):
         if self.helper is None:
-            self.helper = WindowHelper(self, path_resources=os.path.join(PROJECT_ROOT, 'resources'))
+            self.helper = WindowHelper(self, path_resources=RESOURCES_PATH)
         self.helper.show()
 
     def show_window_prepared_assembly(self):

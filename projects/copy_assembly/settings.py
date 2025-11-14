@@ -1,21 +1,21 @@
-import pathlib
 import json
 import sys
 import os
 
 DEBUG = False
 
-def get_root_path() -> str:
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(__file__) 
 
-PROJECT_ROOT = get_root_path()
+if getattr(sys, 'frozen', False):
+    PROJECT_ROOT = os.path.dirname(sys.executable)
+    RESOURCES_PATH = os.path.join(PROJECT_ROOT, 'resources\\ca_resources')
+else:
+    PROJECT_ROOT = os.path.dirname(__file__) 
+    RESOURCES_PATH = os.path.join(os.path.dirname(PROJECT_ROOT), 'resources\\ca_resources')
 
 
-with open(f'{PROJECT_ROOT}\\resources\\parameters_copy_assembly.json', 'r', encoding='utf-8') as param:
+with open(os.path.join(RESOURCES_PATH, 'parameters_copy_assembly.json'), 'r', encoding='utf-8') as param:
     dct: dict = json.load(param)
-    ICO_FOLDER = f'{PROJECT_ROOT}\\resources\\icon'
+    ICO_FOLDER = os.path.join(RESOURCES_PATH, 'icon')
     FILTERS = dct.get('filters')
     PATH_TMP = dct.get('path_tmp')
     DEFAULT_PATH_DIALOG_WINDOW = dct.get('default_path')

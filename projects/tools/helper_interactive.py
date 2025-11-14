@@ -290,9 +290,9 @@ class WidgetBackground(QtWidgets.QWidget):
 
 
 class HelperInteractive:
-    def __init__(self, parent: QtWidgets.QWidget, project_root_parent: str):
+    def __init__(self, parent: QtWidgets.QWidget, path_parent_resources: str):
         self.parent = parent
-        self.project_root_parent = project_root_parent
+        self.path_parent_resources = path_parent_resources
         self.parent.moveEvent = self.move
         self.__is_visible = False
         self.path_config: str = None
@@ -383,7 +383,7 @@ class HelperInteractive:
         
         rel_content_path = self.dict_data[str(self.curent_index_step)]['content_path']
         if rel_content_path:
-            content_path = os.path.join(self.project_root_parent, rel_content_path)
+            content_path = os.path.join(self.path_parent_resources, rel_content_path)
         else:
             content_path = ''
 
@@ -563,6 +563,7 @@ class Window(QtWidgets.QMainWindow):
 
     def moveEvent(self, a0):
         return super().moveEvent(a0)
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
