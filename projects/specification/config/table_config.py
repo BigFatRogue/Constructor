@@ -6,7 +6,8 @@ from datetime import datetime
 class ColumnConfig:
     field: str
     type_data: str
-    column_name: str = None
+    column_name: str = ''
+    mode_column_name: str = ''
 
     @property
     def sql_definition(self):
@@ -34,7 +35,7 @@ class TableConfigPropertyProject(TableConfig):
         name = 'property_project'
         columns = [
             ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
-            ColumnConfig('project_number', 'TEXT', 'Номер проекта'),
+            ColumnConfig('project_number', 'TEXT', 'Номер проекта', ' <span style=color:red;>*</span>'),
             ColumnConfig('number_contract', 'TEXT', 'Пункт договора'),
             ColumnConfig('address', 'TEXT', 'Адрес объекта'),
             ColumnConfig('manager', 'TEXT', 'Руководитель проекта'),
@@ -93,7 +94,7 @@ class TableConfigInventor(TableConfig):
 class TableConfigBuy(TableConfig):
     def __init__(self, name, columns):
         name='table_buy', 
-        columns  =[
+        columns = [
             ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
             ColumnConfig('articul', 'TEXT', 'Инвентарный номер'),
             ColumnConfig('description', 'TEXT', 'Описание'),
@@ -104,6 +105,7 @@ class TableConfigBuy(TableConfig):
             ColumnConfig('unit', 'TEXT', 'Единичная величина'),
             ColumnConfig('material', 'TEXT', 'Материал'),
             ColumnConfig('note', 'TEXT', 'Примечание'),
+            ColumnConfig('invoice', 'TEXT', 'Счёт ОМТС'),
             ColumnConfig('ikey', 'TEXT')
         ]
         super().__init__(name, columns)

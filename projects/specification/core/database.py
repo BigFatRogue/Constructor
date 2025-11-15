@@ -1,7 +1,7 @@
 from typing import Union
-from projects.specification.tables_config import TableConfigPropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd
 import sqlite3
 
+from projects.specification.config.table_config import TableConfigPropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd
 
 
 class DataBase:

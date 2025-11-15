@@ -2,11 +2,11 @@ from PyQt5 import QtWidgets
 
 
 class MessegeBoxQuestion(QtWidgets.QDialog):
-    def __init__(self, parent, question=None, answer_accept=None, answer_reject=None, title='Сохранения изменений'):
+    def __init__(self, parent, question='Сохранить изменения?', answer_accept='Да', answer_reject='Нет', title='Сохранения изменений'):
         super().__init__(parent)
-        self.question = 'Сохранить изменения?' if question is None else question
-        self.text_answer_accept = 'Да' if answer_accept is None else answer_accept
-        self.text_answer_reject = 'Нет' if answer_reject is None else answer_reject
+        self.question = question
+        self.text_answer_accept = answer_accept
+        self.text_answer_reject = answer_reject
         
         self.setWindowTitle(title)
         self.resize(300, 50)
