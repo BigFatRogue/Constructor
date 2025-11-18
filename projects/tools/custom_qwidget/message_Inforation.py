@@ -1,12 +1,11 @@
 from PyQt5 import QtWidgets
-from ca_modes.error_code import ErrorCode
 
 
 class MessageInforation(QtWidgets.QMessageBox):
-    def __init__(self):
+    def __init__(self, parent, text='Внимание'):
+        super().__init__(parent)
         self.setIcon(QtWidgets.QMessageBox.Information)
         self.setWindowTitle('Внимание')
+        self.setText(text)
         self.setStandardButtons(QtWidgets.QMessageBox.Ok)
         
-    def set_error(self, error_code: ErrorCode) -> None:
-        self.setText(f'{error_code.message}\n{error_code.description}')

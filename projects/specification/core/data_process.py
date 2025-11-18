@@ -5,6 +5,10 @@ from projects.specification.core.data_loader import get_data_from_xl
 import os
 
 
+def save_project(filepath: str) -> None:
+    ...
+
+
 def load_data_to_db(database: DataBase, filepath_xl: str, filepath_db: str) -> TableConfigInventor:
     inventor_table_config = TableConfigInventor()
 

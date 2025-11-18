@@ -1,15 +1,18 @@
-from typing import Callable
+from typing import Callable, Union
 from PyQt5 import QtCore, QtWidgets, QtGui
 from dataclasses import dataclass
 
 from projects.specification.config.settings import *
 from projects.specification.config.enums import TypeTreeItem
 from projects.specification.config.constants import *
-from projects.specification.config.table_config import TableConfigPropertyProject, TableConfigInventor
+from projects.specification.config.table_config import TableConfigPropertyProject, TableConfigInventor, ColumnConfig
 
 from projects.specification.ui.widgets.table import Table
+from projects.specification.ui.widgets.browser import BrowserItem, ProjectItem, SpecItem, TableItem
 
-from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
+from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button, decorater_set_object_name
+from projects.tools.functions.alarm_border_qlineedit import alarm_border_qlineedit
+from projects.tools.custom_qwidget.message_Inforation import MessageInforation
 from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
 from projects.tools.row_counter import RowCounter
 
@@ -20,9 +23,9 @@ class PageContent(QtWidgets.QWidget):
     """
     def __init__(self, parent):
         super().__init__(parent)
-        self.current_item: QtWidgets.QTreeWidgetItem = None
+        self.current_item: Union[ProjectItem, SpecItem, TableItem] = None
     
-    def populate(self, item: QtWidgets.QTreeWidgetItem) -> None:
+    def populate(self, item: Union[ProjectItem, SpecItem, TableItem]) -> None:
         self.current_item = item
 
     def update_data_item(self) -> None:
@@ -47,17 +50,20 @@ class PageEmpty(PageContent):
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class PagePropertyProject(PageContent):
+    signal_save_project = QtCore.pyqtSignal(QtWidgets.QTreeWidgetItem)
+
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.table_config = TableConfigPropertyProject()
-        self.init_widgets()
+        self.columns_config: list[ColumnConfig] = None
+        self.init()
 
-    def init_widgets(self) -> None:
+    def init(self) -> None:
         self.grid_layout = QtWidgets.QGridLayout(self)
         self.grid_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         self.setLayout(self.grid_layout)
 
+    def init_widgets(self) -> None:
         row_counter = RowCounter()
 
         self.label_project_filepath = QtWidgets.QLabel(self)
@@ -68,57 +74,97 @@ class PagePropertyProject(PageContent):
         self.lineedit_project_filepath.setEnabled(False)
         self.grid_layout.addWidget(self.lineedit_project_filepath, row_counter.value, 1, 1, 2)
 
+        self.col_file_name: ColumnConfig = self.columns_config[1]
+
+        self.label_project_name = QtWidgets.QLabel(self)
+        self.label_project_name.setText(f'{self.col_file_name.column_name}{self.col_file_name.mode_column_name}')
+        self.grid_layout.addWidget(self.label_project_name, row_counter.next(), 0, 1, 2)
+
+        self.lineedti_project_name = QtWidgets.QLineEdit(self)
+        self.lineedti_project_name.setObjectName(f'{self.__class__.__name__}_label_{self.col_file_name.field}')
+        self.grid_layout.addWidget(self.lineedti_project_name, row_counter.value, 1, 1, 1)
+
         h_line_separate = QHLineSeparate(self)
         self.grid_layout.addWidget(h_line_separate, row_counter.next(), 0, 1, 4)
+        
 
-        self.list_line_eidt: list[QtWidgets.QLineEdit] = []
-        for config_col in self.table_config.columns[1:]:
+        self.dict_line_edit: dict[str, QtWidgets.QLineEdit] = {self.col_file_name.field: self.lineedti_project_name}
+        for config_col in self.columns_config[2:]:
             label = QtWidgets.QLabel(self)
             label.setText(f'{config_col.column_name}{config_col.mode_column_name}')
             self.grid_layout.addWidget(label, row_counter.next(), 0, 1, 1)
 
             lineedit = QtWidgets.QLineEdit(self)
-            lineedit.textChanged.connect(self.change_lineedit)
+            lineedit.setObjectName(f'{self.__class__.__name__}_label_{config_col.field}')
+            
             self.grid_layout.addWidget(lineedit, row_counter.value, 1, 1, 1)
-            self.list_line_eidt.append(lineedit)
+            self.dict_line_edit[config_col.field] = lineedit
+
+        for le in self.dict_line_edit.values():
+            le.textChanged.connect(self.change_lineedit)
 
         self.btn_save_property_project = QtWidgets.QPushButton(self)
         self.btn_save_property_project.setText('Сохранить')
         self.btn_save_property_project.clicked.connect(self.click_save)
         self.grid_layout.addWidget(self.btn_save_property_project, row_counter.next(), 0, 1, 4)
     
-    def populate(self, item):
+    def populate(self, item: ProjectItem):
         super().populate(item)
+        if self.columns_config is None:
+            self.columns_config = item.table_config.columns
+            self.init_widgets()
 
-        if not self.current_item.data(0, QROLE_STATUS_TREE_ITEM):
-            data = self.current_item.data(0, QROLE_DATA_TREE_ITEM)
+        data_from_db = False
+        if self.current_item.is_save:
+            data = self.current_item.select_sql()
             if data:
-                for db_columns, value in zip(self.table_config.columns[1:], self.list_line_eidt):
-                    value.setText(data[db_columns.field])
+                self.current_item.set_data(data)
+                data_from_db = True
         else:
-            self.get_data_from_db()
+            data = self.current_item.get_data()
+        
+        self.clear()
+        for field, lineedit in self.dict_line_edit.items():
+            lineedit.setText(data.get(field))
+        self.lineedit_project_filepath.setText(self.current_item.filepath)
+        self.current_item.is_save = data_from_db
 
     def update_data_item(self):
-        data = self.current_item.data(0, QROLE_DATA_TREE_ITEM)
-        for db_columns, value in zip(self.table_config.columns[1:], self.list_line_eidt):
-            data[db_columns.field] = value.text()
-        self.current_item.setData(0, QROLE_DATA_TREE_ITEM, data)
-
-    def get_data_from_db(self) -> None:
-        self.clear()
+        data = self.current_item.get_data()
+        for field, lineedit in self.dict_line_edit.items():
+            data[field] = lineedit.text()
+        self.current_item.set_data(data)
 
     def click_save(self) -> None:
-        self.update_data_item()
-        self.current_item.setData(0, QROLE_STATUS_TREE_ITEM, True)
+        if self.check_fill_lineedit():
+            self.update_data_item()
+            if not self.current_item.is_init:
+                dlg = QtWidgets.QFileDialog(self)
+                dir_path, _ = dlg.getSaveFileName(self, 'Выберете папку', filter='SPEC файл (*.spec)')
+                if dir_path:
+                    dir_path = dir_path.replace('/', '\\')
+                    self.current_item.filepath = dir_path
+                    self.lineedit_project_filepath.setText(self.current_item.filepath)
+                    self.current_item.set_project_name(self.lineedti_project_name.text())
+            self.signal_save_project.emit(self.current_item)
+
+    def check_fill_lineedit(self) -> bool:
+        for col in self.columns_config:
+            if col.mode_column_name:
+                lineedit = self.dict_line_edit[col.field]
+                if not lineedit.text():
+                    msg = MessageInforation(self, 'Данное поле не может быть пустым')
+                    msg.exec()
+                    alarm_border_qlineedit(lineedit)
+                    return False
+        return True
 
     def change_lineedit(self, text: str) -> None:
-        if self.current_item:
-            self.current_item.setData(0, QROLE_STATUS_TREE_ITEM, False)
+        self.current_item.is_save = False
 
     def clear(self) -> None:
-        for w in self.list_line_eidt:
-            w.setText('')
-        self.current_item.setData(0, QROLE_STATUS_TREE_ITEM, True)
+        for lineeidt in self.dict_line_edit.values():
+            lineeidt.setText('')
 
 
 @dataclass
@@ -159,7 +205,7 @@ class PageCreateOrOpenProject(PageContent):
     def populate(self, item):
         super().populate(item)
 
-        tp = item.data(0, QROLE_TYPE_TREE_ITEM)
+        tp = item.type_item
         len_list_btn = len(self.list_btn)
         buttons = self.dict_buttons[tp]
 
@@ -216,8 +262,8 @@ class WidgetContent(QtWidgets.QWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.current_item: QtWidgets.QTreeWidgetItem = None
-        self.prev_item: QtWidgets.QTreeWidgetItem = None
+        self.current_item: Union[ProjectItem, SpecItem, TableItem] = None
+        self.prev_item: Union[ProjectItem, SpecItem, TableItem] = None
         self.prev_page: PageContent = None
 
         self.init_widgets()
@@ -244,7 +290,7 @@ class WidgetContent(QtWidgets.QWidget):
 
         self.stacket.setCurrentIndex(0)
 
-    def set_item(self, item: QtWidgets.QTreeWidgetItem) -> None:
+    def set_item(self, item: Union[ProjectItem, SpecItem, TableItem]) -> None:
         self.prev_item = self.current_item
         self.current_item = item
 
@@ -252,7 +298,7 @@ class WidgetContent(QtWidgets.QWidget):
             current_page: PageContent = self.stacket.currentWidget()
             current_page.update_data_item()
 
-        tp = item.data(0, QROLE_TYPE_TREE_ITEM)
+        tp = item.type_item
 
         if tp == TypeTreeItem.PROJET:
             self.page_property_projcet.populate(item)
@@ -269,7 +315,9 @@ class WidgetContent(QtWidgets.QWidget):
 
     def click_save(self) -> None:
         if self.current_item:
-            self.current_item.setData(0, QROLE_STATUS_TREE_ITEM, True)
+            if not self.current_item.is_init:
+                self.current_item.is_init = True
+            self.current_item.is_save = True
 
     def click_btn(self) -> None:
         self.signal_click_btn.emit(self.sender().property('data'))

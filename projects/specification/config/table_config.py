@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
+from sqlite3 import Cursor
 
 
 @dataclass
@@ -18,6 +20,7 @@ class TableConfig:
     def __init__(self, name: str, columns: list[ColumnConfig]):
         self.name = name
         self.columns = columns
+        self.data: dict = {}
     
     def get_fileds(self) -> tuple[str]:
         return tuple(tp.field for tp in self.columns if tp.field != 'id')
@@ -25,16 +28,28 @@ class TableConfig:
     def get_columns_name(self) -> tuple[str]:
         return tuple(col.column_name for col in self.columns)
 
-    def create_sql(self):
+    def create_sql(self, cur: Cursor):
         columns_sql = ", ".join(col.sql_definition for col in self.columns)
-        return f"CREATE TABLE IF NOT EXISTS {self.name} ({columns_sql})"
+        cur.execute(f"CREATE TABLE IF NOT EXISTS {self.name} ({columns_sql})")
+    
+    def insert_sql(self, cur: Cursor) -> None:
+        ...
+    
+    def select_sql(self, cur: Cursor) -> None:
+        ...
+    
+    def update_sql(self, cur: Cursor) -> None:
+        ...
 
 
 class TableConfigPropertyProject(TableConfig):
     def __init__(self):
         name = 'property_project'
+
         columns = [
             ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ColumnConfig('file_name', 'TEXT', 'Название файла', ' <span style=color:red;>*</span>'),
+            ColumnConfig('project_name', 'TEXT', 'Обозначение проекта'),
             ColumnConfig('project_number', 'TEXT', 'Номер проекта', ' <span style=color:red;>*</span>'),
             ColumnConfig('number_contract', 'TEXT', 'Пункт договора'),
             ColumnConfig('address', 'TEXT', 'Адрес объекта'),
@@ -44,7 +59,25 @@ class TableConfigPropertyProject(TableConfig):
             ColumnConfig('name_model', 'TEXT', 'Модель установки'),
             ColumnConfig('name_drawing', 'TEXT', 'Обозначение чертежа'),
         ]
+        self.data: dict[str, str]
         super().__init__(name, columns)
+    
+    def insert_sql(self, cur):
+        str_values = ', '.join(['?' for _ in range(len(self.data))])
+        str_fields = ', '.join([field for field in self.data.keys()])
+        cur.execute(f'INSERT INTO {self.name} ({str_fields}) VALUES({str_values})', [v for v in self.data.values()])
+    
+    def update_sql(self, cur):
+        str_values = ', '.join([f'{key} = ?' for key in self.data.keys()])
+        cur.execute(f'UPDATE  {self.name} SET {str_values} WHERE id=1', list(self.data.values()))
+
+    def select_sql(self, cur) -> dict[str, str]:
+        str_fields = ', '.join(self.get_fileds())
+        res = cur.execute(f'SELECT {str_fields} FROM {self.name}').fetchall()
+        data = {}
+        if res:
+            data = {k: v for k, v in zip(self.get_fileds(), res[0])}
+        return data
 
 
 class TableConfigInventor(TableConfig):
@@ -79,7 +112,7 @@ class TableConfigInventor(TableConfig):
         list_ignore = self.list_ignore_field if is_ignore else tuple()
         return tuple(tp.field for tp in self.columns if tp.field not in list_ignore)
 
-    def update_diff(self, name_table_1) -> None:
+    def update_diff(self, name_table_1) -> str:
         f"""UPDATE {self.name} as t2
             SET diff = quantity - (
             SELECT t1.quantity

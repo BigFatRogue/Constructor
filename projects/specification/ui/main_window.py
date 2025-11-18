@@ -6,7 +6,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from projects.specification.config.settings import *
 from projects.specification.core.database import DataBase
 
-from projects.specification.ui.widgets.browser import WidgetBrowser
+from projects.specification.ui.widgets.browser import WidgetBrowser, ProjectItem
 from projects.specification.ui.widgets.content import WidgetContent
 
 
@@ -14,7 +14,6 @@ class WindowSpecification(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.databases: dict[str, DataBase] = {}
         self.path_project: str = None
 
         self.init_widnow()
@@ -54,16 +53,17 @@ class WindowSpecification(QtWidgets.QMainWindow):
         file_menu.addAction(open_action)
 
     def init_widgets(self) -> None:
-        self.browser = WidgetBrowser(self)
-        self.browser.setObjectName('browser')
-        self.browser.signal_select_item.connect(self.select_item)
+        self.widget_browser = WidgetBrowser(self)
+        self.widget_browser.setObjectName('browser')
+        self.widget_browser.signal_select_item.connect(self.select_item)
+        self.widget_browser.signal_open_project.connect(self.open_project)
         
         self.widget_content = WidgetContent(self)
-        # self.widget_content.signal_click_btn.connect(self.load_content)
-        self.browser.signal_del_item.connect(self.widget_content.view_empty_page)
+        self.widget_content.page_property_projcet.signal_save_project.connect(self.save_project)
+        self.widget_browser.signal_del_item.connect(self.widget_content.view_empty_page)
     
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        splitter.addWidget(self.browser)
+        splitter.addWidget(self.widget_browser)
         splitter.addWidget(self.widget_content)
         splitter.setStretchFactor(1, 1)
         self.grid_layout.addWidget(splitter, 0, 0, 1, 1)
@@ -71,19 +71,33 @@ class WindowSpecification(QtWidgets.QMainWindow):
     def select_item(self, item: QtWidgets.QTreeWidgetItem) -> None:
         self.widget_content.set_item(item)
         
-    def create_project(self) -> None:
-        ...
+    def save_project(self, item: ProjectItem) -> None:
+        if item.filepath:
+            if not item.is_init:
+                database = DataBase()
+                item.database = database
+                database.connect(item.filepath)
+                item.create_sql()
+                item.insert_sql()
+                item.is_init = True
+                database.conn.commit()
+                self.widget_browser.create_main_item_project(item)
+            else:
+                item.update_sql()
+                item.database.conn.commit()
+            item.is_save = True
 
     def open_project(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
         filename = dlg.getOpenFileName(self, 'Выбрать файл', filter='SPEC файл (*.spec)')
         if filename[0]:
-            self.path_project = filename[0]
-            self.browser.populate_from_db()
+            database = DataBase()
+            database.connect(filename[0])
+            self.widget_browser.create_project(database=database)
 
     def closeEvent(self, event):
-        for db in self.databases.values():
-            db.close()
+        # for db in self.databases.values():
+        #     db.close()
 
         return super().closeEvent(event)
 

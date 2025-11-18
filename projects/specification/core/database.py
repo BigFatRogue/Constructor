@@ -6,31 +6,15 @@ from projects.specification.config.table_config import TableConfigPropertyProjec
 
 class DataBase:
     def __init__(self):
-        self.path_db = None
+        self.filepath = None
         self.conn = None
         self.cur = None
     
-    def set_path(self, path_db: str) -> None:
-        self.path_db = path_db
-
     def connect(self, filepath: str) -> None:
         if self.conn is None:
-            self.path_db = filepath
-            self.conn = sqlite3.connect(self.path_db)
+            self.filepath = filepath
+            self.conn = sqlite3.connect(self.filepath)
             self.cur = self.conn.cursor()
-
-    def create_table(self, table: Union[TableConfigPropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd]) -> None:
-        self.cur.execute(table.create_sql())
-        self.conn.commit()
-
-    def fill_table_from_data(self, table: Union[TableConfigPropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd], data: list[list]) -> None:
-        fields = table.get_fileds(is_ignore=True)
-
-        str_filed = ','.join(fields)
-        values = ','.join(['?' for _ in fields])
-        for row in data:
-            self.cur.execute(f'''INSERT INTO {table.name} ({str_filed}) VALUES({values})''', row)
-        self.conn.commit()
 
     def get_list_tables(self) -> list[str]:
         list_names = self.cur.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()

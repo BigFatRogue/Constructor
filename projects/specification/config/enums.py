@@ -17,3 +17,4 @@ class TypeCreateLoadSpec(Enum):
     CREATE_SPEC_PROD_FROM_SPEC_BUY = auto()
     CREATE_SPEC_PROD_FROM_SPEC_INV = auto()
     CREATE_SPEC_PROD_EMPTY = auto()
+
