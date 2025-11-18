@@ -637,7 +637,6 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.full_viewer.hide()
 
     def load_parameters(self) -> dict:
-        return {}
         sitting_file = os.path.join(PATH_PDM_RESOURCES, 'prepared_assembly\\prepared_assembly.json')
         if os.path.exists(sitting_file):
             with open(sitting_file, 'r', encoding='utf-8') as file:
@@ -676,10 +675,11 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
     def text_edited_replace_to(self, text) -> None:
         item = self.list_box.currentItem()
         if item:
-            data = self.parameters[item.text()]
-            serach = data['search_to']
-            name_assembly = data['name_assembly'] 
-            self.line_edit_new_assembly_name.setText(name_assembly.replace(serach, text))
+            data = self.parameters.get(item.text())
+            if data:
+                serach = data['search_to']
+                name_assembly = data['name_assembly'] 
+                self.line_edit_new_assembly_name.setText(name_assembly.replace(serach, text))
 
     def click_btn_ok(self) -> None:
         if self.line_edit_new_assembly_name.text():
