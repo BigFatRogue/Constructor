@@ -3,15 +3,15 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from dataclasses import dataclass
 
 from projects.specification.config.settings import *
-from projects.specification.config.enums import TypeTreeItem
+from projects.specification.config.enums import TypeTreeItem, EnumStatusBar
 from projects.specification.config.constants import *
-from projects.specification.config.table_config import TableConfigPropertyProject, TableConfigInventor, ColumnConfig
+from projects.specification.core.data_tables import ColumnConfig
 
 from projects.specification.ui.widgets.table import Table
 from projects.specification.ui.widgets.browser import BrowserItem, ProjectItem, SpecItem, TableItem
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button, decorater_set_object_name
-from projects.tools.functions.alarm_border_qlineedit import alarm_border_qlineedit
+from projects.tools.functions.warning_qlineedit import WarningQEditLine
 from projects.tools.custom_qwidget.message_Inforation import MessageInforation
 from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
 from projects.tools.row_counter import RowCounter
@@ -51,11 +51,13 @@ class PageEmpty(PageContent):
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class PagePropertyProject(PageContent):
     signal_save_project = QtCore.pyqtSignal(QtWidgets.QTreeWidgetItem)
+    signal_status = QtCore.pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
 
         self.columns_config: list[ColumnConfig] = None
+        self.current_item: ProjectItem
         self.init()
 
     def init(self) -> None:
@@ -87,7 +89,6 @@ class PagePropertyProject(PageContent):
         h_line_separate = QHLineSeparate(self)
         self.grid_layout.addWidget(h_line_separate, row_counter.next(), 0, 1, 4)
         
-
         self.dict_line_edit: dict[str, QtWidgets.QLineEdit] = {self.col_file_name.field: self.lineedti_project_name}
         for config_col in self.columns_config[2:]:
             label = QtWidgets.QLabel(self)
@@ -111,42 +112,43 @@ class PagePropertyProject(PageContent):
     def populate(self, item: ProjectItem):
         super().populate(item)
         if self.columns_config is None:
-            self.columns_config = item.table_config.columns
+            self.columns_config = item.table_data.config.columns
             self.init_widgets()
 
         data_from_db = False
         if self.current_item.is_save:
-            data = self.current_item.select_sql()
+            data = self.current_item.table_data.select_sql()
             if data:
-                self.current_item.set_data(data)
+                self.current_item.table_data.set_data(data)
                 data_from_db = True
         else:
-            data = self.current_item.get_data()
+            data = self.current_item.table_data.get_data()
         
         self.clear()
         for field, lineedit in self.dict_line_edit.items():
             lineedit.setText(data.get(field))
-        self.lineedit_project_filepath.setText(self.current_item.filepath)
+        self.lineedit_project_filepath.setText(self.current_item.table_data.get_filepath())
         self.current_item.is_save = data_from_db
 
     def update_data_item(self):
-        data = self.current_item.get_data()
+        data = self.current_item.table_data.get_data()
         for field, lineedit in self.dict_line_edit.items():
             data[field] = lineedit.text()
-        self.current_item.set_data(data)
+        self.current_item.table_data.set_data(data)
 
     def click_save(self) -> None:
         if self.check_fill_lineedit():
             self.update_data_item()
             if not self.current_item.is_init:
                 dlg = QtWidgets.QFileDialog(self)
-                dir_path, _ = dlg.getSaveFileName(self, 'Выберете папку', filter='SPEC файл (*.spec)')
+                dir_path, _ = dlg.getSaveFileName(self, 'Выберете папку', filter=f'{MY_FROMAT.upper()} файл (*.{MY_FROMAT})')
                 if dir_path:
                     dir_path = dir_path.replace('/', '\\')
-                    self.current_item.filepath = dir_path
-                    self.lineedit_project_filepath.setText(self.current_item.filepath)
-                    self.current_item.set_project_name(self.lineedti_project_name.text())
+                    self.current_item.table_data.set_filepath_db(dir_path)
+                    self.lineedit_project_filepath.setText(self.current_item.table_data.get_filepath())
+            self.current_item.set_project_name(self.lineedti_project_name.text())
             self.signal_save_project.emit(self.current_item)
+            self.signal_status.emit(f'{EnumStatusBar.PROJECT_SAVE.value}: {self.current_item.project_name}')
 
     def check_fill_lineedit(self) -> bool:
         for col in self.columns_config:
@@ -154,8 +156,8 @@ class PagePropertyProject(PageContent):
                 lineedit = self.dict_line_edit[col.field]
                 if not lineedit.text():
                     msg = MessageInforation(self, 'Данное поле не может быть пустым')
+                    WarningQEditLine(lineedit)
                     msg.exec()
-                    alarm_border_qlineedit(lineedit)
                     return False
         return True
 
@@ -259,6 +261,7 @@ class PageTable(PageContent):
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class WidgetContent(QtWidgets.QWidget):
     signal_click_btn = QtCore.pyqtSignal(dict)
+    signal_status = QtCore.pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -280,6 +283,8 @@ class WidgetContent(QtWidgets.QWidget):
         self.index_page_empty = self.stacket.addWidget(self.page_empty)
         
         self.page_property_projcet = PagePropertyProject(self)
+        self.page_property_projcet.signal_status.connect(lambda text: self.signal_status.emit(text))
+        
         self.index_page_property_projcet = self.stacket.addWidget(self.page_property_projcet)
 
         self.page_create_or_open_project = PageCreateOrOpenProject(self)
@@ -313,11 +318,7 @@ class WidgetContent(QtWidgets.QWidget):
     def view_empty_page(self) -> None:
         self.stacket.setCurrentIndex(self.index_page_empty)
 
-    def click_save(self) -> None:
-        if self.current_item:
-            if not self.current_item.is_init:
-                self.current_item.is_init = True
-            self.current_item.is_save = True
-
     def click_btn(self) -> None:
         self.signal_click_btn.emit(self.sender().property('data'))
+
+       

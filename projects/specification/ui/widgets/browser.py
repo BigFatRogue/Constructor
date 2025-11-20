@@ -1,15 +1,18 @@
 import os
-from typing import Union
+from typing import Union, TypeVar, Iterable
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.settings import *
-from projects.specification.config.enums import TypeTreeItem
+from projects.specification.config.enums import TypeTreeItem, EnumStatusBar
 from projects.specification.config.constants import *
-from projects.specification.config.table_config import TableConfig, TableConfigPropertyProject, TableConfigBuy, TableConfigInventor, TableConfigProd
+from projects.specification.core.data_tables import PropertyProjectData, InventorSpecificationDataItem
 from projects.specification.core.database import DataBase
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
+
+
+TTData = TypeVar('T', PropertyProjectData, InventorSpecificationDataItem)
 
 
 class BrowserItem(QtWidgets.QTreeWidgetItem):
@@ -20,7 +23,7 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
         self.project_name: str = None
         self.is_init: bool = False
         self.is_save: bool = False
-        self.table_config: TableConfig = None
+        self.table_data: TTData = None
         self.database: DataBase = None
 
         # Для делегата
@@ -32,14 +35,16 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
     def text(self, column=0):
         return super().text(column)
 
+    def set_database(self, database: DataBase) -> None:
+        self.table_data.database = database
+
 
 class ProjectItem(BrowserItem):
-    def __init__(self):
+    def __init__(self, table_data: TTData):
         super().__init__()
 
         self.type_item = TypeTreeItem.PROJET
-        self.filepath: str = None
-        self.table_config: TableConfigPropertyProject = TableConfigPropertyProject()
+        self.table_data = table_data
 
         self.project_name = 'Новый проект'
         self.setText(self.project_name)
@@ -48,29 +53,10 @@ class ProjectItem(BrowserItem):
         self.project_name = text
         self.setText(self.project_name)
 
-    def set_data(self, data: dict[str, str]) -> None:
-        self.table_config.data = data
-    
-    def get_data(self) -> dict[str, str]:
-        return self.table_config.data
-
     def populate_from_db(self) -> None:
-        if self.database:
-            self.set_data(self.select_sql())
-            self.set_project_name(self.get_data().get(self.table_config.columns[1].field))
+        self.table_data.set_data(self.table_data.select_sql())
+        self.set_project_name(self.table_data.get_data().get(self.table_data.columns[1].field))
     
-    def create_sql(self) -> None:
-        self.table_config.create_sql(self.database.cur)
-
-    def insert_sql(self) -> None:
-        self.table_config.insert_sql(self.database.cur)
-    
-    def update_sql(self) -> None:
-        self.table_config.update_sql(self.database.cur)
-    
-    def select_sql(self) -> dict[str, str]:
-        return self.table_config.select_sql(self.database.cur)
-
 
 class SpecItem(BrowserItem): 
     def __init__(self, text: str, path_ico: str):
@@ -123,14 +109,14 @@ class ButtonBrowser(QtWidgets.QPushButton):
         icon = QtGui.QIcon()
         icon.addFile(os.path.join(ICO_FOLDER, name_ico))
         self.setIcon(icon)
-        
-
+       
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class WidgetBrowser(QtWidgets.QWidget):
     signal_select_item = QtCore.pyqtSignal(QtWidgets.QTreeWidgetItem)
     signal_del_item = QtCore.pyqtSignal()
     signal_open_project = QtCore.pyqtSignal()
+    signal_status = QtCore.pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -180,20 +166,15 @@ class WidgetBrowser(QtWidgets.QWidget):
         self.tree.itemPressed.connect(self.select_tree_item)
         self.grid_layout.addWidget(self.tree, 1, 0, 1, 1)
 
-    def create_project(self, database: DataBase=None) -> None:
-        project_item = ProjectItem()
-
-        if database:
-            project_item.database = database
-            project_item.populate_from_db()
-            project_item.filepath = database.filepath
-            project_item.is_init = True
-            project_item.is_save = True
-            self.create_main_item_project(project_item)
-        
+    def create_project(self) -> ProjectItem:
+        database = DataBase()
+        table_data = PropertyProjectData(database)
+        project_item = ProjectItem(table_data)  
+             
         self.tree.addTopLevelItem(project_item)
         self.tree.setCurrentItem(project_item)
         project_item.setExpanded(True)
+        return project_item
     
     def create_main_item_project(self, project_item: QtWidgets.QTreeWidgetItem) -> None:
         spec_inv_item = SpecItem('Спецификация из Inventor', os.path.join(ICO_FOLDER, 'inventor.png'))
@@ -225,6 +206,28 @@ class WidgetBrowser(QtWidgets.QWidget):
                 for item in self.tree.selectedItems():
                     (item.parent() or root).removeChild(item)
                 self.signal_del_item.emit()
+
+    def get_filepath_projects(self) -> tuple[str, ...]:
+        top_level_item: Iterable[ProjectItem] = (self.tree.topLevelItem(i) for i in range(self.tree.topLevelItemCount()))
+        return tuple(item.table_data.get_filepath() for item in top_level_item)
+
+    def load_project(self, filepath_db: str) -> None:
+        if filepath_db not in self.get_filepath_projects():
+            project_item = self.create_project()
+
+            table_data: PropertyProjectData = project_item.table_data
+            key_project_name = table_data.config.columns[1].field
+            table_data.set_filepath_db(filepath_db)
+            table_data.set_data(table_data.select_sql())
+            project_item.set_project_name(table_data.get_data().get(key_project_name))
+            
+            project_item.is_init = True
+            project_item.is_save = True
+            self.create_main_item_project(project_item)
+
+            self.signal_status.emit(f'{EnumStatusBar.PROJECT_LOAD.value}: {project_item.project_name}')
+        else:
+            self.signal_status.emit(f'{EnumStatusBar.PROJECT_EXIST.value}: {os.path.basename(filepath_db)}')
 
     def change_tree_item(self, item: BrowserItem) -> None:
         if item.type_item == TypeTreeItem.PROJET:

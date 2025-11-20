@@ -16,6 +16,7 @@ _temp
 *.spec
 build
 setup
-_*
+__pycache__
 DEBUG
 TODO.md
+*.scdata

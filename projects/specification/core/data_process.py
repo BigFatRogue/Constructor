@@ -1,4 +1,4 @@
-from projects.specification.config.table_config import TableConfigInventor
+from projects.specification.core.data_tables import TableConfigInventor
 
 from projects.specification.core.database import DataBase
 from projects.specification.core.data_loader import get_data_from_xl

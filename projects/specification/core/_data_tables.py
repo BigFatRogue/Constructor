@@ -1,7 +1,19 @@
+import sys
 from dataclasses import dataclass
+from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any
-from sqlite3 import Cursor
+from typing import TypeVar, Sequence
+
+if __name__ == '__main__':
+    # Для запуска через IDE
+    from pathlib import Path
+    test_path = str(Path(__file__).parent.parent.parent)
+    sys.path.append(test_path)
+
+from projects.specification.core.database import DataBase
+
+
+TDataTable = TypeVar('T', dict, list, tuple)
 
 
 @dataclass
@@ -16,34 +28,57 @@ class ColumnConfig:
         return f"{self.field} {self.type_data}"
 
 
-class TableConfig:
-    def __init__(self, name: str, columns: list[ColumnConfig]):
+class TableConfig(ABC):
+    def __init__(self, name: str, columns: list[ColumnConfig], database: DataBase):
         self.name = name
         self.columns = columns
-        self.data: dict = {}
+        self.database: DataBase = database
+        self.filepath_db: str = None
+        self.data: TDataTable = None
     
+    def check_connect(self) -> bool:
+        if self.database:
+            if self.database.conn is None:
+                if self.filepath_db:
+                    self.database.connect(self.filepath_db)
+                else:
+                    return False
+            return True
+        return False
+
     def get_fileds(self) -> tuple[str]:
         return tuple(tp.field for tp in self.columns if tp.field != 'id')
 
     def get_columns_name(self) -> tuple[str]:
         return tuple(col.column_name for col in self.columns)
 
-    def create_sql(self, cur: Cursor):
+    def create_sql(self) -> None:
         columns_sql = ", ".join(col.sql_definition for col in self.columns)
-        cur.execute(f"CREATE TABLE IF NOT EXISTS {self.name} ({columns_sql})")
+        self.database.cur.execute(f"CREATE TABLE IF NOT EXISTS {self.name} ({columns_sql})")
     
-    def insert_sql(self, cur: Cursor) -> None:
+    @abstractmethod
+    def get_data(self) -> Sequence[TDataTable]:
         ...
     
-    def select_sql(self, cur: Cursor) -> None:
+    @abstractmethod
+    def set_data(self, data: Sequence[TDataTable]) -> None:
         ...
     
-    def update_sql(self, cur: Cursor) -> None:
+    @abstractmethod
+    def insert_sql(self) -> None:
+        ...
+    
+    @abstractmethod
+    def select_sql(self) -> Sequence[TDataTable]:
+        ...
+
+    @abstractmethod
+    def update_sql(self) -> None:
         ...
 
 
 class TableConfigPropertyProject(TableConfig):
-    def __init__(self):
+    def __init__(self, database: DataBase):
         name = 'property_project'
 
         columns = [
@@ -59,25 +94,44 @@ class TableConfigPropertyProject(TableConfig):
             ColumnConfig('name_model', 'TEXT', 'Модель установки'),
             ColumnConfig('name_drawing', 'TEXT', 'Обозначение чертежа'),
         ]
-        self.data: dict[str, str]
-        super().__init__(name, columns)
+        super().__init__(name=name, columns=columns, database=database)
+        
+        self.data: dict[str, str] = {}
     
-    def insert_sql(self, cur):
+    def set_data(self, data: dict[str, str]):
+        self.data = data
+    
+    def get_data(self):
+        return self.data
+
+    def insert_sql(self):
+        if not self.check_connect():
+            return
+
         str_values = ', '.join(['?' for _ in range(len(self.data))])
         str_fields = ', '.join([field for field in self.data.keys()])
-        cur.execute(f'INSERT INTO {self.name} ({str_fields}) VALUES({str_values})', [v for v in self.data.values()])
+        self.database.cur.execute(f'INSERT INTO {self.name} ({str_fields}) VALUES({str_values})', [v for v in self.data.values()])
     
-    def update_sql(self, cur):
-        str_values = ', '.join([f'{key} = ?' for key in self.data.keys()])
-        cur.execute(f'UPDATE  {self.name} SET {str_values} WHERE id=1', list(self.data.values()))
+    def update_sql(self):
+        if not self.check_connect():
+            return
 
-    def select_sql(self, cur) -> dict[str, str]:
+        str_values = ', '.join([f'{key} = ?' for key in self.data.keys()])
+        self.database.cur.execute(f'UPDATE  {self.name} SET {str_values} WHERE id=1', list(self.data.values()))
+    
+    def select_sql(self):
+        if not self.check_connect():
+            return
+
         str_fields = ', '.join(self.get_fileds())
-        res = cur.execute(f'SELECT {str_fields} FROM {self.name}').fetchall()
+        res = self.database.cur.execute(f'SELECT {str_fields} FROM {self.name}').fetchall()
         data = {}
         if res:
             data = {k: v for k, v in zip(self.get_fileds(), res[0])}
         return data
+
+    def commit_sql(self) -> None:
+        self.database.commit()
 
 
 class TableConfigInventor(TableConfig):

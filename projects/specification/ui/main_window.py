@@ -4,7 +4,8 @@ import ctypes
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.settings import *
-from projects.specification.core.database import DataBase
+from projects.specification.config.constants import *
+from projects.specification.config.enums import EnumStatusBar
 
 from projects.specification.ui.widgets.browser import WidgetBrowser, ProjectItem
 from projects.specification.ui.widgets.content import WidgetContent
@@ -19,6 +20,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widnow()
         self.init_menubar()
         self.init_widgets()
+        self.init_status_bar()
 
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
@@ -54,11 +56,13 @@ class WindowSpecification(QtWidgets.QMainWindow):
 
     def init_widgets(self) -> None:
         self.widget_browser = WidgetBrowser(self)
+        self.widget_browser.signal_status.connect(self.set_status)
         self.widget_browser.setObjectName('browser')
         self.widget_browser.signal_select_item.connect(self.select_item)
         self.widget_browser.signal_open_project.connect(self.open_project)
         
         self.widget_content = WidgetContent(self)
+        self.widget_content.signal_status.connect(self.set_status)
         self.widget_content.page_property_projcet.signal_save_project.connect(self.save_project)
         self.widget_browser.signal_del_item.connect(self.widget_content.view_empty_page)
     
@@ -68,32 +72,48 @@ class WindowSpecification(QtWidgets.QMainWindow):
         splitter.setStretchFactor(1, 1)
         self.grid_layout.addWidget(splitter, 0, 0, 1, 1)
 
+    def init_status_bar(self) -> None:
+        statusBar = QtWidgets.QStatusBar(self)
+        statusBar.layout().setContentsMargins(2, 2, 2, 2)
+        statusBar.setStyleSheet('QStatusBar {border-top: 1px solid gray}')
+        self.setStatusBar(statusBar)
+        statusBar.showMessage(EnumStatusBar.WAIT.value)
+
+        self.timer_status = QtCore.QTimer(self)
+        self.timer_status.setSingleShot(True)
+        self.timer_status.timeout.connect(self.reset_status_bar)
+
     def select_item(self, item: QtWidgets.QTreeWidgetItem) -> None:
         self.widget_content.set_item(item)
         
     def save_project(self, item: ProjectItem) -> None:
-        if item.filepath:
-            if not item.is_init:
-                database = DataBase()
-                item.database = database
-                database.connect(item.filepath)
-                item.create_sql()
-                item.insert_sql()
-                item.is_init = True
-                database.conn.commit()
-                self.widget_browser.create_main_item_project(item)
-            else:
-                item.update_sql()
-                item.database.conn.commit()
-            item.is_save = True
-
+        table_data = item.table_data
+        if not item.is_init:
+            table_data.create_sql()
+            table_data.insert_sql()
+            item.is_init = True
+            item.table_data.commit_sql()
+            self.widget_browser.create_main_item_project(item)
+        else:
+            table_data.update_sql()
+            table_data.commit_sql()
+        item.is_save = True
+        
     def open_project(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
-        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter='SPEC файл (*.spec)')
-        if filename[0]:
-            database = DataBase()
-            database.connect(filename[0])
-            self.widget_browser.create_project(database=database)
+        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter=f'SPEC файл (*.{MY_FROMAT})')
+        if filename and filename[0]:
+            filepath, _ = filename
+            filename = os.path.basename(filepath)
+            self.widget_browser.load_project(filepath)
+            
+    def set_status(self, text: str, timeout=3000) -> None:
+        self.timer_status.stop()
+        self.statusBar().showMessage(text)
+        self.timer_status.start(timeout)
+
+    def reset_status_bar(self) -> None:
+        self.statusBar().showMessage(EnumStatusBar.WAIT.value) 
 
     def closeEvent(self, event):
         # for db in self.databases.values():

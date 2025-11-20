@@ -18,3 +18,15 @@ class TypeCreateLoadSpec(Enum):
     CREATE_SPEC_PROD_FROM_SPEC_INV = auto()
     CREATE_SPEC_PROD_EMPTY = auto()
 
+
+class EnumStatusBar(Enum):
+    WAIT = 'Ожидание...'
+    PROJECT_LOAD = 'Проект загружен'
+    PROJECT_SAVE = 'Проект сохранён'
+    PROJECT_EXIST = 'Проект уже добавлен'
+
+
+class TypeSpecificationDataItem(Enum):
+    INVENTOR = 'inventor'
+    BUY = 'buy'
+    PROD = 'prod'

@@ -1,7 +1,4 @@
-from typing import Union
 import sqlite3
-
-from projects.specification.config.table_config import TableConfigPropertyProject, TableConfigInventor, TableConfigBuy, TableConfigProd
 
 
 class DataBase:
@@ -20,10 +17,15 @@ class DataBase:
         list_names = self.cur.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
         return [i[0] for i in list_names]
 
+    def commit(self) -> None:
+        if self.conn:
+            self.conn.commit()
+
     def close(self) -> None:
-        self.conn.commit()
-        self.conn.close()
-        self.conn = None
+        if self.conn:
+            self.commit()
+            self.conn.close()
+            self.conn = None
 
 
 if __name__ == '__main__':
