@@ -40,11 +40,11 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
 
 
 class ProjectItem(BrowserItem):
-    def __init__(self, table_data: TTData):
+    def __init__(self):
         super().__init__()
 
         self.type_item = TypeTreeItem.PROJET
-        self.table_data = table_data
+        self.table_data: PropertyProjectData = PropertyProjectData()
 
         self.project_name = 'Новый проект'
         self.setText(self.project_name)
@@ -167,9 +167,7 @@ class WidgetBrowser(QtWidgets.QWidget):
         self.grid_layout.addWidget(self.tree, 1, 0, 1, 1)
 
     def create_project(self) -> ProjectItem:
-        database = DataBase()
-        table_data = PropertyProjectData(database)
-        project_item = ProjectItem(table_data)  
+        project_item = ProjectItem()  
              
         self.tree.addTopLevelItem(project_item)
         self.tree.setCurrentItem(project_item)

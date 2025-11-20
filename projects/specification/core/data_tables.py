@@ -90,7 +90,8 @@ class GeneralDataItem:
     
 
 class PropertyProjectData(GeneralDataItem):
-    def __init__(self, database):
+    def __init__(self):
+        database = DataBase()
         super().__init__(database)
         self.config = PropertyProjectConfig(database)
         self.data: dict[str, str] = {}
