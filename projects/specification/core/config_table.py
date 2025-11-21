@@ -7,7 +7,6 @@ if __name__ == '__main__':
     # Для запуска через IDE
     from pathlib import Path
     test_path = str(Path(__file__).parent.parent.parent.parent)
-
     sys.path.append(test_path)
 
 from projects.specification.core.database import DataBase
@@ -50,6 +49,7 @@ class TableConfig():
     def get_columns_name(self) -> tuple[str]:
         return tuple(col.column_name for col in self.columns)
 
+
 class LinkItemConfig(TableConfig):
     def __init__(self, database: DataBase):
         name = 'links'
@@ -59,6 +59,22 @@ class LinkItemConfig(TableConfig):
             ColumnConfig('element_2', 'INTEGER'),
         )
         super().__init__(name, columns, database)
+
+
+TABLE_NAME_PROP_PROJECT = 'project_property'
+CONFIG_COLUMNS_PROP_PROJECT = (
+    ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_view=False),
+    ColumnConfig('file_name', 'TEXT', 'Название файла', ' <span style=color:red;>*<span>'),
+    ColumnConfig('project_name', 'TEXT', 'Обозначение проекта'),
+    ColumnConfig('project_number', 'TEXT', 'Номер проекта', ' <span style=color:red>*<span>'),
+    ColumnConfig('number_contract', 'TEXT', 'Пункт договора'),
+    ColumnConfig('address', 'TEXT', 'Адрес объекта'),
+    ColumnConfig('manager', 'TEXT', 'Руководитель проекта'),
+    ColumnConfig('technologist', 'TEXT', 'Инженер-технолог'),
+    ColumnConfig('constructor', 'TEXT', 'Инженер-конструктор'),
+    ColumnConfig('name_model', 'TEXT', 'Модель установки'),
+    ColumnConfig('name_drawing', 'TEXT', 'Обозначение чертежа')
+)
 
 
 class PropertyProjectConfig(TableConfig):
@@ -77,7 +93,6 @@ class PropertyProjectConfig(TableConfig):
             ColumnConfig('name_model', 'TEXT', 'Модель установки'),
             ColumnConfig('name_drawing', 'TEXT', 'Обозначение чертежа'),
         )
-
         super().__init__(name, columns, database)
     
 
@@ -123,7 +138,6 @@ class InventorItemConfig(TableConfig):
             ColumnConfig('parent_id', f'FOREIGN KEY (parent_id) REFERENCES {parent_config.name} ON UPDATE CASCADE ON DELETE CASCADE', is_foreign_key=True),
         )
         super().__init__(name, columns, database, parent_config)
-
 
 
 class BuyItemConfig(TableConfig):
