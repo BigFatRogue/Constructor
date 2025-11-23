@@ -1,14 +1,16 @@
 from typing import Callable, Union
 from PyQt5 import QtCore, QtWidgets, QtGui
 from dataclasses import dataclass
+from transliterate import translit
 
 from projects.specification.config.settings import *
 from projects.specification.config.enums import TypeTreeItem, EnumStatusBar
 from projects.specification.config.constants import *
 from projects.specification.core.data_tables import ColumnConfig
+from projects.specification.core.data_loader import get_specifitaction_inventor_from_xlsx
 
 from projects.specification.ui.widgets.table import Table
-from projects.specification.ui.widgets.browser import BrowserItem, ProjectItem, SpecItem, TableItem
+from projects.specification.ui.widgets.browser import ProjectItem, SpecificationItemTree, TableItem, WidgetBrowser 
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button, decorater_set_object_name
 from projects.tools.functions.warning_qlineedit import WarningQEditLine
@@ -23,9 +25,9 @@ class PageContent(QtWidgets.QWidget):
     """
     def __init__(self, parent):
         super().__init__(parent)
-        self.current_item: Union[ProjectItem, SpecItem, TableItem] = None
+        self.current_item: Union[ProjectItem, SpecificationItemTree, TableItem] = None
     
-    def populate(self, item: Union[ProjectItem, SpecItem, TableItem]) -> None:
+    def populate(self, item: Union[ProjectItem, SpecificationItemTree, TableItem]) -> None:
         self.current_item = item
 
     def update_data_item(self) -> None:
@@ -141,14 +143,16 @@ class PagePropertyProject(PageContent):
             self.update_data_item()
             if not self.current_item.is_init:
                 dlg = QtWidgets.QFileDialog(self)
-                dir_path, _ = dlg.getSaveFileName(self, 'Выберете папку', filter=f'{MY_FROMAT.upper()} файл (*.{MY_FROMAT})')
+                project_name_translit = translit(self.lineedti_project_name.text(), 'ru', reversed=True)
+                dir_path, _ = dlg.getSaveFileName(self, 'Выберете папку', project_name_translit, filter=f'{MY_FROMAT.upper()} файл (*.{MY_FROMAT})')
                 if dir_path:
                     dir_path = dir_path.replace('/', '\\')
                     self.current_item.table_data.set_filepath_db(dir_path)
                     self.lineedit_project_filepath.setText(self.current_item.table_data.get_filepath())
+                
             self.current_item.set_project_name(self.lineedti_project_name.text())
             self.signal_save_project.emit(self.current_item)
-            self.signal_status.emit(f'{EnumStatusBar.PROJECT_SAVE.value}: {self.current_item.project_name}')
+            self.signal_status.emit(f'{EnumStatusBar.PROJECT_SAVE.value}: {self.current_item.parent_item.project_name}')
 
     def check_fill_lineedit(self) -> bool:
         for col in self.columns_config:
@@ -176,9 +180,11 @@ class SetButtonPage:
     
     
 class PageCreateOrOpenProject(PageContent):
+    signal_load_spec_from_inventor = QtCore.pyqtSignal(str)
+
     def __init__(self, parent):
         super().__init__(parent)
-
+        self.current_item: SpecificationItemTree
         self.list_btn: list[QtWidgets.QPushButton] = []
         
         self.dict_buttons: dict[TypeTreeItem, tuple[SetButtonPage, ...]] = {
@@ -230,12 +236,15 @@ class PageCreateOrOpenProject(PageContent):
         if len(buttons) < len_list_btn:
             for btn in self.list_btn[len(buttons):]:
                 btn.hide()
-
+    
     def load_spec_from_xlsx(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
-        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter='xlsx файл (*.xlsx)')
-        if filename[0]:
-            ...
+        filepath = dlg.getOpenFileName(self, 'Выбрать файл', filter='xlsx файл (*.xlsx)')
+        if filepath[0]:
+            data = get_specifitaction_inventor_from_xlsx(filepath[0])
+            self.current_item: SpecificationItemTree
+            self.current_item.browser.load_specification(parent_item=self.current_item, data=data)
+    
     def load_spec_from_active_inv(self) -> None:
         ...
     def create_spec_buy_from_spec_inv(self) -> None:
@@ -253,9 +262,17 @@ class PageCreateOrOpenProject(PageContent):
 class PageTable(PageContent):
     def __init__(self, parent):
         super().__init__(parent)
+
+        self.grid_layout = QtWidgets.QGridLayout(self)
+        self.grid_layout.setSpacing(0)
+        self.grid_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.table = Table(self)
+        self.grid_layout.addWidget(self.table)
     
     def populate(self, item):
         super().populate(item)
+        self.table.populate(item.table_data)
 
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
@@ -265,8 +282,8 @@ class WidgetContent(QtWidgets.QWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.current_item: Union[ProjectItem, SpecItem, TableItem] = None
-        self.prev_item: Union[ProjectItem, SpecItem, TableItem] = None
+        self.current_item: Union[ProjectItem, SpecificationItemTree, TableItem] = None
+        self.prev_item: Union[ProjectItem, SpecificationItemTree, TableItem] = None
         self.prev_page: PageContent = None
 
         self.init_widgets()
@@ -288,14 +305,15 @@ class WidgetContent(QtWidgets.QWidget):
         self.index_page_property_projcet = self.stacket.addWidget(self.page_property_projcet)
 
         self.page_create_or_open_project = PageCreateOrOpenProject(self)
+        self.page_create_or_open_project.signal_load_spec_from_inventor.connect(self.load_spec_form_inv)
         self.index_page_create_or_open_project = self.stacket.addWidget(self.page_create_or_open_project)
 
         self.page_table = PageTable(self)
-        self.index_table = self.stacket.addWidget(self.page_table)
+        self.index_page_table = self.stacket.addWidget(self.page_table)
 
         self.stacket.setCurrentIndex(0)
 
-    def set_item(self, item: Union[ProjectItem, SpecItem, TableItem]) -> None:
+    def set_item(self, item: Union[ProjectItem, SpecificationItemTree, TableItem]) -> None:
         self.prev_item = self.current_item
         self.current_item = item
 
@@ -304,19 +322,23 @@ class WidgetContent(QtWidgets.QWidget):
             current_page.update_data_item()
 
         tp = item.type_item
-
         if tp == TypeTreeItem.PROJET:
             self.page_property_projcet.populate(item)
             self.stacket.setCurrentIndex(self.index_page_property_projcet)
         elif tp in (TypeTreeItem.SPEC_FOLDER_INV, TypeTreeItem.SPEC_FOLDER_BUY, TypeTreeItem.SPEC_FOLDER_PROD):
             self.page_create_or_open_project.populate(item)
             self.stacket.setCurrentIndex(self.index_page_create_or_open_project)
-        elif tp == TypeTreeItem.TABLE:
+        elif tp in (TypeTreeItem.TABLE_INV, TypeTreeItem.TABLE_BUY, TypeTreeItem.TABLE_PROD):
             self.page_table.populate(item)
-            self.stacket.setCurrentIndex(self.index_table)
+            self.stacket.setCurrentIndex(self.index_page_table)
     
     def view_empty_page(self) -> None:
         self.stacket.setCurrentIndex(self.index_page_empty)
+
+    def load_spec_form_inv(self, filepath: str) -> None:
+        data = get_specifitaction_inventor_from_xlsx(filepath)
+        self.current_item.set_data(data)
+        self.stacket.setCurrentIndex(self.index_page_table)
 
     def click_btn(self) -> None:
         self.signal_click_btn.emit(self.sender().property('data'))

@@ -13,7 +13,7 @@ class DataBase:
             self.conn = sqlite3.connect(self.filepath)
             self.cur = self.conn.cursor()
 
-    def get_list_tables(self) -> list[str]:
+    def get_exist_tables(self) -> list[str]:
         list_names = self.cur.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
         return [i[0] for i in list_names]
 
@@ -36,4 +36,4 @@ if __name__ == '__main__':
     db.set_path(p_db)
     db.connect()
 
-    print(db.get_list_tables())
+    print(db.get_exist_tables())

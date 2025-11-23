@@ -10,72 +10,94 @@ if __name__ == '__main__':
     sys.path.append(test_path)
 
 
-from projects.specification.core.config_table import GeneralItemConfig, InventorItemConfig
+from projects.specification.core.config_table import (
+    ColumnConfig,
+    GENERAL_ITEM_CONFIG,
+    INVENTOR_ITEM_CONFIG,
+)
 
-def get_data_from_excel_inventor(filepath: str) -> OrderedDict:
+
+def __get_dict_from_xlsx(filepath: str) -> dict[tuple[str,...], list[float, str]]:
+    config_columns: list[ColumnConfig] = GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns
+    name_columns: list[str] = tuple(col.column_name for col in config_columns if col.is_view)
+    key_name_columns: list[str] = [col.column_name for col in config_columns if col.is_key]
+
     book = load_workbook(filepath)
     sheet = book.active
 
+    dict_name_number_col: dict[str, int] = {}
+    for col_number in range(1, sheet.max_column + 1):
+        col_value = sheet.cell(1, col_number).value
+        if col_value in name_columns:
+            dict_name_number_col[col_value] = col_number
 
-# def __get_dict_from_xl(filepath: str, inventor_table: TableConfigInventor) -> list[list]:
-#     book = load_workbook(filepath)
-#     sheet = book.active
+    dict_data: dict[tuple[str,...], list[float, str]] = {}
+    number_key_column_name = [dict_name_number_col[key_name] for key_name in key_name_columns]
+    number_quantity, *_ = [dict_name_number_col[col.column_name] for col in config_columns if col.field == 'quantity']
+    
+    for row_number in range(2, sheet.max_row + 1):
+        key = []
+        for col_number in number_key_column_name:
+            cell_value = sheet.cell(row=row_number, column=col_number).value
+            cell_value = '' if cell_value is None else cell_value
+            key.append(cell_value)
+        key = tuple(key)
 
-#     dict_name_number_col: OrderedDict[str, int] = OrderedDict()
-#     for col_number in range(1, sheet.max_column + 1):
-#         col_value = sheet.cell(1, col_number).value
-#         if col_value in inventor_table.get_columns_name():
-#             dict_name_number_col[col_value] = col_number
+        quantity_value = str(sheet.cell(row=row_number, column=number_quantity).value).split()
 
-#     dict_data = OrderedDict()
-#     for row in range(2, sheet.max_row + 1):
-#         column_name = inventor_table.get_columns_name()
-#         number_key_column_name = [dict_name_number_col[column_name[i]] for i in inventor_table.index_keys]
-#         key = tuple(sheet.cell(row=row, column=col).value for col in number_key_column_name)
-#         key = tuple('' if k is None else k for k in key)
+        if len(quantity_value) > 1:
+            count, unit = quantity_value
+        else:
+            count, unit = quantity_value[0], 'шт.'
+        count = float(count.replace(',', '.'))    
+        value = [count, unit]
 
-#         column_name = inventor_table.get_columns_name()[inventor_table.index_values[0]]
-#         count_value = str(sheet.cell(row=row, column=dict_name_number_col[column_name]).value).split()
+        if key in dict_data:
+            dict_data[key][0] += count
+        else:
+            dict_data[key] = value
+    
+    book.close()
+    
+    return dict_data
 
-#         if len(count_value) > 1:
-#             count, unit = count_value
-#         else:
-#             count, unit = count_value[0], 'шт.'
-#         count = float(count.replace(',', '.'))    
-#         value = {
-#             'count': count,
-#             'unit': unit
-#             }
+def __dict_data_to_2list(dict_data: OrderedDict[tuple[str], list[float, str]]) -> list[list]:
+    config_columns_dict = OrderedDict()
+    for i, col in enumerate(GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns):
+        if not any([col.is_id, col.is_foreign_id, col.is_foreign_key]):
+            config_columns_dict[col.field] = None
 
-#         if key in dict_data:
-#             dict_data[key]['count'] += count
-#         else:
-#             dict_data[key] = value
+    key_dict = OrderedDict()
+    value_dict = OrderedDict()
+    for i, col in enumerate(GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns):
+        if col.is_view:
+            if col.is_key:
+                key_dict[i] = col.field
+            elif col.is_value:
+                value_dict[i] = col.field
+    key_dict.update(value_dict)
 
-#     return dict_data
+    list_data = []
+    for number_row, (key, value) in enumerate(dict_data.items(), 1):
+        for index, item_value in zip(key_dict.keys(), key):
+            config_columns_dict[key_dict[index]] = item_value
 
-# def __dict_data_to_2list(dict_data: OrderedDict[tuple[str], dict[float, str]], inventor_table: TableConfigInventor) -> list[list]:    
-#     list_data = []
-#     for key, value in dict_data.items():
-#         list_item = list(key) + list(value.values())
-#         list_index = inventor_table.index_keys + inventor_table.index_values
+        for index, item_value in zip(value_dict.keys(), value):
+            config_columns_dict[value_dict[index]] = item_value
+        
+        row = [number_row]
+        list_data.append(row + [i for i in config_columns_dict.values()][1:])
+    return list_data
 
-#         tpl = tuple((index, item) for index, item in zip(list_index, list_item))
-#         list_item_sort = sorted(tpl, key=lambda x: x[0])
-
-#         list_row = []
-#         for _, item in sorted(list_item_sort):
-#             list_row.append(item)
-#         list_data.append(list_row)
-#     return list_data
-
-# def get_data_from_xl(filepath: str, inventor_table_config: TableConfigInventor) -> tuple[TableConfigInventor, list[list]]:
-#     dict_xl = __get_dict_from_xl(filepath=filepath, inventor_table=inventor_table_config)
-#     return __dict_data_to_2list(dict_data=dict_xl, inventor_table=inventor_table_config)
+def get_specifitaction_inventor_from_xlsx(filepath: str) -> list[list]:
+    dict_xl = __get_dict_from_xlsx(filepath=filepath)
+    return __dict_data_to_2list(dict_data=dict_xl)
 
 
 if __name__ == '__main__':
-    p = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.01Из инвентора.xlsx'
-    # get_data_from_excel_inventor(filepath=p)
-    columns = GeneralItemConfig().get_columns_name() + InventorItemConfig().get_columns_name()
-    print(columns)
+    p = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.4.2.01.00.00.000 СБ - нивентор.xlsx'
+    data = get_specifitaction_inventor_from_xlsx(filepath=p)
+    
+    for row in data:
+        print(row)
+

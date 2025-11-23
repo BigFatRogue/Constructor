@@ -1,7 +1,13 @@
-import sys
 import ctypes
 
 from PyQt5 import QtCore, QtWidgets, QtGui
+
+if __name__ == '__main__':
+    import sys
+    # Для запуска через IDE
+    from pathlib import Path
+    test_path = str(Path(__file__).parent.parent.parent.parent)
+    sys.path.append(test_path)
 
 from projects.specification.config.settings import *
 from projects.specification.config.constants import *
@@ -22,6 +28,8 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_status_bar()
 
+        self.widget_browser.load_project(r'D:\Python\AlfaServis\Constructor\_pp_data.scdata')
+    
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -106,7 +114,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
             filepath, _ = filename
             filename = os.path.basename(filepath)
             self.widget_browser.load_project(filepath)
-            
+    
     def set_status(self, text: str, timeout=3000) -> None:
         self.timer_status.stop()
         self.statusBar().showMessage(text)
@@ -122,3 +130,9 @@ class WindowSpecification(QtWidgets.QMainWindow):
         return super().closeEvent(event)
 
 
+if __name__ == '__main__':
+    app = QtWidgets.QApplication(sys.argv)
+    window = WindowSpecification()
+    
+    window.show()
+    sys.exit(app.exec_())

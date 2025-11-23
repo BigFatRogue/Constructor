@@ -3,28 +3,29 @@ from typing import Union, TypeVar, Iterable
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.settings import *
-from projects.specification.config.enums import TypeTreeItem, EnumStatusBar
+from projects.specification.config.enums import TypeTreeItem, EnumStatusBar, NameTableSQL
 from projects.specification.config.constants import *
-from projects.specification.core.data_tables import PropertyProjectData, InventorSpecificationDataItem
+from projects.specification.core.data_tables import PropertyProjectData, InventorSpecificationDataItem, BuySpecificationDataItem, ProdSpecificationDataItem
 from projects.specification.core.database import DataBase
+from projects.specification.core.functions import get_now_time
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 
 
 TTData = TypeVar('T', PropertyProjectData, InventorSpecificationDataItem)
+TBrowser = TypeVar('T')
 
 
 class BrowserItem(QtWidgets.QTreeWidgetItem):
-    def __init__(self):
+    def __init__(self, browser: TBrowser, parent_item=None):
         super().__init__()
-
+        self.browser = browser
         self.type_item: TypeTreeItem = None
-        self.project_name: str = None
+        self.parent_item: BrowserItem = parent_item
         self.is_init: bool = False
         self.is_save: bool = False
         self.table_data: TTData = None
-        self.database: DataBase = None
 
         # Для делегата
         self.setData(0, QROLE_LINK_ITEM_WIDGET_TREE, self)
@@ -40,8 +41,8 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
 
 
 class ProjectItem(BrowserItem):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, browser: TBrowser):
+        super().__init__(browser)
 
         self.type_item = TypeTreeItem.PROJET
         self.table_data: PropertyProjectData = PropertyProjectData()
@@ -58,9 +59,11 @@ class ProjectItem(BrowserItem):
         self.set_project_name(self.table_data.get_data().get(self.table_data.columns[1].field))
     
 
-class SpecItem(BrowserItem): 
-    def __init__(self, text: str, path_ico: str):
-        super().__init__()
+class SpecificationItemTree(BrowserItem): 
+    signal_load_specification = QtCore.pyqtSignal(list)
+    
+    def __init__(self, browser: TBrowser, project_item, text: str, path_ico: str):
+        super().__init__(browser, project_item)
         self.is_init = True
         self.is_save = True
         self.setText(text)
@@ -71,6 +74,16 @@ class SpecItem(BrowserItem):
 
 
 class TableItem(BrowserItem): pass
+
+
+class TableInventorItemTree(BrowserItem):
+    def __init__(self, browser: TBrowser, parent_item: SpecificationItemTree, name: str, data: list[list]=None):
+        super().__init__(browser, parent_item)
+        self.table_data = InventorSpecificationDataItem(parent_item.parent_item.table_data.database)
+        self.type_item = TypeTreeItem.TABLE_INV
+        self.setText(name)
+        if data:
+            self.table_data.set_data(data)
 
 
 class RightIconDelegate(QtWidgets.QStyledItemDelegate):
@@ -122,7 +135,7 @@ class WidgetBrowser(QtWidgets.QWidget):
         super().__init__(parent)
 
         self.init_widgets()
-        self.create_project()
+        # self.create_project()
 
     def init_widgets(self) -> None:
         self.grid_layout = QtWidgets.QGridLayout(self)
@@ -167,26 +180,26 @@ class WidgetBrowser(QtWidgets.QWidget):
         self.grid_layout.addWidget(self.tree, 1, 0, 1, 1)
 
     def create_project(self) -> ProjectItem:
-        project_item = ProjectItem()  
+        project_item = ProjectItem(self)  
              
         self.tree.addTopLevelItem(project_item)
         self.tree.setCurrentItem(project_item)
         project_item.setExpanded(True)
         return project_item
     
-    def create_main_item_project(self, project_item: QtWidgets.QTreeWidgetItem) -> None:
-        spec_inv_item = SpecItem('Спецификация из Inventor', os.path.join(ICO_FOLDER, 'inventor.png'))
-        spec_inv_item.project_name = project_item.text()
+    def create_main_item_project(self, project_item: ProjectItem) -> None:
+        spec_inv_item = SpecificationItemTree(self, project_item, 'Спецификация из Inventor', os.path.join(ICO_FOLDER, 'inventor.png'))
+        spec_inv_item.parent_item = project_item
         spec_inv_item.type_item = TypeTreeItem.SPEC_FOLDER_INV
         project_item.addChild(spec_inv_item)
 
-        spec_buy_item = SpecItem('Закупочная спецификация', os.path.join(ICO_FOLDER, 'dollars.png'))
-        spec_buy_item.project_name = project_item.text()
+        spec_buy_item = SpecificationItemTree(self, project_item, 'Закупочная спецификация', os.path.join(ICO_FOLDER, 'dollars.png'))
+        spec_buy_item.parent_item = project_item
         spec_buy_item.type_item = TypeTreeItem.SPEC_FOLDER_BUY
         project_item.addChild(spec_buy_item)
 
-        spec_prod_item = SpecItem('Спецификация из Inventor', os.path.join(ICO_FOLDER, 'iam_image.png'))
-        spec_prod_item.project_name = project_item.text()
+        spec_prod_item = SpecificationItemTree(self, project_item, 'Спецификация из Inventor', os.path.join(ICO_FOLDER, 'iam_image.png'))
+        spec_prod_item.parent_item = project_item
         spec_prod_item.type_item = TypeTreeItem.SPEC_FOLDER_PROD
         project_item.addChild(spec_prod_item)
 
@@ -223,9 +236,52 @@ class WidgetBrowser(QtWidgets.QWidget):
             project_item.is_save = True
             self.create_main_item_project(project_item)
 
+            tables = table_data.get_all_specification_data()
+            if tables:
+                self.__load_tables(project_item=project_item, tables=tables)
+            
             self.signal_status.emit(f'{EnumStatusBar.PROJECT_LOAD.value}: {project_item.project_name}')
         else:
             self.signal_status.emit(f'{EnumStatusBar.PROJECT_EXIST.value}: {os.path.basename(filepath_db)}')
+
+    def __load_tables(self, project_item: ProjectItem, tables: dict[str, Union[str, list[list]]]) -> None:
+        dict_type_item_tree: dict[TypeTreeItem, SpecificationItemTree] = {}
+        for i in range(project_item.childCount()):
+            child: SpecificationItemTree = project_item.child(i)
+            dict_type_item_tree[child.type_item] = child
+        
+        for table in tables:
+            name = table['name_spec']
+            tp = table['type_spec']
+            create_date = table['datetime']
+            data = table['data']
+            
+            item = None
+            if tp == NameTableSQL.INVENTOR.value:
+                parent_item = dict_type_item_tree[TypeTreeItem.SPEC_FOLDER_INV]
+                item = TableInventorItemTree(browser=self, parent_item=dict_type_item_tree[TypeTreeItem.SPEC_FOLDER_INV], name=name, data=data)
+            elif tp == NameTableSQL.BUY.value:
+                ...
+            elif tp == NameTableSQL.PROD.value:
+                ...
+            if item:
+                parent_item.addChild(item)
+                parent_item.setExpanded(True)
+
+    def load_specification(self, parent_item: SpecificationItemTree, data: list[list]):
+        tp = parent_item.type_item
+        
+        item = None
+        if tp == TypeTreeItem.SPEC_FOLDER_INV:
+            item = TableInventorItemTree(browser=self, parent_item=parent_item, name=get_now_time(), data=data)
+        elif tp == TypeTreeItem.SPEC_FOLDER_BUY:
+            ...
+        elif tp == TypeTreeItem.SPEC_FOLDER_PROD:
+            ...
+        if item:
+            parent_item.addChild(item)
+            parent_item.setExpanded(True)
+
 
     def change_tree_item(self, item: BrowserItem) -> None:
         if item.type_item == TypeTreeItem.PROJET:
