@@ -5,7 +5,7 @@ from typing import Optional
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.tools.row_counter import RowCounter
-from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 
 

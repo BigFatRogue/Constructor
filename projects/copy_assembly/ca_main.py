@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
 from projects.copy_assembly.settings import *
 
-from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 from projects.tools.helper_interactive import HelperInteractive
 from projects.tools.custom_qwidget.helper_widgets import WindowHelper
