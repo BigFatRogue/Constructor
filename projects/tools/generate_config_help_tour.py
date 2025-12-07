@@ -16,7 +16,7 @@ from projects.tools.settings import LAST_FILE_GEN_CONFIG
 from projects.tools.widget_record_gif_from_app import WidgetRecordGifFromApp
 from projects.tools.custom_qwidget.custom_combo_box import CustomComboBox
 from projects.tools.row_counter import RowCounter
-from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 
 # Добавлене путей к приложению, которое необходимо запустить 

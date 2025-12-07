@@ -11,4 +11,8 @@ from projects.specification.core.config_table import ColumnConfig
 
 
 QROLE_LINK_ITEM_WIDGET_TREE = QtCore.Qt.UserRole
+QROLE_V_TEXT_ALIGN = QtCore.Qt.UserRole + 1
+QROLE_H_TEXT_ALIGN = QtCore.Qt.UserRole + 2
+QROLE_DATA_X = QtCore.Qt.UserRole + 3
+
 MY_FROMAT = 'scdata'

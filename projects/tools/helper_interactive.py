@@ -13,7 +13,7 @@ if __name__ == '__main__':
     sys.path.append(test_path)
 
 from projects.tools.settings import ICO_FOLDER_HELPER
-from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.line_separate import QHLineSeparate
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 from projects.tools.row_counter import RowCounter
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button

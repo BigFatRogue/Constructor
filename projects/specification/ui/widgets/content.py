@@ -9,13 +9,13 @@ from projects.specification.config.constants import *
 from projects.specification.core.data_tables import ColumnConfig
 from projects.specification.core.data_loader import get_specifitaction_inventor_from_xlsx
 
-from projects.specification.ui.widgets.table import Table
+from projects.specification.ui.widgets.table_widget import WidgetTable
 from projects.specification.ui.widgets.browser import ProjectItem, SpecificationItemTree, TableItem, WidgetBrowser 
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button, decorater_set_object_name
 from projects.tools.functions.warning_qlineedit import WarningQEditLine
 from projects.tools.custom_qwidget.message_Inforation import MessageInforation
-from projects.tools.custom_qwidget.h_line_separate import QHLineSeparate
+from projects.tools.custom_qwidget.line_separate import QHLineSeparate
 from projects.tools.row_counter import RowCounter
 
 
@@ -152,7 +152,7 @@ class PagePropertyProject(PageContent):
                 
             self.current_item.set_project_name(self.lineedti_project_name.text())
             self.signal_save_project.emit(self.current_item)
-            self.signal_status.emit(f'{EnumStatusBar.PROJECT_SAVE.value}: {self.current_item.parent_item.project_name}')
+            self.signal_status.emit(f'{EnumStatusBar.PROJECT_SAVE.value}: {self.current_item.project_name}')
 
     def check_fill_lineedit(self) -> bool:
         for col in self.columns_config:
@@ -260,19 +260,41 @@ class PageCreateOrOpenProject(PageContent):
 
 
 class PageTable(PageContent):
+    signal_status = QtCore.pyqtSignal(str)
+
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.grid_layout = QtWidgets.QGridLayout(self)
-        self.grid_layout.setSpacing(0)
-        self.grid_layout.setContentsMargins(0, 0, 0, 0)
+        self.v_layout = QtWidgets.QVBoxLayout(self)
+        self.v_layout.setSpacing(0)
+        self.v_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.table = Table(self)
-        self.grid_layout.addWidget(self.table)
-    
+        self.init_widgets()
+
+    def init_widgets(self) -> None:
+        self.widget_table = WidgetTable(self)
+        self.widget_table.signal_save_table.connect(self.save_table)
+        self.widget_table.signal_has_change_table.connect(self.change_table)
+        self.v_layout.addWidget(self.widget_table)
+
     def populate(self, item):
         super().populate(item)
-        self.table.populate(item.table_data)
+        self.widget_table.populate(item.table_data)
+
+    def change_table(self) -> None:
+        self.current_item.set_init(True)
+        self.current_item.set_save(False)
+    
+    def save_table(self) -> None:
+        if not self.current_item.is_init:
+            self.current_item.table_data.create_sql()
+            self.current_item.table_data.insert_sql()
+        else:
+            self.current_item.table_data.update_sql()
+        self.current_item.set_init(True)
+        self.current_item.set_save(True)
+        
+        self.signal_status.emit(f'Таблица {self.current_item.text(0)} сохранена')
 
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
@@ -309,6 +331,7 @@ class WidgetContent(QtWidgets.QWidget):
         self.index_page_create_or_open_project = self.stacket.addWidget(self.page_create_or_open_project)
 
         self.page_table = PageTable(self)
+        self.page_table.signal_status.connect(lambda text: self.signal_status.emit(text))
         self.index_page_table = self.stacket.addWidget(self.page_table)
 
         self.stacket.setCurrentIndex(0)

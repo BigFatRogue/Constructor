@@ -2,10 +2,11 @@ from enum import Enum, auto
 
 
 class NameTableSQL(Enum):
+    NAME_FIELDS = 'name_fields'
     LINKS = 'links'
     PROJECT_PROPERTY = 'project_property'
     SPECIFICATION = 'specification'
-    GENERAL = 'general_specification'
+    GENERAL = 'specification_general'
     INVENTOR = 'specification_inventor'
     BUY = 'specification_buy'
     PROD = 'specification_prod'
@@ -39,5 +40,29 @@ class EnumStatusBar(Enum):
     SPECIFICATION_LOAD = 'Спецификация загружена'
 
 
+class TypeAlignText(Enum):
+    H_ALIGN = auto()
+    V_ALIGN = auto()
 
 
+class StateSortedColumn(Enum):
+    SORTED = 1
+    REVERSE = -1
+    EMPTY = 0
+    
+
+class TypeBLockPropertyControlPanel(Enum):
+    MAIN = auto()
+    ALIGN = auto()
+    FONT = auto()
+    MARGIN = auto()
+
+
+class TypeSignalFromControlPanel(Enum):
+    SAVE = auto()
+    SET_ALIGN = auto()
+    FONT_FAMILY = auto()
+    FONT_SIZE = auto()
+    FONT_BOLD = auto()
+    FONT_ITALIC = auto()
+    FONT_UNDERLINE = auto()

@@ -1,6 +1,4 @@
-from typing import TypeVar, Sequence, Union, Optional
 from dataclasses import dataclass, field
-from sqlite3 import Cursor
 
 if __name__ == '__main__':
     import sys
@@ -9,7 +7,7 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.core.database import DataBase
+
 from projects.specification.config.enums import NameTableSQL
 
 
@@ -19,6 +17,7 @@ class ColumnConfig:
     type_data: str = ''
     column_name: str = ''
     mode_column_name: str = ''
+    internal_name: str = ''
     is_view: bool = True
     is_link: bool = False
     is_id: bool = False
@@ -42,16 +41,15 @@ class TableConfig:
     def __init__(self, name: str, columns: list[ColumnConfig], parent_config=None):
         self.name = name
         self.parent_config = parent_config
-        self.columns = self.__preprocess_columns(columns)
+        self.columns = columns
+        self.columns_property = []
+        self.__set_property_columns()
         
-    def __preprocess_columns(self, columns: list[ColumnConfig]) -> list[ColumnConfig]:
-        update_columns = []
-        for col in columns:
-            update_columns.append(col)
+    def __set_property_columns(self) -> None:
+        for col in self.columns:
             if col.is_foreign_id and self.parent_config is not None:
                 col_foreign_key = ColumnConfig('', f'FOREIGN KEY ({col.field}) REFERENCES {self.parent_config.name} ON UPDATE CASCADE ON DELETE CASCADE', is_foreign_key=True, is_view=False)
-                update_columns.append(col_foreign_key)
-        return update_columns
+                self.columns_property.append(col_foreign_key)
     
     def get_foreign_field(self) -> str:
         if self.parent_config:
@@ -62,7 +60,7 @@ class TableConfig:
     def get_view_fields(self) -> tuple[str]:
         return tuple(col.field for col in self.columns if col.is_view)
 
-    def get_isview_columns_name(self) -> tuple[str]:
+    def get_view_columns_name(self) -> tuple[str]:
         return tuple(col.column_name for col in self.columns if col.is_view)
     
     def get_keys(self) -> tuple[int]:
@@ -72,10 +70,21 @@ class TableConfig:
         return tuple(col for col in self.columns if col.is_value)
 
 
+FIELDS_CONFIG = TableConfig(
+    name=NameTableSQL.NAME_FIELDS.value,
+    columns=[
+        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
+        ColumnConfig('field', 'TEXT'),
+        ColumnConfig('column_name', 'TEXT'),
+        ColumnConfig('internal_name', 'TEXT'),
+        ColumnConfig('is_key', 'BOOLEAN')
+    ]
+)
+
 LINK_ITEM_CONFIG = TableConfig(
     name=NameTableSQL.LINKS.value,
     columns=[
-        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('element_1', 'INTEGER'),
         ColumnConfig('element_2', 'INTEGER')
     ]
@@ -113,12 +122,12 @@ GENERAL_ITEM_CONFIG = TableConfig(
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('number_row', 'INTEGER', is_view=False),
-        ColumnConfig('articul', 'TEXT', 'Инвентарный номер', is_key=True),
-        ColumnConfig('description', 'TEXT', 'Описание', is_key=True),
-        ColumnConfig('specifications', 'TEXT', 'Технические характеристики', is_key=True),
+        ColumnConfig('articul', 'TEXT', 'Инвентарный номер', internal_name='Stock Number', is_key=True),
+        ColumnConfig('description', 'TEXT', 'Описание', internal_name='Description', is_key=True),
+        ColumnConfig('specifications', 'TEXT', 'Технические характеристики', internal_name='Технические характеристики', is_key=True),
         ColumnConfig('quantity', 'REAL', 'КОЛ.', is_value=True),
         ColumnConfig('unit', 'TEXT', 'Единичная величина', is_value=True),
-        ColumnConfig('material', 'TEXT', 'Материал', is_key=True),
+        ColumnConfig('material', 'TEXT', 'Материал', internal_name='Material', is_key=True),
         ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True)
     ],
     parent_config=SPECIFICATION_CONFIG
@@ -129,8 +138,8 @@ INVENTOR_ITEM_CONFIG = TableConfig(
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('is_select', 'BOOLEAN', is_view=False),
-        ColumnConfig('name', 'TEXT', 'Обозначение', is_key=True),
-        ColumnConfig('groups', 'TEXT', 'Раздел', is_key=True),
+        ColumnConfig('name', 'TEXT', 'Обозначение', internal_name='Part Number', is_key=True),
+        ColumnConfig('groups', 'TEXT', 'Раздел', internal_name='Раздел', is_key=True),
         ColumnConfig('diff', 'REAL', 'Изменение количества'),
         ColumnConfig('parent_id', 'INTEGER', 'Связь', is_view=False, is_foreign_id=True),
     ],

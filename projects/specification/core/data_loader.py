@@ -34,7 +34,7 @@ def __get_dict_from_xlsx(filepath: str) -> dict[tuple[str,...], list[float, str]
     dict_data: dict[tuple[str,...], list[float, str]] = {}
     number_key_column_name = [dict_name_number_col[key_name] for key_name in key_name_columns]
     number_quantity, *_ = [dict_name_number_col[col.column_name] for col in config_columns if col.field == 'quantity']
-    
+
     for row_number in range(2, sheet.max_row + 1):
         key = []
         for col_number in number_key_column_name:
@@ -61,32 +61,26 @@ def __get_dict_from_xlsx(filepath: str) -> dict[tuple[str,...], list[float, str]
     
     return dict_data
 
-def __dict_data_to_2list(dict_data: OrderedDict[tuple[str], list[float, str]]) -> list[list]:
-    config_columns_dict = OrderedDict()
-    for i, col in enumerate(GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns):
-        if not any([col.is_id, col.is_foreign_id, col.is_foreign_key]):
-            config_columns_dict[col.field] = None
-
-    key_dict = OrderedDict()
-    value_dict = OrderedDict()
-    for i, col in enumerate(GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns):
+def __dict_data_to_2list(dict_data: OrderedDict[tuple[str], list[float, str]]) -> list[list]:   
+    config_tuple: list[ColumnConfig] = GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns
+        
+    key_indexs = []
+    value_indexs = []
+    for i, col in enumerate(config_tuple):
         if col.is_view:
             if col.is_key:
-                key_dict[i] = col.field
+                key_indexs.append(i)
             elif col.is_value:
-                value_dict[i] = col.field
-    key_dict.update(value_dict)
+                value_indexs.append(i)    
 
     list_data = []
-    for number_row, (key, value) in enumerate(dict_data.items(), 1):
-        for index, item_value in zip(key_dict.keys(), key):
-            config_columns_dict[key_dict[index]] = item_value
+    for number, (key, value) in enumerate(dict_data.items(), 1):
+        row = [None] * len(config_tuple)
 
-        for index, item_value in zip(value_dict.keys(), value):
-            config_columns_dict[value_dict[index]] = item_value
-        
-        row = [number_row]
-        list_data.append(row + [i for i in config_columns_dict.values()][1:])
+        for i, v in zip(key_indexs + value_indexs, key + tuple(value)):
+            row[i] = v
+
+        list_data.append(row)
     return list_data
 
 def get_specifitaction_inventor_from_xlsx(filepath: str) -> list[list]:
@@ -95,7 +89,7 @@ def get_specifitaction_inventor_from_xlsx(filepath: str) -> list[list]:
 
 
 if __name__ == '__main__':
-    p = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.4.2.01.00.00.000 СБ - нивентор.xlsx'
+    p = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.05.01.00.000 - Инвентор.xlsx'
     data = get_specifitaction_inventor_from_xlsx(filepath=p)
     
     for row in data:

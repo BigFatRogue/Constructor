@@ -15,6 +15,7 @@ from projects.specification.core.database import DataBase
 from projects.specification.core.config_table import (
     ColumnConfig,
     TableConfig,
+    FIELDS_CONFIG,
     LINK_ITEM_CONFIG,
     PROPERTY_PROJECT_CONFIG,
     SPECIFICATION_CONFIG,
@@ -25,7 +26,7 @@ from projects.specification.core.config_table import (
 )
 from projects.specification.core.functions import get_now_time
 
-TDataTable = TypeVar('T', dict, tuple, list)
+TDataTable = TypeVar('T', dict, list)
 TData = Union[int, float, str, None]
 
 
@@ -109,6 +110,7 @@ class PropertyProjectData(GeneralDataItem):
         str_values = ', '.join(['?' for _ in range(len(self.data))])
         str_fields = ', '.join([field for field in self.data.keys()])
         self.execute_sql(f'INSERT INTO {self.config.name} ({str_fields}) VALUES({str_values})', [v for v in self.data.values()])
+        self.commit_sql()
 
     def update_sql(self):
         super().update_sql()        
@@ -135,10 +137,10 @@ class PropertyProjectData(GeneralDataItem):
         
         columns = SPECIFICATION_CONFIG.columns
         query = f"SELECT * FROM {SPECIFICATION_CONFIG.name}"
-        table = self.execute_sql(query).fetchall()
+        eixst_table_sql = self.execute_sql(query).fetchall()
 
         tables = []
-        for row in table:
+        for row in eixst_table_sql:
             table: dict[str, Union[str, list[list[TData]]]] = {}
             for col, value in zip(columns, row):
                 table[col.field] = value
@@ -147,9 +149,11 @@ class PropertyProjectData(GeneralDataItem):
             SELECT * 
             FROM {NameTableSQL.GENERAL.value} 
             LEFT JOIN {table['type_spec']} ON {table['type_spec']}.parent_id = {NameTableSQL.GENERAL.value}.id 
-            WHERE {NameTableSQL.GENERAL.value}.parent_id = {table['id']}"""
+            WHERE {NameTableSQL.GENERAL.value}.parent_id = {table['id']}
+            ORDER BY number_row
+            """
 
-            data = self.execute_sql(query).fetchall()
+            data = [list(row) for row in self.execute_sql(query).fetchall()]
             table['data'] = data
             tables.append(table)
         return tables
@@ -158,23 +162,41 @@ class PropertyProjectData(GeneralDataItem):
 class SpecificationDataItem(GeneralDataItem):
     def __init__(self, database):
         super().__init__(database)
-        self.specification_config = SPECIFICATION_CONFIG
-        self.config = GENERAL_ITEM_CONFIG
-        self.unique_config = None
+        self.specification_config: TableConfig = SPECIFICATION_CONFIG
+        self.config: TableConfig = GENERAL_ITEM_CONFIG
+        self.unique_config: TableConfig = None
+        self.fields_config: TableConfig = FIELDS_CONFIG
         self.data: list[list[TData]] = None
         self.type_spec: NameTableSQL = None
         self.sid: int = None
 
-    def create_sql(self) -> None:
+    def __insert_in_sql_filed(self) -> None:
         if not self.check_connect():
             return
+
+        columns_sql = ", ".join(col.sql_definition for col in self.fields_config.columns)
+        self.execute_sql(f"CREATE TABLE IF NOT EXISTS {self.fields_config.name} ({columns_sql})")
         
+        fields = tuple(col.field for col in self.fields_config.columns if not col.is_id)
+        str_fields = ', '.join(fields)
+
+        for config in (self.config, self.unique_config):
+            for column in config.columns:
+                if not column.is_id:
+                    values = tuple(getattr(column,  field) for field in fields if hasattr(column, field))
+                    count_values = ', '.join(['?'] * len(values))
+                    self.execute_sql(f"INSERT INTO {self.fields_config.name} ({str_fields}) VALUES({count_values})", values)
+
+    def create_sql(self) -> None:
+        super().create_sql()
+
         for config in (self.specification_config, self.config, self.unique_config):
             if config:
-                columns_sql = ", ".join(col.sql_definition for col in config.columns)
+                columns_sql = ", ".join(col.sql_definition for col in config.columns + config.columns_property)
                 self.execute_sql(f"CREATE TABLE IF NOT EXISTS {config.name} ({columns_sql})")
         
         self.__insert_specification_sql(self.type_spec)
+        self.__insert_in_sql_filed()
         self.commit_sql()
         
     def __insert_specification_sql(self, type_spec: NameTableSQL) -> None:
@@ -194,14 +216,17 @@ class SpecificationDataItem(GeneralDataItem):
             start = 0
             for config in (self.config, self.unique_config):
                 if config:
-                    field = tuple(col.field for col in config.columns if not any((col.is_id, col.is_foreign_id, col.is_foreign_key)))
-                    str_field = ', '.join(field)
-                    str_values = ', '.join(['?'] * len(field))
+                    len_config_without_foreign_key = len(config.columns)
+                    part_row = row[start: start + len_config_without_foreign_key]
+                    start = len_config_without_foreign_key
 
-                    part_row = row[start: start + len(field)]
-                    start = len(field)
+                    fields = tuple(col.field for col in config.columns if not col.is_id)
+                    str_fields = ', '.join(fields)
+                    str_values = ', '.join(['?'] * len(fields))
 
-                    self.execute_sql(f'INSERT INTO {config.name} ({str_field}) VALUES({str_values})', part_row)
+                    part_data_row = [data for data, col in zip(part_row, config.columns) if not col.is_id]
+                    
+                    self.execute_sql(f'INSERT INTO {config.name} ({str_fields}) VALUES({str_values})', part_data_row)
                     if config.parent_config:
                         last_id = self.execute_sql('SELECT last_insert_rowid();').fetchall()[0][0]
                         parent_id = self.sid if config == self.config else last_id
@@ -214,6 +239,30 @@ class SpecificationDataItem(GeneralDataItem):
         
         if field_foreign_key:       
             self.execute_sql(f"UPDATE {config.name} SET {field_foreign_key} = '{parent_id}' WHERE id={last_id}")
+
+    def update_sql(self):
+        super().update_sql()
+        str_values = [', '.join([f'{col.field} = ?' for col in config.columns]) for config in (self.config, self.unique_config)]
+        
+        index_config = (0, len(self.config.columns))
+        index_unique = (index_config[1], index_config[1] + len(self.unique_config.columns))
+        
+        for row in self.data:
+            for name, str_value, index in zip((self.config.name, self.unique_config.name), 
+                                              str_values, 
+                                              (index_config, index_unique)):
+                
+                index_start, index_end = index
+                data = row[index_start: index_end]
+
+                self.execute_sql(f'UPDATE {name} SET {str_value} WHERE id={data[0]}', data)
+        self.commit_sql()
+        
+    def get_index_form_name_filed(self, field: str) -> int:
+        for i, col in enumerate(self.config.columns + self.unique_config.columns):
+            if col.field == field:
+                return i
+        return -1 
 
 
 class InventorSpecificationDataItem(SpecificationDataItem):
@@ -242,37 +291,37 @@ if __name__ == '__main__':
     from projects.specification.core.data_loader import get_specifitaction_inventor_from_xlsx
 
     pp_data = PropertyProjectData()
-    pp_data.set_filepath_db(os.path.join(os.getcwd(), '_pp_data.scdata'))
+    pp_data.set_filepath_db(os.path.join(os.getcwd(), '_data.scdata'))
     database = pp_data.database
-    # pp_data.create_sql()
-    # pp_data_dict = {
-    #     'file_name': 'Проект 1',
-    #     'project_name': 'ЛебедяньМолоко',
-    #     'project_number': r'1642/24',
-    #     'number_contract': '3.2',
-    #     'manager': None,
-    #     'technologist': None,
-    #     'constructor': None,
-    #     'name_model': None,
-    #     'name_drawing': None
-    # }
-    # pp_data.set_data(pp_data_dict)
-    # pp_data.insert_sql()
+    pp_data.create_sql()
+    pp_data_dict = {
+        'file_name': 'Проект 1',
+        'project_name': 'ЛебедяньМолоко',
+        'project_number': r'1642/24',
+        'number_contract': '3.2',
+        'manager': None,
+        'technologist': None,
+        'constructor': None,
+        'name_model': None,
+        'name_drawing': None
+    }
+    pp_data.set_data(pp_data_dict)
+    pp_data.insert_sql()
     
 
-    # inv_data = InventorSpecificationDataItem(database)
-    # inv_data.create_sql()
+    inv_data = InventorSpecificationDataItem(database)
+    inv_data.create_sql()
     
-    # path_xlsx = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.4.2.01.00.00.000 СБ - нивентор.xlsx'
-    # data = get_specifitaction_inventor_from_xlsx(path_xlsx)
+    path_xlsx = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.05.01.00.000 - Инвентор.xlsx'
+    data = get_specifitaction_inventor_from_xlsx(path_xlsx)
 
-    # inv_data.set_data(data)
-    # inv_data.insert_sql()
+    inv_data.set_data(data)
+    inv_data.insert_sql()
 
     # buy_data = BuySpecificationDataItem(database)
     # buy_data.create_sql()
 
-    tables = pp_data.get_all_specification_data()
-    print(tables)
+    # tables = pp_data.get_all_specification_data()
+    # print(tables)
 
 

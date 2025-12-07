@@ -23,6 +23,11 @@ QPushButton:focus {
     border: 1px solid #0078d4;
 }
 
+QPushButton:checked {
+    border: 1px solid #0078d4;
+    background-color: rgb(209, 235, 255);
+}
+
 QLineEdit {
     border: 1px solid #d1d5db;
     border-radius: 6px;
@@ -75,8 +80,42 @@ QTreeViewQTreeWidget:selected:!active {
     color: black;
 }
 
-QHeaderView::section {
+QHeaderView::section,
+QTableCornerButton::section {
     font-weight: bold;
+    border: none;
     border-bottom: 1px solid #e0e0e0;
+    border-right: 1px solid #D8D8D8;
+    background-color:white;
 }
 
+
+QTableWidget {
+    border: none;
+    border-bottom: 1px solid #e0e0e0;;
+}
+
+
+QTableWidget::item:selected {
+    background-color: rgba(0, 0, 0, 0);
+
+}
+
+QHeaderView::section:checked {
+    background-color: rgb(130, 196, 130);
+}
+
+#zoom_widget_frame {
+    background-color: rgb(0, 136, 0);
+}
+
+#btn_zoom_in, #btn_zoom_out {
+    background-color: none;
+    border: none;
+}
+
+#btn_zoom_in:hover, 
+#btn_zoom_out:hover {
+    background-color: rgb(2, 117, 2);
+    border-radius: 0;
+}

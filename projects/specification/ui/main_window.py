@@ -13,6 +13,8 @@ from projects.specification.config.settings import *
 from projects.specification.config.constants import *
 from projects.specification.config.enums import EnumStatusBar
 
+from projects.specification.ui.widgets.control_panel_application import ControlPanelAppliction
+
 from projects.specification.ui.widgets.browser import WidgetBrowser, ProjectItem
 from projects.specification.ui.widgets.content import WidgetContent
 
@@ -28,7 +30,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_status_bar()
 
-        self.widget_browser.load_project(r'D:\Python\AlfaServis\Constructor\_pp_data.scdata')
+        self.widget_browser.load_project(r'D:\Python\AlfaServis\Constructor\_data.scdata')
     
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
@@ -47,8 +49,8 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.central_widget.setObjectName("central_widget")
 
         self.grid_layout = QtWidgets.QGridLayout(self.central_widget)
-        self.grid_layout.setContentsMargins(2, 2, 2, 2)
-        self.grid_layout.setSpacing(2)
+        self.grid_layout.setContentsMargins(0, 0, 0, 0)
+        self.grid_layout.setSpacing(0)
 
         self.setCentralWidget(self.central_widget)
 
@@ -63,6 +65,9 @@ class WindowSpecification(QtWidgets.QMainWindow):
         file_menu.addAction(open_action)
 
     def init_widgets(self) -> None:
+        self.control_panel: ControlPanelAppliction = ControlPanelAppliction(self)
+        self.grid_layout.addWidget(self.control_panel, 0, 0, 1, 1)
+
         self.widget_browser = WidgetBrowser(self)
         self.widget_browser.signal_status.connect(self.set_status)
         self.widget_browser.setObjectName('browser')
@@ -74,11 +79,14 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.widget_content.page_property_projcet.signal_save_project.connect(self.save_project)
         self.widget_browser.signal_del_item.connect(self.widget_content.view_empty_page)
     
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        splitter.addWidget(self.widget_browser)
-        splitter.addWidget(self.widget_content)
-        splitter.setStretchFactor(1, 1)
-        self.grid_layout.addWidget(splitter, 0, 0, 1, 1)
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.splitter.addWidget(self.widget_browser)
+        self.splitter.addWidget(self.widget_content)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setStyleSheet("""
+        QSplitter::handle {background-color: #d0d0d0}
+        QSplitter::handle:pressed {background-color: #4060ff;}""")
+        self.grid_layout.addWidget(self.splitter, 1, 0, 1, 1)
 
     def init_status_bar(self) -> None:
         statusBar = QtWidgets.QStatusBar(self)
