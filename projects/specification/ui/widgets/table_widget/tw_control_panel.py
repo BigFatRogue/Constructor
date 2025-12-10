@@ -1,3 +1,4 @@
+import os
 from typing import Any, TypeVar, Callable
 from PyQt5 import QtCore, QtWidgets, QtGui
 
@@ -8,34 +9,27 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
 
-from projects.specification.config.settings import *
-from projects.specification.config.enums import TypeAlignText, TypeBLockPropertyControlPanel, TypeSignalFromControlPanel
-from projects.specification.config.constants import *
-
-from projects.specification.ui.widgets.table import TableWithZoom
-from projects.specification.ui.widgets.blocks_control_panel import BlockControlPanel, MainBlock, FontStyleBlock, AlignCellBlock
-from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
+from projects.specification.ui.widgets.table_widget.tw_table import Table
+from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import BlockControlPanel, FontStyleBlock, AlignCellBlock
 from projects.tools.custom_qwidget.line_separate import QHLineSeparate, QVLineSeparate
 
 
 T = TypeVar('T')
 
 
-# @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class ControlPanelTable(QtWidgets.QFrame):
-    def __init__(self, parent, table: TableWithZoom):
+    def __init__(self, parent, table: Table):
         super().__init__(parent)
 
-        self.table: TableWithZoom = table
+        self.table: Table = table
 
-        self.blocks: dict[TypeBLockPropertyControlPanel, BlockControlPanel] = {
-            TypeBLockPropertyControlPanel.FONT: FontStyleBlock,
-            TypeBLockPropertyControlPanel.ALIGN:  AlignCellBlock
+        self.blocks = {
+            ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT: FontStyleBlock,
+            ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN:  AlignCellBlock
             }
         
-        self.signals: dict[TypeSignalFromControlPanel, QtCore.pyqtSignal] = {}
-
         self.setMinimumHeight(25)
         self.init_widgets()
     
@@ -56,23 +50,16 @@ class ControlPanelTable(QtWidgets.QFrame):
             v_line_separate = QVLineSeparate(self)
             self.h_layout.addWidget(v_line_separate)
 
-            self.signals.update(b.signals)
-
-    def connect_signal(self, type_signal: TypeSignalFromControlPanel, func: Callable) -> None:
-        signal = self.signals.get(type_signal)
-        if signal:
-            signal.connect(func)
-
-    def view_property(self, type_block: TypeBLockPropertyControlPanel,  prop: T) -> None:
+    def view_property(self, type_block,  prop: T) -> None:
         self.blocks[type_block].view_property(prop)
 
 
 class __Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        with open(os.path.join(RESOURCES_PATH, r'spec_style.qss')) as style:
+        with open(os.path.join(SETTING.RESOURCES_PATH, r'spec_style.qss')) as style:
             text_style = style.read()
-            text_style = text_style.replace('{{ICO_FOLDER}}', ICO_FOLDER.replace('\\', '/')) 
+            text_style = text_style.replace('{{ICO_FOLDER}}', SETTING.ICO_FOLDER.replace('\\', '/')) 
             self.setStyleSheet(text_style)
 
         # self.resize(750, 250)

@@ -1,6 +1,19 @@
 from enum import Enum, auto
 
 
+class AppContextEnums:
+    def __init__(self):
+        self.NAME_TABLE_SQL = NameTableSQL
+        self.TYPE_TREE_ITEM = TypeTreeItem
+        self.TYPE_CREATE_LOAD_SPEC = TypeCreateLoadSpec
+        self.STATUS_BAR = EnumStatusBar
+        self.TYPE_ALIGN_TEXT = TypeAlignText
+        self.STATE_SORTED_COLUMN = StateSortedColumn
+        self.TYPE_BLOCK_PROPERTY_CONTROL_PANEL = TypeBlockPropertyControlPanel
+        self.TYPE_SIGNAL_FROM_CONTROL_PANEL = TypeSignalFromControlPanel
+
+
+
 class NameTableSQL(Enum):
     NAME_FIELDS = 'name_fields'
     LINKS = 'links'
@@ -51,7 +64,7 @@ class StateSortedColumn(Enum):
     EMPTY = 0
     
 
-class TypeBLockPropertyControlPanel(Enum):
+class TypeBlockPropertyControlPanel(Enum):
     MAIN = auto()
     ALIGN = auto()
     FONT = auto()
@@ -66,3 +79,8 @@ class TypeSignalFromControlPanel(Enum):
     FONT_BOLD = auto()
     FONT_ITALIC = auto()
     FONT_UNDERLINE = auto()
+
+
+
+
+    

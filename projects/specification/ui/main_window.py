@@ -1,7 +1,6 @@
 from __future__ import annotations
-
+import os
 import ctypes
-
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 if __name__ == '__main__':
@@ -11,14 +10,15 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.settings import *
-from projects.specification.config.constants import *
-from projects.specification.config.enums import EnumStatusBar
+from projects.specification.config.app_context.app_context import app_context
+SETTING = app_context.context_setting
+SIGNAL_BUS = app_context.single_bus
+ENUMS = app_context.context_enums
+CONSTANTS = app_context.constants
 
 from projects.specification.ui.widgets.control_panel_application import ControlPanelAppliction
-
 from projects.specification.ui.widgets.browser_widget import BrowserWidget
-from projects.specification.ui.widgets.content_widget import WidgetContent
+from projects.specification.ui.widgets.content_widget.content_widget import ContentWidget
 
 
 class WindowSpecification(QtWidgets.QMainWindow):
@@ -37,11 +37,11 @@ class WindowSpecification(QtWidgets.QMainWindow):
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        self.setWindowIcon(QtGui.QIcon(os.path.join(ICO_FOLDER, 'Specification.png')))
+        self.setWindowIcon(QtGui.QIcon(os.path.join(SETTING.ICO_FOLDER, 'Specification.png')))
 
-        with open(os.path.join(RESOURCES_PATH, r'spec_style.qss')) as style:
+        with open(os.path.join(SETTING.RESOURCES_PATH, r'spec_style.qss')) as style:
             text_style = style.read()
-            text_style = text_style.replace('{{ICO_FOLDER}}', ICO_FOLDER.replace('\\', '/')) 
+            text_style = text_style.replace('{{ICO_FOLDER}}', SETTING.ICO_FOLDER.replace('\\', '/')) 
             self.setStyleSheet(text_style)
 
         self.resize(1000, 400)
@@ -68,17 +68,18 @@ class WindowSpecification(QtWidgets.QMainWindow):
 
     def init_widgets(self) -> None:
         self.control_panel: ControlPanelAppliction = ControlPanelAppliction(self)
-        self.control_panel.signal_save.connect(self.save)
+        SIGNAL_BUS.save.connect(self.save)
         self.grid_layout.addWidget(self.control_panel, 0, 0, 1, 1)
 
         self.browser_widget = BrowserWidget(self)
-        self.browser_widget.signal_status.connect(self.set_status)
         self.browser_widget.setObjectName('browser')
-        self.browser_widget.signal_open_project.connect(self.open_project)
+        SIGNAL_BUS.satus_bar.connect(self.set_status)
+        SIGNAL_BUS.open_project.connect(self.open_project)
         
-        self.content_widget = WidgetContent(self)
-        self.content_widget.signal_status.connect(self.set_status)
-        self.browser_widget.signal_del_item.connect(self.content_widget.view_empty_page)
+        self.content_widget = ContentWidget(self)
+        SIGNAL_BUS.delele_item.connect(self.content_widget.view_empty_page)
+        SIGNAL_BUS.satus_bar.connect(self.set_status)
+        
     
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         self.splitter.addWidget(self.browser_widget)
@@ -94,7 +95,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         statusBar.layout().setContentsMargins(2, 2, 2, 2)
         statusBar.setStyleSheet('QStatusBar {border-top: 1px solid gray}')
         self.setStatusBar(statusBar)
-        statusBar.showMessage(EnumStatusBar.WAIT.value)
+        statusBar.showMessage(ENUMS.STATUS_BAR.WAIT.value)
 
         self.timer_status = QtCore.QTimer(self)
         self.timer_status.setSingleShot(True)
@@ -106,7 +107,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
     
     def open_project(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
-        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter=f'SPEC файл (*.{MY_FORMAT})')
+        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter=f'SPEC файл (*.{CONSTANTS.MY_FORMAT})')
         if filename and filename[0]:
             filepath, _ = filename
             filename = os.path.basename(filepath)
@@ -118,7 +119,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.timer_status.start(timeout)
 
     def reset_status_bar(self) -> None:
-        self.statusBar().showMessage(EnumStatusBar.WAIT.value) 
+        self.statusBar().showMessage(ENUMS.STATUS_BAR.WAIT.value) 
 
 
 if __name__ == '__main__':

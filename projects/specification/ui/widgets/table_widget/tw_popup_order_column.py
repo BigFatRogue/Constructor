@@ -1,12 +1,11 @@
 import os 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from projects.specification.config.settings import *
-from projects.specification.config.enums import StateSortedColumn
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
 
 
 class PopupOrder(QtWidgets.QWidget):
-    signal_sorted = QtCore.pyqtSignal(StateSortedColumn)
+    signal_sorted = QtCore.pyqtSignal(ENUMS.STATE_SORTED_COLUMN)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -40,7 +39,7 @@ class PopupOrder(QtWidgets.QWidget):
         self.btn_sorted = QtWidgets.QPushButton(self.frame)
         self.btn_sorted.setText('Сортировать от А до Я')
         ico = QtGui.QIcon()
-        ico.addFile(os.path.join(ICO_FOLDER, 'sorted_az.png'))
+        ico.addFile(os.path.join(SETTING.ICO_FOLDER, 'sorted_az.png'))
         self.btn_sorted.setIcon(ico)
         self.btn_sorted.clicked.connect(self.click_btn_sorted)
         self.v_layout_frame.addWidget(self.btn_sorted)
@@ -48,7 +47,7 @@ class PopupOrder(QtWidgets.QWidget):
         self.btn_sorted_reverse = QtWidgets.QPushButton(self.frame)
         self.btn_sorted_reverse.setText('Сортировать от Я до А]')
         ico = QtGui.QIcon()
-        ico.addFile(os.path.join(ICO_FOLDER, 'sorted_za.png'))
+        ico.addFile(os.path.join(SETTING.ICO_FOLDER, 'sorted_za.png'))
         self.btn_sorted_reverse.setIcon(ico)
         self.btn_sorted_reverse.clicked.connect(self.click_btn_sorted_reverse)
         self.v_layout_frame.addWidget(self.btn_sorted_reverse)
@@ -124,13 +123,13 @@ class PopupOrder(QtWidgets.QWidget):
         
     def _set_state_btns_sorted(self) -> None:
         state_sorted = self.current_button_header.state_sorted
-        if state_sorted == StateSortedColumn.EMPTY:
+        if state_sorted == ENUMS.STATE_SORTED_COLUMN.EMPTY:
             self.btn_sorted.setChecked(False)
             self.btn_sorted_reverse.setChecked(False)
-        elif state_sorted == StateSortedColumn.SORTED:
+        elif state_sorted == ENUMS.STATE_SORTED_COLUMN.SORTED:
             self.btn_sorted.setChecked(True)
             self.btn_sorted_reverse.setChecked(False)
-        elif state_sorted == StateSortedColumn.REVERSE:
+        elif state_sorted == ENUMS.STATE_SORTED_COLUMN.REVERSE:
             self.btn_sorted.setChecked(False)
             self.btn_sorted_reverse.setChecked(True)
 
@@ -140,28 +139,28 @@ class PopupOrder(QtWidgets.QWidget):
             self.current_button_header.setChecked(False)
 
     def click_btn_sorted(self) -> None:
-        if self.current_button_header.state_sorted == StateSortedColumn.SORTED:
-            self.set_state_button_sorted(StateSortedColumn.EMPTY)
+        if self.current_button_header.state_sorted == ENUMS.STATE_SORTED_COLUMN.SORTED:
+            self.set_state_button_sorted(ENUMS.STATE_SORTED_COLUMN.EMPTY)
         else:
-            self.set_state_button_sorted(StateSortedColumn.SORTED)
-            self.signal_sorted.emit(StateSortedColumn.SORTED)
+            self.set_state_button_sorted(ENUMS.STATE_SORTED_COLUMN.SORTED)
+            self.signal_sorted.emit(ENUMS.STATE_SORTED_COLUMN.SORTED)
     
     def click_btn_sorted_reverse(self) -> None:
-        if self.current_button_header.state_sorted == StateSortedColumn.REVERSE:
-            self.set_state_button_sorted(StateSortedColumn.EMPTY)
+        if self.current_button_header.state_sorted == ENUMS.STATE_SORTED_COLUMN.REVERSE:
+            self.set_state_button_sorted(ENUMS.STATE_SORTED_COLUMN.EMPTY)
         else:
-            self.set_state_button_sorted(StateSortedColumn.REVERSE)
-            self.signal_sorted.emit(StateSortedColumn.REVERSE)
+            self.set_state_button_sorted(ENUMS.STATE_SORTED_COLUMN.REVERSE)
+            self.signal_sorted.emit(ENUMS.STATE_SORTED_COLUMN.REVERSE)
     
     def click_check_box_multi_sorted(self, value) -> None:
         self.is_multi_sorted = value
         self.btn_sorted.setCheckable(value)
         self.btn_sorted_reverse.setCheckable(value)
     
-    def set_state_button_sorted(self, state: StateSortedColumn) -> None:
+    def set_state_button_sorted(self, state) -> None:
         if self.is_multi_sorted:
             self.current_button_header.set_sorted_state(state)
-            self.btn_sorted.setChecked(state == StateSortedColumn.SORTED)
-            self.btn_sorted_reverse.setChecked(state == StateSortedColumn.REVERSE)
+            self.btn_sorted.setChecked(state == ENUMS.STATE_SORTED_COLUMN.SORTED)
+            self.btn_sorted_reverse.setChecked(state == ENUMS.STATE_SORTED_COLUMN.REVERSE)
         else: 
-            self.current_button_header.set_sorted_state(StateSortedColumn.EMPTY)
+            self.current_button_header.set_sorted_state(ENUMS.STATE_SORTED_COLUMN.EMPTY)

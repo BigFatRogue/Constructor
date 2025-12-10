@@ -1,8 +1,9 @@
 import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from projects.specification.config.settings import *
-from projects.specification.ui.widgets.table import TableWithZoom, HeaderWithOverlayWidgets, ItemTableWithZoom
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
+
+from projects.specification.ui.widgets.table_widget.tw_table import Table, HeaderWithOverlayWidgets, ItemTableWithZoom
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
 
@@ -83,10 +84,10 @@ class CustomSlider(QtWidgets.QSlider):
 class ZoomTable(QtWidgets.QWidget):
     signal_change_zoom = QtCore.pyqtSignal()
 
-    def __init__(self, parent, table: TableWithZoom):
+    def __init__(self, parent, table: Table):
         super().__init__(parent)
 
-        self.table: TableWithZoom = table
+        self.table: Table = table
         self.min_zoom = table.min_zoom
         self.max_zoom = table.max_zoom
         self.step_zoom = table.step_zoom
@@ -120,7 +121,7 @@ class ZoomTable(QtWidgets.QWidget):
         self.btn_zoom_out.setToolTip('Уменьшить масштаб')
         self.btn_zoom_out.setFixedSize(20, self.__max_heigth)
         icon = QtGui.QIcon()
-        icon.addFile(os.path.join(ICO_FOLDER, 'white_minus.png'))
+        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'white_minus.png'))
         self.btn_zoom_out.setIcon(icon)
         self.btn_zoom_out.clicked.connect(self.click_btn_zoom_out)
         self.h_layout_frame.addWidget(self.btn_zoom_out)
@@ -138,7 +139,7 @@ class ZoomTable(QtWidgets.QWidget):
         self.btn_zoom_in.setToolTip('Увеличить масштаб')
         self.btn_zoom_in.setFixedSize(20, self.__max_heigth)
         icon = QtGui.QIcon()
-        icon.addFile(os.path.join(ICO_FOLDER, 'white_plus.png'))
+        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'white_plus.png'))
         self.btn_zoom_in.setIcon(icon)
         self.btn_zoom_in.clicked.connect(self.click_btn_zoom_in)
         self.h_layout_frame.addWidget(self.btn_zoom_in)

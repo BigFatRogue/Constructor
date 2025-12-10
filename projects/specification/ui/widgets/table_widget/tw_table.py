@@ -1,12 +1,11 @@
+import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from projects.specification.core.data_tables import InventorSpecificationDataItem
+from projects.specification.core.data_tables import ColumnConfig, InventorSpecificationDataItem
 
-from projects.specification.config.settings import *
-from projects.specification.config.enums import TypeAlignText, StateSortedColumn
-from projects.specification.config.constants import *
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
 
-from projects.specification.ui.widgets.popup_order_column import PopupOrder
+from projects.specification.ui.widgets.table_widget.tw_popup_order_column import PopupOrder
 
 
 class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
@@ -23,30 +22,30 @@ class ButtonHorizontalHeader(QtWidgets.QPushButton):
         self.column_index: int = None
         self.data_index: int = None
         self.is_checked = False
-        self.state_sorted = StateSortedColumn.EMPTY 
+        self.state_sorted = ENUMS.STATE_SORTED_COLUMN.EMPTY 
 
         self.resize(22, 22)
         self.setCheckable(True)
         
-        self.dict_icon: dict[str, StateSortedColumn] = {}
+        self.dict_icon = {}
         for icon_name, state, tool_tip in zip(
             ('filter.png', 'filter_az.png', 'filter_za.png'),
-            (StateSortedColumn.EMPTY, StateSortedColumn.SORTED, StateSortedColumn.REVERSE),
+            (ENUMS.STATE_SORTED_COLUMN.EMPTY, ENUMS.STATE_SORTED_COLUMN.SORTED, ENUMS.STATE_SORTED_COLUMN.REVERSE),
             ('Установить фильтр', 'Установлен фильтр от А до Я', 'Установлен фильтр от Я до А')
             ):
 
             ico = QtGui.QIcon()
-            ico.addFile(os.path.join(ICO_FOLDER, icon_name))
+            ico.addFile(os.path.join(SETTING.ICO_FOLDER, icon_name))
             self.dict_icon[state] = (ico, tool_tip)
         
-    def set_sorted_state(self, state: StateSortedColumn) -> None:
+    def set_sorted_state(self, state) -> None:
         self.state_sorted = state
         ico, tool_tip = self.dict_icon[state]
         self.setIcon(ico)
         self.setToolTip(tool_tip)
     
     def reset_view_sorted(self) -> None:
-        self.set_sorted_state(StateSortedColumn.EMPTY)
+        self.set_sorted_state(ENUMS.STATE_SORTED_COLUMN.EMPTY)
 
 
 class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
@@ -268,7 +267,7 @@ class ItemTableWithZoom(QtWidgets.QTableWidgetItem):
         self.setFont(font)
 
 
-class TableWithZoom(QtWidgets.QTableWidget):
+class Table(QtWidgets.QTableWidget):
     signal_change_table = QtCore.pyqtSignal()  
     signal_select_item = QtCore.pyqtSignal(ItemTableWithZoom)
     signal_sorted_column = QtCore.pyqtSignal(tuple)
@@ -292,6 +291,14 @@ class TableWithZoom(QtWidgets.QTableWidget):
         self.popup_order.signal_sorted.connect(self.sorted_column)
 
         self.__init_widgets()
+
+        SIGNAL_BUS.set_align_cell.connect(self.set_align_cell)
+        SIGNAL_BUS.font_family.connect(self.set_font_family_cell)
+        SIGNAL_BUS.font_size.connect(self.set_font_size_cell)
+        SIGNAL_BUS.bold.connect(self.set_bold_cell)
+        SIGNAL_BUS.italic.connect(self.set_italic_cell)
+        SIGNAL_BUS.underline.connect(self.set_underline_cell)
+    
     
     def __init_widgets(self) -> None:
         self.__setup_horizontal_header()
@@ -335,7 +342,7 @@ class TableWithZoom(QtWidgets.QTableWidget):
 
     def add_button_horizontal_header(self, data_index) -> None:
         btn = ButtonHorizontalHeader(self)
-        btn.set_sorted_state(StateSortedColumn.EMPTY)
+        btn.set_sorted_state(ENUMS.STATE_SORTED_COLUMN.EMPTY)
         btn.clicked.connect(self.click_btn_horizontal_header)
         self.custom_h_header.addWidget(btn, data_index, 2)
 
@@ -377,9 +384,9 @@ class TableWithZoom(QtWidgets.QTableWidget):
                 qItem = ItemTableWithZoom(str(value), min_zoom=self.min_zoom, max_zoom=self.max_zoom, step_zoom=self.step_zoom)
                 qItem.set_font_size(12)
                 qItem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter)
-                qItem.setData(QROLE_H_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignHCenter)
-                qItem.setData(QROLE_V_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignVCenter)
-                qItem.setData(QROLE_DATA_X, data_x)
+                qItem.setData(CONSTANTS.QROLE_H_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignHCenter)
+                qItem.setData(CONSTANTS.QROLE_V_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignVCenter)
+                qItem.setData(CONSTANTS.QROLE_DATA_X, data_x)
                 
                 if is_read_only:
                     qItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
@@ -391,7 +398,7 @@ class TableWithZoom(QtWidgets.QTableWidget):
     def click_btn_horizontal_header(self) -> None:
         self.popup_order.show(self.sender())
     
-    def sorted_column(self, state_sorted: StateSortedColumn) -> None:
+    def sorted_column(self, state_sorted) -> None:
         if self.popup_order.is_multi_sorted:
             self.signal_sorted_columns.emit(self.custom_h_header.get_widgets())
         else:
@@ -423,21 +430,45 @@ class TableWithZoom(QtWidgets.QTableWidget):
         # print(item.column(), item.row())
         self.signal_select_item.emit(item)
     
-    def set_align(self, value: tuple[TypeAlignText, int]) -> None:
+    def set_align_cell(self, value: tuple) -> None:
         flag_align, type_align = value
 
-        if type_align == TypeAlignText.H_ALIGN:
-            role = QROLE_V_TEXT_ALIGN
-            role_2 = QROLE_H_TEXT_ALIGN
+        if type_align == ENUMS.TYPE_ALIGN_TEXT.H_ALIGN:
+            role = CONSTANTS.QROLE_V_TEXT_ALIGN
+            role_2 = CONSTANTS.QROLE_H_TEXT_ALIGN
         else:
-            role = QROLE_H_TEXT_ALIGN
-            role_2 = QROLE_V_TEXT_ALIGN
+            role = CONSTANTS.QROLE_H_TEXT_ALIGN
+            role_2 = CONSTANTS.QROLE_V_TEXT_ALIGN
         
         for item in self.selectedItems():
             item.setTextAlignment(item.data(role) | flag_align)
             item.setData(role_2, flag_align)
         
         self.signal_change_table.emit()
+
+    def set_font_family_cell(self, value) -> None:
+        ...
+
+    def set_font_size_cell(self, value) -> None:
+        ...
+
+    def set_bold_cell(self) -> None:
+        for item in self.selectedItems():
+            font = item.font()
+            font.setBold(not font.bold())
+            item.setFont(font)
+
+    def set_italic_cell(self) -> None:
+        for item in self.selectedItems():
+            font = item.font()
+            font.setItalic(not font.italic())
+            item.setFont(font)
+
+    def set_underline_cell(self) -> None:
+        for item in self.selectedItems():
+            font = item.font()
+            font.setUnderline(not font.underline())
+            item.setFont(font)
 
     def reset_view_sorted_header(self) -> None:
         for btn in self.custom_h_header.get_widgets():

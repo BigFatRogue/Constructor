@@ -8,7 +8,8 @@ if __name__ == '__main__':
     sys.path.append(test_path)
 
 
-from projects.specification.config.enums import NameTableSQL
+from projects.specification.config.app_context.app_context import app_context
+ENUMS = app_context.context_enums
 
 
 @dataclass
@@ -71,7 +72,7 @@ class TableConfig:
 
 
 FIELDS_CONFIG = TableConfig(
-    name=NameTableSQL.NAME_FIELDS.value,
+    name=ENUMS.NAME_TABLE_SQL.NAME_FIELDS.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('field', 'TEXT'),
@@ -82,7 +83,7 @@ FIELDS_CONFIG = TableConfig(
 )
 
 LINK_ITEM_CONFIG = TableConfig(
-    name=NameTableSQL.LINKS.value,
+    name=ENUMS.NAME_TABLE_SQL.LINKS.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('element_1', 'INTEGER'),
@@ -91,7 +92,7 @@ LINK_ITEM_CONFIG = TableConfig(
 )
 
 PROPERTY_PROJECT_CONFIG = TableConfig(
-    name=NameTableSQL.PROJECT_PROPERTY.value,
+    name=ENUMS.NAME_TABLE_SQL.PROJECT_PROPERTY.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_view=False),
         ColumnConfig('file_name', 'TEXT', 'Название файла', ' <span style=color:red;>*</span>'),
@@ -108,7 +109,7 @@ PROPERTY_PROJECT_CONFIG = TableConfig(
 )
 
 SPECIFICATION_CONFIG = TableConfig(
-    name = NameTableSQL.SPECIFICATION.value,
+    name = ENUMS.NAME_TABLE_SQL.SPECIFICATION.value,
     columns = [
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('type_spec', 'TEXT'),
@@ -118,7 +119,7 @@ SPECIFICATION_CONFIG = TableConfig(
 )
 
 GENERAL_ITEM_CONFIG = TableConfig(
-    name=NameTableSQL.GENERAL.value,
+    name=ENUMS.NAME_TABLE_SQL.GENERAL.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('number_row', 'INTEGER', is_view=False),
@@ -134,7 +135,7 @@ GENERAL_ITEM_CONFIG = TableConfig(
 )
 
 INVENTOR_ITEM_CONFIG = TableConfig(
-    name=NameTableSQL.INVENTOR.value,
+    name=ENUMS.NAME_TABLE_SQL.INVENTOR.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('is_select', 'BOOLEAN', is_view=False),
@@ -147,7 +148,7 @@ INVENTOR_ITEM_CONFIG = TableConfig(
 )
 
 BUY_ITEM_CONFIG = TableConfig(
-    name=NameTableSQL.BUY.value,
+    name=ENUMS.NAME_TABLE_SQL.BUY.value,
     columns=[
         ColumnConfig('diametr', 'TEXT', 'Номинальный диаметр'),
         ColumnConfig('manufactureretr', 'TEXT', 'Производитель'),
@@ -160,7 +161,7 @@ BUY_ITEM_CONFIG = TableConfig(
 )
 
 PROD_ITEM_CONFG = TableConfig(
-    name=NameTableSQL.PROD.value,
+    name=ENUMS.NAME_TABLE_SQL.PROD.value,
     columns = [
         ColumnConfig('number_prod', 'INTEGER', '№'),
         ColumnConfig('diametr', 'TEXT', 'Номинальный диаметр'),

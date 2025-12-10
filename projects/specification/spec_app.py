@@ -10,7 +10,6 @@ if __name__ == '__main__':
 
 from projects.specification.ui.main_window import WindowSpecification
 
-
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     window = WindowSpecification()

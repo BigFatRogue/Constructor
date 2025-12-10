@@ -1,3 +1,4 @@
+import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 if __name__ == '__main__':
@@ -7,20 +8,24 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.settings import *
-from projects.specification.config.constants import *
-from projects.specification.config.enums import StateSortedColumn, TypeBLockPropertyControlPanel, TypeSignalFromControlPanel
-from projects.tools.custom_qwidget.line_separate import QHLineSeparate
+from projects.specification.config.app_context.app_context import app_context
+SETTING = app_context.context_setting
+SIGNAL_BUS = app_context.single_bus
+ENUMS = app_context.context_enums
+CONSTANTS = app_context.constants
 
+
+from projects.specification.core.database import DataBase
 from projects.specification.core.data_tables import InventorSpecificationDataItem
 
-from projects.specification.ui.widgets.table import TableWithZoom, ButtonHorizontalHeader, CheckBoxVerticalHeader, ItemTableWithZoom
-from projects.specification.ui.widgets.control_panel_table import ControlPanelTable
-from projects.specification.ui.widgets.zoom_table import ZoomTable
-from projects.specification.core.database import DataBase
+from projects.specification.ui.widgets.table_widget.tw_table import Table, ButtonHorizontalHeader, CheckBoxVerticalHeader, ItemTableWithZoom
+from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
+from projects.specification.ui.widgets.table_widget.tw_zoom import ZoomTable
+
+from projects.tools.custom_qwidget.line_separate import QHLineSeparate
 
 
-class WidgetTable(QtWidgets.QWidget):
+class TableWidget(QtWidgets.QWidget):
     signal_has_change_table = QtCore.pyqtSignal()
 
     def __init__(self, parent):
@@ -33,15 +38,12 @@ class WidgetTable(QtWidgets.QWidget):
         self.v_layout = QtWidgets.QVBoxLayout(self)
         self.v_layout.setSpacing(5)
 
-        self.table = TableWithZoom(self)
+        self.table = Table(self)
         self.table.signal_sorted_column.connect(self.sorted_column)
         self.table.signal_sorted_columns.connect(self.sorted_columns)
         self.table.signal_change_table.connect(self.change_table)
 
         self.control_panel = ControlPanelTable(self, self.table)
-
-        self.table.signal_select_item.connect(self.select_cell_item)
-        self.control_panel.connect_signal(TypeSignalFromControlPanel.SET_ALIGN, self.set_align)
         
         self.table_zoom = ZoomTable(self, self.table)
         self.table_zoom.signal_change_zoom.connect(self.table.set_select)
@@ -57,24 +59,24 @@ class WidgetTable(QtWidgets.QWidget):
         self.table_data = table_data
         self.table.populate(table_data=table_data, is_read_only=is_read_only)
     
-    def sorted_column(self, data: tuple[int, StateSortedColumn]) -> None:
+    def sorted_column(self, data: tuple) -> None:
         index_data, state_sorted = data
-        self.table_data.data.sort(key=lambda row: [str(i) for i in row][index_data], reverse=state_sorted == StateSortedColumn.SORTED)
+        self.table_data.data.sort(key=lambda row: [str(i) for i in row][index_data], reverse=state_sorted == ENUMS.STATE_SORTED_COLUMN.SORTED)
         self.populate(table_data=self.table_data)
         self.table.reset_view_sorted_header()
 
     def sorted_columns(self, buttons: list[ButtonHorizontalHeader]) -> None:  
         for btn in buttons[::-1]:
-            if (state := btn.state_sorted) != StateSortedColumn.EMPTY:
-                self.table_data.data.sort(key=lambda x: x[btn.data_index], reverse=state == StateSortedColumn.SORTED)
+            if (state := btn.state_sorted) != ENUMS.STATE_SORTED_COLUMN.EMPTY:
+                self.table_data.data.sort(key=lambda x: x[btn.data_index], reverse=state == ENUMS.STATE_SORTED_COLUMN.SORTED)
         self.populate(table_data=self.table_data)
         
     def select_cell_item(self, table_item: ItemTableWithZoom) -> None:
-        self.control_panel.view_property(TypeBLockPropertyControlPanel.ALIGN, table_item)
-        self.control_panel.view_property(TypeBLockPropertyControlPanel.FONT, table_item)
+        self.control_panel.view_property(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN, table_item)
+        self.control_panel.view_property(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT, table_item)
 
     def set_align(self, value: tuple) -> None:
-        self.table.set_align(value)
+        self.table.set_align_cell(value)
 
     def hide_popup_order(self) -> None:
         if self.table.popup_order.isVisible():
@@ -92,9 +94,9 @@ class WidgetTable(QtWidgets.QWidget):
 class __Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        with open(os.path.join(RESOURCES_PATH, r'spec_style.qss')) as style:
+        with open(os.path.join(SETTING.RESOURCES_PATH, r'spec_style.qss')) as style:
             text_style = style.read()
-            text_style = text_style.replace('{{ICO_FOLDER}}', ICO_FOLDER.replace('\\', '/')) 
+            text_style = text_style.replace('{{ICO_FOLDER}}', SETTING.ICO_FOLDER.replace('\\', '/')) 
             self.setStyleSheet(text_style)
 
         self.resize(750, 750)
@@ -104,7 +106,7 @@ class __Window(QtWidgets.QMainWindow):
 
         self.v_layout = QtWidgets.QVBoxLayout(self.central_widget)
 
-        self.widgte_table = WidgetTable(self)
+        self.widgte_table = TableWidget(self)
         self.v_layout.addWidget(self.widgte_table)
 
         dataset = [[f'({row} {cell})' for cell in range(9)] for row in range(120)]

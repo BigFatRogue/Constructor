@@ -8,9 +8,7 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-
-from projects.specification.config.settings import *
-from projects.tools.custom_qwidget.line_separate import QHLineSeparate, QVLineSeparate
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
 
 
 class ControlPanelAppliction(QtWidgets.QWidget):
@@ -42,9 +40,9 @@ class ControlPanelAppliction(QtWidgets.QWidget):
         self.btn_save.setFixedSize(23, 23)
         self.btn_save.setToolTip('Сохранить таблицу\nCtrl + S')
         self.btn_save.setShortcut('Ctrl+S')
-        self.btn_save.clicked.connect(self.click_save)
+        self.btn_save.clicked.connect(SIGNAL_BUS.save.emit)
         icon = QtGui.QIcon()
-        icon.addFile(os.path.join(ICO_FOLDER, 'save.png'))
+        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'save.png'))
         self.btn_save.setIcon(icon)
         self.h_layout_frame.addWidget(self.btn_save)
 
@@ -52,9 +50,9 @@ class ControlPanelAppliction(QtWidgets.QWidget):
         self.btn_back.setFixedSize(23, 23)
         self.btn_back.setToolTip('Отменить изменения\nCtrl + Z')
         self.btn_back.setShortcut('Ctrl+Z')
-        self.btn_back.clicked.connect(self.click_back)
+        self.btn_back.clicked.connect(SIGNAL_BUS.back.emit)
         icon = QtGui.QIcon()
-        icon.addFile(os.path.join(ICO_FOLDER, 'arrow_back.png'))
+        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'arrow_back.png'))
         self.btn_back.setIcon(icon)
         self.h_layout_frame.addWidget(self.btn_back)
 
@@ -62,14 +60,12 @@ class ControlPanelAppliction(QtWidgets.QWidget):
         self.btn_forward.setFixedSize(23, 23)
         self.btn_forward.setToolTip('Вернуть изменения\nCtrl + Shift + Z')
         self.btn_forward.setShortcut('Ctrl+Shift+Z')
-        self.btn_forward.clicked.connect(self.click_forward)
+        self.btn_forward.clicked.connect(SIGNAL_BUS.forward.emit)
         icon = QtGui.QIcon()
-        icon.addFile(os.path.join(ICO_FOLDER, 'arrow_forward.png'))
+        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'arrow_forward.png'))
         self.btn_forward.setIcon(icon)
         self.h_layout_frame.addWidget(self.btn_forward)
 
-    def click_save(self) -> None:
-        self.signal_save.emit()
     
     def click_back(self) -> None:
         ...

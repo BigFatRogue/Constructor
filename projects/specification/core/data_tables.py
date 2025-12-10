@@ -1,7 +1,4 @@
-from typing import TypeVar, Sequence, Union, Optional
-
-from datetime import datetime
-from sqlite3 import Cursor
+from typing import TypeVar, Union
 
 if __name__ == '__main__':
     import sys
@@ -11,7 +8,12 @@ if __name__ == '__main__':
 
     sys.path.append(test_path)
 
-from projects.specification.config.enums import NameTableSQL
+from projects.specification.config.app_context.app_context import app_context
+SETTING = app_context.context_setting
+SIGNAL_BUS = app_context.single_bus
+ENUMS = app_context.context_enums
+CONSTANTS = app_context.constants
+
 from projects.specification.core.database import DataBase
 from projects.specification.core.config_table import (
     ColumnConfig,
@@ -177,9 +179,9 @@ class PropertyProjectData(GeneralDataItem):
             
             query = f"""
             SELECT * 
-            FROM {NameTableSQL.GENERAL.value} 
-            LEFT JOIN {table['type_spec']} ON {table['type_spec']}.parent_id = {NameTableSQL.GENERAL.value}.id 
-            WHERE {NameTableSQL.GENERAL.value}.parent_id = {table['id']}
+            FROM {ENUMS.NAME_TABLE_SQL.GENERAL.value} 
+            LEFT JOIN {table['type_spec']} ON {table['type_spec']}.parent_id = {ENUMS.NAME_TABLE_SQL.GENERAL.value}.id 
+            WHERE {ENUMS.NAME_TABLE_SQL.GENERAL.value}.parent_id = {table['id']}
             ORDER BY number_row
             """
 
@@ -198,7 +200,7 @@ class SpecificationDataItem(GeneralDataItem):
         self.unique_config: TableConfig = None
         self.fields_config: TableConfig = FIELDS_CONFIG
         self.data: list[list[TData]] = None
-        self.type_spec: NameTableSQL = None
+        self.type_spec = None
         self.sid: int = None
 
     def save(self) -> None:
@@ -221,7 +223,7 @@ class SpecificationDataItem(GeneralDataItem):
 
         self.database.commit()
 
-    def __insert_specification_sql(self, type_spec: NameTableSQL) -> None:
+    def __insert_specification_sql(self, type_spec) -> None:
         field_sql = tuple(col.field for col in self.specification_config.columns if not col.is_id)
         field_str = ', '.join(field_sql)
         values_str = ', '.join(['?'] * len(field_sql))
@@ -301,21 +303,21 @@ class SpecificationDataItem(GeneralDataItem):
 class InventorSpecificationDataItem(SpecificationDataItem):
     def __init__(self, database):
         super().__init__(database)
-        self.type_spec = NameTableSQL.INVENTOR
+        self.type_spec = ENUMS.NAME_TABLE_SQL.INVENTOR
         self.unique_config = INVENTOR_ITEM_CONFIG
 
 
 class BuySpecificationDataItem(SpecificationDataItem):
     def __init__(self, database):
         super().__init__(database)
-        self.type_spec = NameTableSQL.BUY
+        self.type_spec = ENUMS.NAME_TABLE_SQL.BUY
         self.unique_config = BUY_ITEM_CONFIG
 
 
 class ProdSpecificationDataItem(SpecificationDataItem):
     def __init__(self, database):
         super().__init__(database)
-        self.type_spec = NameTableSQL.PROD
+        self.type_spec = ENUMS.NAME_TABLE_SQL.PROD
         self.unique_config = PROD_ITEM_CONFG
 
 

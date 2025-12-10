@@ -1,0 +1,1 @@
+from projects.specification.ui.widgets.browser_widget.browser_widget import BrowserWidget
