@@ -30,7 +30,6 @@ class ControlPanelTable(QtWidgets.QFrame):
         self.table: TableWithZoom = table
 
         self.blocks: dict[TypeBLockPropertyControlPanel, BlockControlPanel] = {
-            TypeBLockPropertyControlPanel.MAIN: MainBlock,
             TypeBLockPropertyControlPanel.FONT: FontStyleBlock,
             TypeBLockPropertyControlPanel.ALIGN:  AlignCellBlock
             }

@@ -14,6 +14,8 @@ from projects.tools.custom_qwidget.line_separate import QHLineSeparate, QVLineSe
 
 
 class ControlPanelAppliction(QtWidgets.QWidget):
+    signal_save = QtCore.pyqtSignal()
+
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -40,7 +42,7 @@ class ControlPanelAppliction(QtWidgets.QWidget):
         self.btn_save.setFixedSize(23, 23)
         self.btn_save.setToolTip('Сохранить таблицу\nCtrl + S')
         self.btn_save.setShortcut('Ctrl+S')
-        self.btn_save.clicked.connect(self.click_save_table)
+        self.btn_save.clicked.connect(self.click_save)
         icon = QtGui.QIcon()
         icon.addFile(os.path.join(ICO_FOLDER, 'save.png'))
         self.btn_save.setIcon(icon)
@@ -66,9 +68,8 @@ class ControlPanelAppliction(QtWidgets.QWidget):
         self.btn_forward.setIcon(icon)
         self.h_layout_frame.addWidget(self.btn_forward)
 
-
-    def click_save_table(self) -> None:
-        ...
+    def click_save(self) -> None:
+        self.signal_save.emit()
     
     def click_back(self) -> None:
         ...

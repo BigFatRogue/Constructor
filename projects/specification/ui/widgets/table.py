@@ -365,7 +365,7 @@ class TableWithZoom(QtWidgets.QTableWidget):
         self.add_buttons_horizontal_header(columns)
         self.add_check_box_vertical_header()
         
-        data_number_index = table_data.get_index_form_name_filed('number_row')
+        data_number_index = table_data.get_index_from_name_filed('number_row')
         for y, row in enumerate(dataset):
             view_columns = tuple((value, data_x) for data_x, (value, col) in enumerate(zip(row, columns)) if col.is_view)
             
@@ -380,7 +380,6 @@ class TableWithZoom(QtWidgets.QTableWidget):
                 qItem.setData(QROLE_H_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignHCenter)
                 qItem.setData(QROLE_V_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignVCenter)
                 qItem.setData(QROLE_DATA_X, data_x)
-                print(qItem.data(260))
                 
                 if is_read_only:
                     qItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)

@@ -22,7 +22,6 @@ from projects.specification.core.database import DataBase
 
 class WidgetTable(QtWidgets.QWidget):
     signal_has_change_table = QtCore.pyqtSignal()
-    signal_save_table = QtCore.pyqtSignal()
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -40,7 +39,6 @@ class WidgetTable(QtWidgets.QWidget):
         self.table.signal_change_table.connect(self.change_table)
 
         self.control_panel = ControlPanelTable(self, self.table)
-        self.control_panel.connect_signal(TypeSignalFromControlPanel.SAVE, self.save_table)
 
         self.table.signal_select_item.connect(self.select_cell_item)
         self.control_panel.connect_signal(TypeSignalFromControlPanel.SET_ALIGN, self.set_align)
@@ -81,9 +79,6 @@ class WidgetTable(QtWidgets.QWidget):
     def hide_popup_order(self) -> None:
         if self.table.popup_order.isVisible():
             self.table.popup_order.hide()
-
-    def save_table(self) -> None:
-        self.signal_save_table.emit()
 
     def change_table(self) -> None:
         self.signal_has_change_table.emit()

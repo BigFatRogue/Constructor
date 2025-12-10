@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 
 from PyQt5 import QtCore, QtWidgets, QtGui
@@ -15,8 +17,8 @@ from projects.specification.config.enums import EnumStatusBar
 
 from projects.specification.ui.widgets.control_panel_application import ControlPanelAppliction
 
-from projects.specification.ui.widgets.browser import WidgetBrowser, ProjectItem
-from projects.specification.ui.widgets.content import WidgetContent
+from projects.specification.ui.widgets.browser_widget import BrowserWidget
+from projects.specification.ui.widgets.content_widget import WidgetContent
 
 
 class WindowSpecification(QtWidgets.QMainWindow):
@@ -30,7 +32,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_status_bar()
 
-        self.widget_browser.load_project(r'D:\Python\AlfaServis\Constructor\_data.scdata')
+        # self.widget_browser.load_project(r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\ALS.1648.8.2.01.scdata')
     
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
@@ -66,22 +68,21 @@ class WindowSpecification(QtWidgets.QMainWindow):
 
     def init_widgets(self) -> None:
         self.control_panel: ControlPanelAppliction = ControlPanelAppliction(self)
+        self.control_panel.signal_save.connect(self.save)
         self.grid_layout.addWidget(self.control_panel, 0, 0, 1, 1)
 
-        self.widget_browser = WidgetBrowser(self)
-        self.widget_browser.signal_status.connect(self.set_status)
-        self.widget_browser.setObjectName('browser')
-        self.widget_browser.signal_select_item.connect(self.select_item)
-        self.widget_browser.signal_open_project.connect(self.open_project)
+        self.browser_widget = BrowserWidget(self)
+        self.browser_widget.signal_status.connect(self.set_status)
+        self.browser_widget.setObjectName('browser')
+        self.browser_widget.signal_open_project.connect(self.open_project)
         
-        self.widget_content = WidgetContent(self)
-        self.widget_content.signal_status.connect(self.set_status)
-        self.widget_content.page_property_projcet.signal_save_project.connect(self.save_project)
-        self.widget_browser.signal_del_item.connect(self.widget_content.view_empty_page)
+        self.content_widget = WidgetContent(self)
+        self.content_widget.signal_status.connect(self.set_status)
+        self.browser_widget.signal_del_item.connect(self.content_widget.view_empty_page)
     
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        self.splitter.addWidget(self.widget_browser)
-        self.splitter.addWidget(self.widget_content)
+        self.splitter.addWidget(self.browser_widget)
+        self.splitter.addWidget(self.content_widget)
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setStyleSheet("""
         QSplitter::handle {background-color: #d0d0d0}
@@ -99,29 +100,17 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.timer_status.setSingleShot(True)
         self.timer_status.timeout.connect(self.reset_status_bar)
 
-    def select_item(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        self.widget_content.set_item(item)
-        
-    def save_project(self, item: ProjectItem) -> None:
-        table_data = item.table_data
-        if not item.is_init:
-            table_data.create_sql()
-            table_data.insert_sql()
-            item.is_init = True
-            item.table_data.commit_sql()
-            self.widget_browser.create_main_item_project(item)
-        else:
-            table_data.update_sql()
-            table_data.commit_sql()
-        item.is_save = True
-        
+    def save(self) -> None:
+        self.content_widget.save()
+        self.browser_widget.save()
+    
     def open_project(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
-        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter=f'SPEC файл (*.{MY_FROMAT})')
+        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter=f'SPEC файл (*.{MY_FORMAT})')
         if filename and filename[0]:
             filepath, _ = filename
             filename = os.path.basename(filepath)
-            self.widget_browser.load_project(filepath)
+            self.browser_widget.open_project(filepath)
     
     def set_status(self, text: str, timeout=3000) -> None:
         self.timer_status.stop()
@@ -130,12 +119,6 @@ class WindowSpecification(QtWidgets.QMainWindow):
 
     def reset_status_bar(self) -> None:
         self.statusBar().showMessage(EnumStatusBar.WAIT.value) 
-
-    def closeEvent(self, event):
-        # for db in self.databases.values():
-        #     db.close()
-
-        return super().closeEvent(event)
 
 
 if __name__ == '__main__':
