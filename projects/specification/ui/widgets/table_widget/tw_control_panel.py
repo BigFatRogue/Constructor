@@ -32,6 +32,8 @@ class ControlPanelTable(QtWidgets.QFrame):
         
         self.setMinimumHeight(25)
         self.init_widgets()
+
+        SIGNAL_BUS.view_style_cell.connect(self.view_property)
     
     def init_widgets(self) -> None:
         self.h_layout = QtWidgets.QHBoxLayout(self)
@@ -50,8 +52,9 @@ class ControlPanelTable(QtWidgets.QFrame):
             v_line_separate = QVLineSeparate(self)
             self.h_layout.addWidget(v_line_separate)
 
-    def view_property(self, type_block,  prop: T) -> None:
-        self.blocks[type_block].view_property(prop)
+    def view_property(self, style: dict[str, int | float | str]) -> None:
+        for block in self.blocks.values():
+            block.view_property(style)
 
 
 class __Window(QtWidgets.QMainWindow):

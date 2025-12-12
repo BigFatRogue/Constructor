@@ -80,7 +80,8 @@ def draw_flatten_body(document, offsetY):
 
     flat_pattern = document.ComponentDefinition.FlatPattern
     box = flat_pattern.RangeBox
-    w, h = ceil(box.maxPoint.X - box.minPoint.X), ceil(box.maxPoint.Y - box.minPoint.X)
+    w, h = ceil(box.maxPoint.X - box.minPoint.X), ceil(box.maxPoint.Y - box.minPoint.Y)
+
     w, h = w * 10, h * 10
     ac.add_rect((0,  offsetY), (w, h + offsetY))
     ac.add_text(f'{w}x{h} {document.DisplayName}', (0, h + offsetY - 15, 0), 15)

@@ -32,7 +32,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_status_bar()
 
-        # self.widget_browser.load_project(r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\ALS.1648.8.2.01.scdata')
+        self.browser_widget.open_project(r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\ALS.1648.8.2.01.scdata')
     
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'

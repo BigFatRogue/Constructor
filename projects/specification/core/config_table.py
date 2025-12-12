@@ -94,7 +94,7 @@ LINK_ITEM_CONFIG = TableConfig(
 PROPERTY_PROJECT_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.PROJECT_PROPERTY.value,
     columns=[
-        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_view=False),
+        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('file_name', 'TEXT', 'Название файла', ' <span style=color:red;>*</span>'),
         ColumnConfig('project_name', 'TEXT', 'Обозначение проекта'),
         ColumnConfig('project_number', 'TEXT', 'Номер проекта', ' <span style=color:red;>*</span>'),

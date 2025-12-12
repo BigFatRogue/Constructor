@@ -2,7 +2,7 @@
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
-from projects.specification.ui.widgets.content_widget.cw_table_widget import TableWidget
+from projects.specification.ui.widgets.table_widget.table_widget import TableWidget
 
 
 class PageTable(PageContent):

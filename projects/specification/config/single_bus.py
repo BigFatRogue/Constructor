@@ -13,12 +13,14 @@ class SignalBus(QObject):
     open_project = pyqtSignal()
     delele_item = pyqtSignal()
     satus_bar = pyqtSignal(str)
+    delete_item_tree = pyqtSignal(object)
 
     load_specification_from_xlsx = pyqtSignal(str)
     select_item_browser = pyqtSignal(object)
     change = pyqtSignal()
 
-    set_align_cell = pyqtSignal(tuple)
+    set_align_cell = pyqtSignal(int)
+    view_style_cell = pyqtSignal(dict)
 
     font_family = pyqtSignal()
     font_size = pyqtSignal()

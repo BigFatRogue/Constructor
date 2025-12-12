@@ -5,6 +5,8 @@ from projects.specification.core.data_tables import ColumnConfig, InventorSpecif
 
 from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
 
+from projects.specification.ui.widgets.table_widget.tw_table_item import TableItem
+from projects.specification.ui.widgets.table_widget.tw_selection_table import SelectionRect
 from projects.specification.ui.widgets.table_widget.tw_popup_order_column import PopupOrder
 
 
@@ -63,7 +65,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         super().__init__(orientation, parent_table)
 
         self.widgets: list[dict[str, ButtonHorizontalHeader | CheckBoxVerticalHeader]] = [] 
-        self.table: ItemTableWithZoom = parent_table
+        self.table: TableItem = parent_table
         self.current_step = 100
         self.steps_section_size: dict [int, dict[int, int]] = self.__generate_steps_size_section()
         self.original_font_size = self.font().pointSize()
@@ -205,21 +207,6 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         return super().mouseReleaseEvent(event)
 
 
-class SelectionRect(QtWidgets.QWidget):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
-        self.setStyleSheet('QFrame {background-color: rgba(0, 0, 0, 0); border: 2px solid green}')
-        self.raise_()
-        self.resize(200, 200)
-
-        self.frame = QtWidgets.QFrame(self)
-        self.grid = QtWidgets.QGridLayout(self.frame)
-
-    def set_size(self, range) -> None:
-        ...
-
-
 class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter, option, index):
         opt = QtWidgets.QStyleOptionViewItem(option)
@@ -230,46 +217,10 @@ class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
         super().paint(painter, opt, index)
 
 
-class ItemTableWithZoom(QtWidgets.QTableWidgetItem):
-    def __init__(self, text, min_zoom: int=0, max_zoom: int=200, step_zoom: int=10):
-        super().__init__(text)
-        self.original_font_size = self.font().pointSizeF()
-        self.min_font_size = 2
-        self.min_zoom = min_zoom
-        self.max_zoom = max_zoom
-        self.step_zoom = step_zoom
-        self.steps_view_font: dict[int, int] = self.__generate_steps_view_font()
-
-    def font_size(self) -> int:
-        return self.original_font_size
-    
-    def set_font_size(self, size: int) -> None:
-        self.original_font_size = size
-        self.steps_view_font = self.__generate_steps_view_font()
-        self.font().setPointSize(size)
-
-    def __generate_steps_view_font(self) -> dict[int, int]:
-        dct = {}
-        for step in range(self.min_zoom, self.max_zoom + self.step_zoom, self.step_zoom):
-            font_size = int(self.original_font_size * step / 100)
-
-            if font_size < self.min_font_size:
-                font_size = self.min_font_size
-            if step == 100:
-                font_size = self.original_font_size 
-            dct[step] = font_size
-        return dct
-
-    def set_zoom(self, current_zoom_step: int) -> None:
-        view_size = self.steps_view_font[current_zoom_step]
-        font = self.font()
-        font.setPointSizeF(view_size)
-        self.setFont(font)
-
 
 class Table(QtWidgets.QTableWidget):
     signal_change_table = QtCore.pyqtSignal()  
-    signal_select_item = QtCore.pyqtSignal(ItemTableWithZoom)
+    signal_select_item = QtCore.pyqtSignal(TableItem)
     signal_sorted_column = QtCore.pyqtSignal(tuple)
     signal_sorted_columns = QtCore.pyqtSignal(list)
     signal_zoom_in = QtCore.pyqtSignal()  
@@ -285,6 +236,7 @@ class Table(QtWidgets.QTableWidget):
         self.has_vertical_check_box = has_vertical_check_box
 
         self.selection_rect = SelectionRect(self)
+        self.selection_rect.hide()
         self.setItemDelegate(NoSelectionDelegate(self))
         
         self.popup_order = PopupOrder(self)
@@ -299,7 +251,6 @@ class Table(QtWidgets.QTableWidget):
         SIGNAL_BUS.italic.connect(self.set_italic_cell)
         SIGNAL_BUS.underline.connect(self.set_underline_cell)
     
-    
     def __init_widgets(self) -> None:
         self.__setup_horizontal_header()
         self.__setup_vertical_header()
@@ -309,8 +260,8 @@ class Table(QtWidgets.QTableWidget):
         font.setPointSize(12)
         self.setFont(font)
 
-        self.itemClicked.connect(self.item_clicked)
-        self.itemSelectionChanged.connect(self.set_select)
+        # self.itemClicked.connect(self.item_clicked)
+        self.itemSelectionChanged.connect(self.view_selection_rect)
     
     def __setup_horizontal_header(self) -> None:
         if self.has_filter:
@@ -322,8 +273,8 @@ class Table(QtWidgets.QTableWidget):
             # header.setMouseTracking(True)
             self.custom_h_header.setFocusPolicy(QtCore.Qt.StrongFocus)
 
-        self.horizontalHeader().sectionResized.connect(self.set_select)
-        self.horizontalScrollBar().valueChanged.connect(self.set_select)
+        self.horizontalHeader().sectionResized.connect(self.view_selection_rect)
+        self.horizontalScrollBar().valueChanged.connect(self.view_selection_rect)
 
     def __setup_vertical_header(self) -> None:
         if self.has_vertical_check_box:
@@ -335,7 +286,7 @@ class Table(QtWidgets.QTableWidget):
             # header.setMouseTracking(True)
             self.custom_v_header.setFocusPolicy(QtCore.Qt.StrongFocus)
         
-        self.verticalScrollBar().valueChanged.connect(self.set_select)
+        self.verticalScrollBar().valueChanged.connect(self.view_selection_rect)
 
         self.verticalHeader().sectionClicked.connect(self.click_vertical_section)
         self.verticalHeader().sectionEntered.connect(self.click_vertical_section)
@@ -374,26 +325,31 @@ class Table(QtWidgets.QTableWidget):
         
         data_number_index = table_data.get_index_from_name_filed('number_row')
         for y, row in enumerate(dataset):
-            view_columns = tuple((value, data_x) for data_x, (value, col) in enumerate(zip(row, columns)) if col.is_view)
+            # view_columns = tuple((value, data_x) for data_x, (value, col) in enumerate(zip(row, columns)) if col.is_view)
+            # view_columns = tuple(value for col, value in zip(columns, row) if col.is_view)
             
             if data_number_index != -1:
                 row[data_number_index] = y
             
-            for x, (value, data_x) in enumerate(view_columns):
-                value = '' if value is None else value
-                qItem = ItemTableWithZoom(str(value), min_zoom=self.min_zoom, max_zoom=self.max_zoom, step_zoom=self.step_zoom)
-                qItem.set_font_size(12)
-                qItem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter)
-                qItem.setData(CONSTANTS.QROLE_H_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignHCenter)
-                qItem.setData(CONSTANTS.QROLE_V_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignVCenter)
-                qItem.setData(CONSTANTS.QROLE_DATA_X, data_x)
-                
-                if is_read_only:
-                    qItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
-                else:
-                    qItem.setFlags(qItem.flags())
+            # for x, (value, data_x) in enumerate(view_columns):
+            x = 0
+            for col, value in zip(columns, row):
+                if col.is_view:
+                    value = '' if value is None else value
+                    qItem = TableItem(str(value), min_zoom=self.min_zoom, max_zoom=self.max_zoom, step_zoom=self.step_zoom)
+                    # qItem.set_font_size(12)
+                    # qItem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter)
+                    # qItem.setData(CONSTANTS.QROLE_H_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignHCenter)
+                    # qItem.setData(CONSTANTS.QROLE_V_TEXT_ALIGN, QtCore.Qt.AlignmentFlag.AlignVCenter)
+                    # qItem.setData(CONSTANTS.QROLE_DATA_X, data_x)
+                    
+                    if is_read_only:
+                        qItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+                    else:
+                        qItem.setFlags(qItem.flags())
 
-                self.setItem(y, x, qItem)
+                    self.setItem(y, x, qItem)
+                    x += 1
 
     def click_btn_horizontal_header(self) -> None:
         self.popup_order.show(self.sender())
@@ -426,24 +382,16 @@ class Table(QtWidgets.QTableWidget):
             check_box.setChecked(not check_box.checkState())
             self.choose_row(check_box)
             
-    def item_clicked(self, item: ItemTableWithZoom) -> None:
+    def item_clicked(self, item: TableItem) -> None:
         # print(item.column(), item.row())
-        self.signal_select_item.emit(item)
+        # self.signal_select_item.emit(item)
+        print(item.get_style_dict())
     
-    def set_align_cell(self, value: tuple) -> None:
-        flag_align, type_align = value
-
-        if type_align == ENUMS.TYPE_ALIGN_TEXT.H_ALIGN:
-            role = CONSTANTS.QROLE_V_TEXT_ALIGN
-            role_2 = CONSTANTS.QROLE_H_TEXT_ALIGN
-        else:
-            role = CONSTANTS.QROLE_H_TEXT_ALIGN
-            role_2 = CONSTANTS.QROLE_V_TEXT_ALIGN
-        
+    def set_align_cell(self, align: tuple[int, int]) -> None:
+        h_align, v_align = align        
         for item in self.selectedItems():
-            item.setTextAlignment(item.data(role) | flag_align)
-            item.setData(role_2, flag_align)
-        
+            item: TableItem
+            item.set_align(h_align, v_align)
         self.signal_change_table.emit()
 
     def set_font_family_cell(self, value) -> None:
@@ -474,28 +422,13 @@ class Table(QtWidgets.QTableWidget):
         for btn in self.custom_h_header.get_widgets():
             btn.reset_view_sorted()
 
-    def set_select(self) -> None:
-        selection_item = self.selectedItems()
-        self.selection_rect.show()
-        if selection_item:
-            set_x = set()
-            set_y = set()
+    def view_selection_rect(self) -> None:
+        self.selection_rect.set_selection(self.selectedItems())
 
-            for item in selection_item:
-                rect = self.visualRect(self.indexFromItem(item))
-                top_left_in_table = self.viewport().mapTo(self, rect.topLeft())
-                
-                set_x.add(top_left_in_table.x())
-                set_x.add(top_left_in_table.x() + rect.width())
-                set_y.add(top_left_in_table.y())
-                set_y.add(top_left_in_table.y() + rect.height())
+    def set_property_selection_item(self, item: TableItem) -> None:
+        style = item.get_style_dict()
+        print(style)
 
-            x0, y0 = min(set_x), min(set_y)
-            x1, y1 = max(set_x), max(set_y)
-            
-            self.selection_rect.setGeometry(x0, y0, abs(x0 - x1), abs(y0 - y1))
-            self.selection_rect.frame.resize(abs(x0 - x1), abs(y0 - y1))
-            
     def wheelEvent(self, event):
         if event.modifiers() & QtCore.Qt.ControlModifier:
             if event.angleDelta().y() > 0:

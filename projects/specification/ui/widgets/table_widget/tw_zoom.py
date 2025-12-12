@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
 
-from projects.specification.ui.widgets.table_widget.tw_table import Table, HeaderWithOverlayWidgets, ItemTableWithZoom
+from projects.specification.ui.widgets.table_widget.tw_table import Table, HeaderWithOverlayWidgets, TableItem
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
 
@@ -185,7 +185,7 @@ class ZoomTable(QtWidgets.QWidget):
     def apply_zoom(self):
         for row in range(self.table.rowCount()):
             for col in range(self.table.columnCount()):
-                item: ItemTableWithZoom = self.table.item(row, col)
+                item: TableItem = self.table.item(row, col)
                 item.set_zoom(self.current_zoom)
         
         for header in (self.table.verticalHeader(), self.table.horizontalHeader()):

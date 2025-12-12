@@ -5,20 +5,16 @@ if __name__ == '__main__':
     import sys
     # Для запуска через IDE
     from pathlib import Path
-    test_path = str(Path(__file__).parent.parent.parent.parent.parent)
+    test_path = str(Path(__file__).parent.parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import app_context
-SETTING = app_context.context_setting
-SIGNAL_BUS = app_context.single_bus
-ENUMS = app_context.context_enums
-CONSTANTS = app_context.constants
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
 
 
 from projects.specification.core.database import DataBase
 from projects.specification.core.data_tables import InventorSpecificationDataItem
 
-from projects.specification.ui.widgets.table_widget.tw_table import Table, ButtonHorizontalHeader, CheckBoxVerticalHeader, ItemTableWithZoom
+from projects.specification.ui.widgets.table_widget.tw_table import Table, ButtonHorizontalHeader, CheckBoxVerticalHeader, TableItem
 from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
 from projects.specification.ui.widgets.table_widget.tw_zoom import ZoomTable
 
@@ -46,7 +42,7 @@ class TableWidget(QtWidgets.QWidget):
         self.control_panel = ControlPanelTable(self, self.table)
         
         self.table_zoom = ZoomTable(self, self.table)
-        self.table_zoom.signal_change_zoom.connect(self.table.set_select)
+        self.table_zoom.signal_change_zoom.connect(self.table.view_selection_rect)
         self.table.signal_zoom_in.connect(self.table_zoom.zoom_in)
         self.table.signal_zoom_out.connect(self.table_zoom.zoom_out)
 
@@ -71,12 +67,9 @@ class TableWidget(QtWidgets.QWidget):
                 self.table_data.data.sort(key=lambda x: x[btn.data_index], reverse=state == ENUMS.STATE_SORTED_COLUMN.SORTED)
         self.populate(table_data=self.table_data)
         
-    def select_cell_item(self, table_item: ItemTableWithZoom) -> None:
+    def select_cell_item(self, table_item: TableItem) -> None:
         self.control_panel.view_property(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN, table_item)
         self.control_panel.view_property(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT, table_item)
-
-    def set_align(self, value: tuple) -> None:
-        self.table.set_align_cell(value)
 
     def hide_popup_order(self) -> None:
         if self.table.popup_order.isVisible():
@@ -108,15 +101,17 @@ class __Window(QtWidgets.QMainWindow):
 
         self.widgte_table = TableWidget(self)
         self.v_layout.addWidget(self.widgte_table)
-
-        dataset = [[f'({row} {cell})' for cell in range(9)] for row in range(120)]
-        table_data = InventorSpecificationDataItem(DataBase())
-        table_data.set_data(dataset)
+        
+        # dataset = [[f'({row} {cell})' for cell in range(9)] for row in range(120)]
+        table_data = InventorSpecificationDataItem(DataBase('a'))
+        filepath = r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.01Из инвентора.xlsx'
+        table_data.set_data(get_specifitaction_inventor_from_xlsx(filepath))
         self.widgte_table.populate(table_data)
                 
 
 
 if __name__ == '__main__':
+    from projects.specification.core.data_loader import get_specifitaction_inventor_from_xlsx
     app = QtWidgets.QApplication(sys.argv)
     window = __Window()
     

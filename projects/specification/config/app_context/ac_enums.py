@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from dataclasses import dataclass
 
 
 class AppContextEnums:
@@ -79,7 +80,6 @@ class TypeSignalFromControlPanel(Enum):
     FONT_BOLD = auto()
     FONT_ITALIC = auto()
     FONT_UNDERLINE = auto()
-
 
 
 

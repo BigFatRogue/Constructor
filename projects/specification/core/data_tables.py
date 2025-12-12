@@ -91,6 +91,14 @@ class GeneralDataItem:
         """
         ...
 
+    def delete(self) -> None:
+        """
+        Docstring для delete
+        Удаление спецификации из БД
+        
+        :param: Описание
+        """
+        
     def get_filepath(self) -> str:
         return '' if self.database is None else self.database.filepath
 
@@ -106,7 +114,10 @@ class GeneralDataItem:
     def __select_sql(self) -> TDataTable | None:
         ... 
     
+    def __delee_sql(self) -> None:
+        ...
     
+
 class PropertyProjectData(GeneralDataItem):
     def __init__(self):
         super().__init__()
@@ -142,7 +153,10 @@ class PropertyProjectData(GeneralDataItem):
         self.database.close()
 
         return tables
-  
+    
+    def delete(self):
+        return super().delete()
+
     def __create_sql(self):
         columns_sql = ", ".join(col.sql_definition for col in self.config.columns)
         self.database.execute(f"CREATE TABLE IF NOT EXISTS {self.config.name} ({columns_sql})")
@@ -162,6 +176,9 @@ class PropertyProjectData(GeneralDataItem):
         res = self.database.execute(f'SELECT {str_fields} FROM {self.config.name}')
 
         return {k: v for k, v in zip(view_fields, res.fetchall()[0])} if res else {}
+
+    def __delete_sql(self) -> None:
+        ...
 
     def __get_all_specification_data(self) -> list[dict[str, Union[str, list[list[TData]]]]]:    
         if SPECIFICATION_CONFIG.name not in self.database.get_exist_tables():
@@ -187,21 +204,58 @@ class PropertyProjectData(GeneralDataItem):
 
             data = [list(row) for row in self.database.execute(query).fetchall()]
             table['data'] = data
+            table['sid'] = row[0]
             tables.append(table)
         return tables
 
 
 class SpecificationDataItem(GeneralDataItem):
-    def __init__(self, database):
+    def __init__(self, database, unique_config: TableConfig):
         super().__init__()
         self.database = database
         self.specification_config: TableConfig = SPECIFICATION_CONFIG
         self.config: TableConfig = GENERAL_ITEM_CONFIG
-        self.unique_config: TableConfig = None
+        self.unique_config: TableConfig = unique_config
         self.fields_config: TableConfig = FIELDS_CONFIG
+        self.data_index_view = self.__set_data_index()
         self.data: list[list[TData]] = None
         self.type_spec = None
         self.sid: int = None
+        
+    def __set_data_index(self) -> tuple[int, ...]:
+        """
+        Формирование только видимых индексов таблицы
+
+        :return: [0, 1, 3, 7, ...] - индексы колонок у которы is_view = True
+        :rtype: tuple[int, ...]
+        """
+        return tuple(i for i, col in enumerate(self.config.columns + self.unique_config.columns) if col.is_view)
+
+    def get_value(self, row: int, column: int) -> TData:
+        """
+        Получение значения из указаной ячейки
+
+        :param row: Номер строки
+        :type row: int
+        :param column: Номер колонки
+        :type column: int
+        :return: Значение ячейки
+        :rtype: TData
+        """
+        return self.data[row][self.data_index_view[column]]
+
+    def set_value(self, row: int, column: int, value: TData) -> None:
+        """
+        Присваивание значения по указанному адресу
+        
+        :param row: Номер строки
+        :type row: int
+        :param column: Номер колонки
+        :type column: int
+        :param value: Новое значение ячейки
+        :type value: TData
+        """
+        self.data[row][self.data_index_view[column]] = TData
 
     def save(self) -> None:
         if not self.is_init:
@@ -214,6 +268,12 @@ class SpecificationDataItem(GeneralDataItem):
         
         self.database.commit()
         self.database.close()
+
+    def delete(self) -> None:
+        if self.sid:
+            self.__delete_sql()
+            self.database.commit()
+            self.database.close()
 
     def __create_sql(self) -> None:
         for config in (self.specification_config, self.config, self.unique_config):
@@ -299,26 +359,26 @@ class SpecificationDataItem(GeneralDataItem):
                 return i
         return -1 
 
+    def __delete_sql(self) -> None:
+        self.database.execute(f'DELETE FROM {self.specification_config.name} WHERE id={self.sid}')
+
 
 class InventorSpecificationDataItem(SpecificationDataItem):
     def __init__(self, database):
-        super().__init__(database)
+        super().__init__(database, INVENTOR_ITEM_CONFIG)
         self.type_spec = ENUMS.NAME_TABLE_SQL.INVENTOR
-        self.unique_config = INVENTOR_ITEM_CONFIG
-
-
+        
+        
 class BuySpecificationDataItem(SpecificationDataItem):
     def __init__(self, database):
-        super().__init__(database)
+        super().__init__(database, BUY_ITEM_CONFIG)
         self.type_spec = ENUMS.NAME_TABLE_SQL.BUY
-        self.unique_config = BUY_ITEM_CONFIG
 
 
 class ProdSpecificationDataItem(SpecificationDataItem):
     def __init__(self, database):
-        super().__init__(database)
+        super().__init__(database, PROD_ITEM_CONFG)
         self.type_spec = ENUMS.NAME_TABLE_SQL.PROD
-        self.unique_config = PROD_ITEM_CONFG
 
 
 if __name__ == '__main__':
@@ -359,62 +419,3 @@ if __name__ == '__main__':
     # tables = pp_data.get_all_specification_data()
     # print(tables)
 
-
-"""
-Я пишу проект на pyqt5 с испльзованием SqlIte3
-У меня такая иерархия QTreeWidget.item -> QTreeItem.data_item -> (DataItem.dataset, DataItem.database) -> Databse (управляет работой с БД)
-У меня есть рабочая область поделенная на две части. В левой части QTreeWidget, а в правой QWitdet, который отображает контент.
-Данные, которые необходимо отображать храняться в  QTreeWidget.item.data_item
-Изначально данные хронятся в SQlite.
-Пользователь может изменять данные поэтому я делаю обращения к БД. Иногда может быть несколько последовательных запросов
-Как мне правильно организовать работу с БД, чтобы открыть соединение и закрыть после того, как будут выполнены все нужные запросы
-При нажатии кнопки сохранить в приложении происходит обращение к QTreeWidget, затем смотрится активый Item и для него происходит обращение в БД
-вот пример из фунции save
-self.current_item.data_item.create_sql()
-self.current_item.data_item.insert_sql()
-
-Я проверю была ли создана таблица и если нет создаю, за тем заполняю
-
-Так выглядат методы 
-
-    def create_sql(self):
-        columns_sql = ", ".join(col.sql_definition for col in self.config.columns)
-        self.database.execute(f"CREATE TABLE IF NOT EXISTS {self.config.name} ({columns_sql})")
-        self.database.commit()
-        self.database.close()
-
-    def insert_sql(self):
-        str_values = ', '.join(['?' for _ in range(len(self.data))])
-        str_fields = ', '.join([field for field in self.data.keys()])
-        self.database.execute(f'INSERT INTO {self.config.name} ({str_fields}) VALUES({str_values})', [v for v in self.data.values()])
-        self.database.commit()
-        self.database.close()
-    
-    def execute(self, query, *args, **kwargs) -> sqlite3.Cursor:
-        self.connect()
-        
-        response_cursor = None
-        try:
-            response_cursor = self.conn.execute(query, *args, **kwargs)
-        except Exception as erorr:
-            print(erorr)
-            print('Ошибка выполнения запроса')
-            print(query, *args, **kwargs, sep='\n')
-        
-        return response_cursor
-
-
-Мне не нравится, что я сначала закрываю, а потом октрываю БД 
-Но также не хочу в QItemWTreeWidget при обращении в item_data прописывать отрытие и закртиые в БД, так как QItemWTreeWidget не должен знать про БД, про неё знает item_data
-Я думаю прописать функцию для созадине цеопчки запоросов, как бы контекстный менеджер, но не уверен что это правильно
-
-def chain_execute(self, *querys):
-    self.database.connect()
-
-    for query inquerys:
-        self.databse.execute(*query)
-    
-    self.database.commit()
-    self.database.close()
-
-"""
