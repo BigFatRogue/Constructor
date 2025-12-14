@@ -8,7 +8,7 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS
 
 
 class ControlPanelAppliction(QtWidgets.QWidget):

@@ -1,22 +1,18 @@
 from typing import Union
 from PyQt5 import QtCore, QtWidgets
 
-from projects.specification.config.app_context.app_context import app_context
-SETTING = app_context.context_setting
-SIGNAL_BUS = app_context.single_bus
-ENUMS = app_context.context_enums
-CONSTANTS = app_context.constants
+from projects.specification.config.app_context.app_context import app_context, SETTING, SIGNAL_BUS, ENUMS
 
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.content_widget.cw_empty_page import PageEmpty
 from projects.specification.ui.widgets.content_widget.cw_property_project_page import PagePropertyProject
-from projects.specification.ui.widgets.content_widget.cw_table_page import PageTable
+from projects.specification.ui.widgets.content_widget.cw_table_page import PageInventorTable
 from projects.specification.ui.widgets.content_widget.cw_init_project_page import PageInitProjectPage
 
 
 from projects.specification.ui.widgets.browser_widget.bw_project_item import ProjectItem 
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem 
-from projects.specification.ui.widgets.browser_widget.bw_table_item import TableItem 
+from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem 
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
@@ -26,8 +22,8 @@ class ContentWidget(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.current_item: Union[ProjectItem, SpecificationItem, TableItem] = None
-        self.prev_item: Union[ProjectItem, SpecificationItem, TableItem] = None
+        self.current_item: ProjectItem | SpecificationItem | TableBrowserItem = None
+        self.prev_item: ProjectItem | SpecificationItem | TableBrowserItem = None
         self.prev_page: PageContent = None
 
         self.init_widgets()
@@ -52,12 +48,12 @@ class ContentWidget(QtWidgets.QWidget):
         self.page_create_or_open_project = PageInitProjectPage(self, )
         self.index_page_create_or_open_project = self.stacket.addWidget(self.page_create_or_open_project)
 
-        self.page_table = PageTable(self)
+        self.page_table = PageInventorTable(self)
         self.index_page_table = self.stacket.addWidget(self.page_table)
 
         self.stacket.setCurrentIndex(0)
 
-    def set_item(self, item: ProjectItem | SpecificationItem | TableItem) -> None:
+    def set_item(self, item: ProjectItem | SpecificationItem | TableBrowserItem) -> None:
         self.prev_item = self.current_item
         self.current_item = item
 

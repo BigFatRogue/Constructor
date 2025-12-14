@@ -51,13 +51,13 @@ class DataBase:
 
     def execute(self, query, *args, **kwargs) -> sqlite3.Cursor | None:
         self.connect()
-        
-        try:
-            return self.conn.execute(query, *args, **kwargs)
-        except Exception as erorr:
-            print(erorr)
-            print('Ошибка выполнения запроса')
-            print(query, *args, **kwargs, sep='\n')
+        return self.conn.execute(query, *args, **kwargs)
+        # try:
+        #     return self.conn.execute(query, *args, **kwargs)
+        # except Exception as erorr:
+        #     print(erorr)
+        #     print('Ошибка выполнения запроса')
+        #     print(query, *args, **kwargs, sep='\n')
 
 
 if __name__ == '__main__':

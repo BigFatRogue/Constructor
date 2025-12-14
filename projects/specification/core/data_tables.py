@@ -1,4 +1,5 @@
 from typing import TypeVar, Union
+from dataclasses import fields
 
 if __name__ == '__main__':
     import sys
@@ -8,11 +9,8 @@ if __name__ == '__main__':
 
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import app_context
-SETTING = app_context.context_setting
-SIGNAL_BUS = app_context.single_bus
-ENUMS = app_context.context_enums
-CONSTANTS = app_context.constants
+from projects.specification.config.app_context.app_context import DATACLASSES, ENUMS
+
 
 from projects.specification.core.database import DataBase
 from projects.specification.core.config_table import (
@@ -25,7 +23,10 @@ from projects.specification.core.config_table import (
     GENERAL_ITEM_CONFIG,
     INVENTOR_ITEM_CONFIG,
     BUY_ITEM_CONFIG,
-    PROD_ITEM_CONFG
+    PROD_ITEM_CONFG,
+    STYLE_CELL_CONFIG,
+    STYLE_CELL_LINK_CONFIG,
+    STYLE_SECTION_CONFIG
 )
 from projects.specification.core.functions import get_now_time
 
@@ -71,10 +72,14 @@ class GeneralDataItem:
         """
         ...
 
+    def save_style(self, style_cells: list[DATACLASSES.CELL_STYLE], style_section: list[DATACLASSES.SECTION_STYLE]) -> None:
+        """
+        Сохранение стилей для таблицы
+        
+        """
+
     def load(self) -> TDataTable | None:
         """
-        Docstring для load
-
         Загрузка data из БД
         
         :return: dict для свойств проекта и list для спецификаций
@@ -217,6 +222,9 @@ class SpecificationDataItem(GeneralDataItem):
         self.config: TableConfig = GENERAL_ITEM_CONFIG
         self.unique_config: TableConfig = unique_config
         self.fields_config: TableConfig = FIELDS_CONFIG
+        self.style_cell_config: TableConfig = STYLE_CELL_CONFIG
+        self.style_cell_link_config: TableConfig = STYLE_CELL_LINK_CONFIG
+        self.style_table_config: TableConfig = STYLE_SECTION_CONFIG
         self.data_index_view = self.__set_data_index()
         self.data: list[list[TData]] = None
         self.type_spec = None
@@ -275,10 +283,43 @@ class SpecificationDataItem(GeneralDataItem):
             self.database.commit()
             self.database.close()
 
+    def save_style(self, style_cells, style_section) -> None:
+        field_style_cells = [col.field for col in self.style_cell_config.columns if not col.is_id]
+        str_field_style_cells = ", ".join(field_style_cells)
+        str_values_style_cells = ', '.join(['?'] * len(field_style_cells))
+        
+        field_style_cell_link = [col.field for col in self.style_cell_link_config.columns if not col.is_id]
+        str_field_style_cell_link = ", ".join(field_style_cell_link)
+        str_values_style_cell_link = ', '.join(['?'] * len(field_style_cell_link))
+
+        for cell in style_cells:
+            value_style_cell = [getattr(cell, col.field) for col in self.style_cell_config.columns if hasattr(cell, col.field)]
+            self.database.execute(f"""
+                                  INSERT INTO {self.style_cell_config.name} ({str_field_style_cells}) 
+                                  VALUES({str_values_style_cells})
+                                  ON CONFLICT({str_field_style_cells})
+                                  DO NOTHING
+                                  """, value_style_cell)
+            
+            value_style_cell_link = [cell.row, cell.column, self.sid]
+            self.database.execute(f'INSERT INTO {self.style_cell_link_config.name} ({str_field_style_cell_link}) VALUES({str_values_style_cell_link})', value_style_cell_link)
+
+        self.database.commit()
+        self.database.close()
+        # fields_style_cell_link = ", ".join(col.sql_definition for col in self.style_cell_link_config.columns if not col.is_id)
+        # str_values_fields_style_cell_link = ', '.join(['?'] * len(fields_style_cell_link))
+
+        # fields_style_table = ", ".join(col.sql_definition for col in self.style_table_config.columns if not col.is_id)
+        # str_values_fields_style_table = ', '.join(['?'] * len(fields_style_table))
+
+        # for st_cell in style_cells:
+        #     value = (st_cell.)
+        
     def __create_sql(self) -> None:
-        for config in (self.specification_config, self.config, self.unique_config):
+        for config in (self.specification_config, self.config, self.unique_config, self.style_cell_config, self.style_cell_link_config, self.style_table_config):
             if config:
                 columns_sql = ", ".join(col.sql_definition for col in config.columns + config.columns_property)
+                print(columns_sql)
                 self.database.execute(f"CREATE TABLE IF NOT EXISTS {config.name} ({columns_sql})")
 
         self.database.commit()
@@ -386,9 +427,6 @@ if __name__ == '__main__':
     from projects.specification.core.data_loader import get_specifitaction_inventor_from_xlsx
 
     pp_data = PropertyProjectData()
-    pp_data.set_filepath_db(os.path.join(os.getcwd(), '_data.scdata'))
-    database = pp_data.database
-    pp_data.__create_sql()
     pp_data_dict = {
         'file_name': 'Проект 1',
         'project_name': 'ЛебедяньМолоко',
@@ -401,17 +439,15 @@ if __name__ == '__main__':
         'name_drawing': None
     }
     pp_data.set_data(pp_data_dict)
-    pp_data.__insert_sql()
+    pp_data.save(os.path.join(os.getcwd(), '_data2.scdata'))
     
 
-    inv_data = InventorSpecificationDataItem(database)
-    inv_data.__create_sql()
-    
+    inv_data = InventorSpecificationDataItem(pp_data.database)    
     path_xlsx = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.05.01.00.000 - Инвентор.xlsx'
     data = get_specifitaction_inventor_from_xlsx(path_xlsx)
 
     inv_data.set_data(data)
-    inv_data.__insert_sql()
+    inv_data.save()
 
     # buy_data = BuySpecificationDataItem(database)
     # buy_data.create_sql()

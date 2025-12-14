@@ -1,3 +1,4 @@
+
 from PyQt5.QtCore import QObject, pyqtSignal
 
 
@@ -17,16 +18,7 @@ class SignalBus(QObject):
 
     load_specification_from_xlsx = pyqtSignal(str)
     select_item_browser = pyqtSignal(object)
-    change = pyqtSignal()
-
-    set_align_cell = pyqtSignal(int)
-    view_style_cell = pyqtSignal(dict)
-
-    font_family = pyqtSignal()
-    font_size = pyqtSignal()
-    bold = pyqtSignal()
-    italic = pyqtSignal()
-    underline = pyqtSignal()
+    change_item = pyqtSignal(object)
 
     _instance = None
     

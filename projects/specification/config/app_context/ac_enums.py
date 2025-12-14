@@ -1,18 +1,6 @@
 from enum import Enum, auto
 from dataclasses import dataclass
-
-
-class AppContextEnums:
-    def __init__(self):
-        self.NAME_TABLE_SQL = NameTableSQL
-        self.TYPE_TREE_ITEM = TypeTreeItem
-        self.TYPE_CREATE_LOAD_SPEC = TypeCreateLoadSpec
-        self.STATUS_BAR = EnumStatusBar
-        self.TYPE_ALIGN_TEXT = TypeAlignText
-        self.STATE_SORTED_COLUMN = StateSortedColumn
-        self.TYPE_BLOCK_PROPERTY_CONTROL_PANEL = TypeBlockPropertyControlPanel
-        self.TYPE_SIGNAL_FROM_CONTROL_PANEL = TypeSignalFromControlPanel
-
+from PyQt5 import QtCore
 
 
 class NameTableSQL(Enum):
@@ -24,6 +12,9 @@ class NameTableSQL(Enum):
     INVENTOR = 'specification_inventor'
     BUY = 'specification_buy'
     PROD = 'specification_prod'
+    STYLE_CELL = 'style_cell'
+    STYLE_SECTION = 'style_section'
+    STYLE_CELL_LINK = 'style_cell_link'
 
 
 class TypeTreeItem(Enum):
@@ -82,5 +73,23 @@ class TypeSignalFromControlPanel(Enum):
     FONT_UNDERLINE = auto()
 
 
+class Constants(Enum):
+    MY_FORMAT = 'scdata'
+    QROLE_LINK_ITEM_WIDGET_TREE = QtCore.Qt.UserRole + 1
+    QROLE_DATA_X = QtCore.Qt.UserRole + 2
+    QROLE_V_TEXT_ALIGN = QtCore.Qt.UserRole + 3
+    QROLE_H_TEXT_ALIGN = QtCore.Qt.UserRole + 4
 
+
+@dataclass
+class AppContextEnums:
+    NAME_TABLE_SQL = NameTableSQL
+    TYPE_TREE_ITEM = TypeTreeItem
+    TYPE_CREATE_LOAD_SPEC = TypeCreateLoadSpec
+    STATUS_BAR = EnumStatusBar
+    TYPE_ALIGN_TEXT = TypeAlignText
+    STATE_SORTED_COLUMN = StateSortedColumn
+    TYPE_BLOCK_PROPERTY_CONTROL_PANEL = TypeBlockPropertyControlPanel
+    TYPE_SIGNAL_FROM_CONTROL_PANEL = TypeSignalFromControlPanel
+    CONSTANTS = Constants
     

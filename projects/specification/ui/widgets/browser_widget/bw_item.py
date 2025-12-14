@@ -1,7 +1,7 @@
 from __future__ import annotations
 from PyQt5 import QtWidgets
 
-from projects.specification.config.app_context.app_context import CONSTANTS
+from projects.specification.config.app_context.app_context import ENUMS
 
 from projects.specification.core.data_tables import GeneralDataItem
 
@@ -20,7 +20,7 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
         self.table_data: GeneralDataItem = None
 
         # Для делегата
-        self.setData(0, CONSTANTS.QROLE_LINK_ITEM_WIDGET_TREE, self)
+        self.setData(0, ENUMS.CONSTANTS.QROLE_LINK_ITEM_WIDGET_TREE.value, self)
 
     def setText(self, atext: str, column=0):
         return super().setText(column, atext)

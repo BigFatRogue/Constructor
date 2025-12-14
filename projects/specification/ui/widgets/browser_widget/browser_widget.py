@@ -4,11 +4,7 @@ from typing import Union, Iterable
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 
-from projects.specification.config.app_context.app_context import app_context
-SETTING = app_context.context_setting
-SIGNAL_BUS = app_context.single_bus
-ENUMS = app_context.context_enums
-CONSTANTS = app_context.constants
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS
 
 from projects.specification.core.data_tables import  GeneralDataItem, PropertyProjectData, InventorSpecificationDataItem, BuySpecificationDataItem, ProdSpecificationDataItem
 from projects.specification.core.functions import get_now_time
@@ -16,7 +12,7 @@ from projects.specification.core.data_loader import get_specifitaction_inventor_
 
 from projects.specification.ui.widgets.browser_widget.bw_project_item import ProjectItem
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
-from projects.specification.ui.widgets.browser_widget.bw_table_item import TableItem
+from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
@@ -34,7 +30,7 @@ class RightIconDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter: QtGui.QPainter, option: QtWidgets.QStyleOptionViewItem, index: QtCore.QModelIndex):
         super().paint(painter, option, index)
         
-        item: BrowserWidget = index.model().itemData(index).get(CONSTANTS.QROLE_LINK_ITEM_WIDGET_TREE)
+        item: BrowserWidget = index.model().itemData(index).get(ENUMS.CONSTANTS.QROLE_LINK_ITEM_WIDGET_TREE.value)
         color = self.blue_color
         rect = option.rect
 

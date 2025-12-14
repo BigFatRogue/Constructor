@@ -1,11 +1,8 @@
 from PyQt5 import QtCore, QtWidgets
 from transliterate import translit
 
-from projects.specification.config.app_context.app_context import app_context
-SETTING = app_context.context_setting
-SIGNAL_BUS = app_context.single_bus
-ENUMS = app_context.context_enums
-CONSTANTS = app_context.constants
+from projects.specification.config.app_context.app_context import SIGNAL_BUS, ENUMS, SIGNAL_BUS
+
 
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.browser_widget.bw_project_item import ProjectItem 
@@ -81,16 +78,13 @@ class PagePropertyProject(PageContent):
     def populate(self, item: ProjectItem):
         super().populate(item)
         data = self.current_item.table_data.get_data()
-        if not data:
-            self.clear()
-
-        if data:            
-            self.clear()
-            for field, lineedit in self.dict_line_edit.items():
-                lineedit.setText(data.get(field))
-            if (database := self.current_item.table_data.database):
-                self.lineedit_project_filepath.setText(database.filepath)
-            self.current_item.__is_save = True
+        self.clear()
+        
+        for field, lineedit in self.dict_line_edit.items():
+            lineedit.setText(data.get(field))
+        if (database := self.current_item.table_data.database):
+            self.lineedit_project_filepath.setText(database.filepath)
+        self.current_item.__is_save = True
 
     def update_data_item(self):
         data = self.current_item.table_data.get_data()
@@ -104,7 +98,7 @@ class PagePropertyProject(PageContent):
             if not self.current_item.is_init:
                 dlg = QtWidgets.QFileDialog(self)
                 project_name_translit = translit(self.lineedti_project_name.text(), 'ru', reversed=True)
-                dir_path, _ = dlg.getSaveFileName(self, 'Выберете папку', project_name_translit, filter=f'{CONSTANTS.MY_FORMAT.upper()} файл (*.{CONSTANTS.MY_FORMAT})')
+                dir_path, _ = dlg.getSaveFileName(self, 'Выберете папку', project_name_translit, filter=f'{ENUMS.CONSTANTS.MY_FORMAT.value.upper()} файл (*.{ENUMS.CONSTANTS.MY_FORMAT.value})')
                 if dir_path:
                     dir_path = dir_path.replace('/', '\\')
                     self.lineedit_project_filepath.setText(dir_path)

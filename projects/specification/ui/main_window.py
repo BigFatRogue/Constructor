@@ -10,11 +10,7 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import app_context
-SETTING = app_context.context_setting
-SIGNAL_BUS = app_context.single_bus
-ENUMS = app_context.context_enums
-CONSTANTS = app_context.constants
+from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS
 
 from projects.specification.ui.widgets.control_panel_application import ControlPanelAppliction
 from projects.specification.ui.widgets.browser_widget import BrowserWidget
@@ -32,7 +28,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_status_bar()
 
-        self.browser_widget.open_project(r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\ALS.1648.8.2.01.scdata')
+        self.browser_widget.open_project(r'D:\Python\AlfaServis\Constructor\Proekt 1.scdata')
     
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
@@ -107,7 +103,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
     
     def open_project(self) -> None:
         dlg = QtWidgets.QFileDialog(self)
-        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter=f'SPEC файл (*.{CONSTANTS.MY_FORMAT})')
+        filename = dlg.getOpenFileName(self, 'Выбрать файл', filter=f'SPEC файл (*.{ENUMS.CONSTANTS.MY_FORMAT.value})')
         if filename and filename[0]:
             filepath, _ = filename
             filename = os.path.basename(filepath)

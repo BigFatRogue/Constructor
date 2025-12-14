@@ -1,7 +1,7 @@
 import os 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
+from projects.specification.config.app_context.app_context import SETTING, ENUMS
 
 
 class PopupOrder(QtWidgets.QWidget):
@@ -77,10 +77,10 @@ class PopupOrder(QtWidgets.QWidget):
                 y = self.parent().height() - self.height() - 10
         self.setGeometry(x, y, self.width(), self.height())
 
-    def keyPressEvent(self, e: QtGui.QKeyEvent):
-        if e.key() == QtCore.Qt.Key_Escape:
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
+        if event.key() == QtCore.Qt.Key_Escape:
             self.hide()
-        return super().keyPressEvent(e)
+        return super().keyPressEvent(event)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.RightButton:

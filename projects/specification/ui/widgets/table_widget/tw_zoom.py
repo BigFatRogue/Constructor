@@ -1,9 +1,10 @@
 import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
+from projects.specification.config.app_context.app_context import SETTING
 
-from projects.specification.ui.widgets.table_widget.tw_table import Table, HeaderWithOverlayWidgets, TableItem
+from projects.specification.ui.widgets.table_widget.tw_table import Table, TableItem
+from projects.specification.ui.widgets.table_widget.tw_header import HeaderWithOverlayWidgets
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
 

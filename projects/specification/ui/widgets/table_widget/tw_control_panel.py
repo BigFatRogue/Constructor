@@ -9,10 +9,10 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS, CONSTANTS
+from projects.specification.config.app_context.app_context import SETTING, DATACLASSES
 
 from projects.specification.ui.widgets.table_widget.tw_table import Table
-from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import BlockControlPanel, FontStyleBlock, AlignCellBlock
+from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import BlockControlPanel
 from projects.tools.custom_qwidget.line_separate import QHLineSeparate, QVLineSeparate
 
 
@@ -24,36 +24,28 @@ class ControlPanelTable(QtWidgets.QFrame):
         super().__init__(parent)
 
         self.table: Table = table
-
-        self.blocks = {
-            ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT: FontStyleBlock,
-            ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN:  AlignCellBlock
-            }
+        self.blocks: list[BlockControlPanel] = []
         
         self.setMinimumHeight(25)
         self.init_widgets()
 
-        SIGNAL_BUS.view_style_cell.connect(self.view_property)
-    
     def init_widgets(self) -> None:
         self.h_layout = QtWidgets.QHBoxLayout(self)
         self.h_layout.addSpacing(2)
         self.h_layout.setContentsMargins(2, 2, 2, 2)
         self.h_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
         self.setLayout(self.h_layout)
+    
+    def add_block(self, block: BlockControlPanel) -> None:
+        block_init: BlockControlPanel = block(self, self.table)
+        self.h_layout.addWidget(block_init)
+        self.blocks.append(block_init)
 
-        self.setup_block()
-            
-    def setup_block(self) -> None:
-        for type_block, block in self.blocks.items():
-            b: BlockControlPanel = block(self)
-            self.h_layout.addWidget(b)
-            self.blocks[type_block] = b
-            v_line_separate = QVLineSeparate(self)
-            self.h_layout.addWidget(v_line_separate)
+        v_line_separate = QVLineSeparate(self)
+        self.h_layout.addWidget(v_line_separate)
 
-    def view_property(self, style: dict[str, int | float | str]) -> None:
-        for block in self.blocks.values():
+    def view_property(self, style: DATACLASSES.CELL_STYLE) -> None:
+        for block in self.blocks:
             block.view_property(style)
 
 

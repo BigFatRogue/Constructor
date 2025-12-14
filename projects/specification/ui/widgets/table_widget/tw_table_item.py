@@ -1,5 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 
+from projects.specification.config.app_context.app_context import DATACLASSES
+
 
 class TableItem(QtWidgets.QTableWidgetItem):
     """
@@ -16,26 +18,30 @@ class TableItem(QtWidgets.QTableWidgetItem):
         self.h_align = QtCore.Qt.AlignmentFlag.AlignHCenter
         self.v_align = QtCore.Qt.AlignmentFlag.AlignVCenter
         self.setTextAlignment(self.h_align | self.v_align)
+
+        font = self.font()
+        font.setFamily('Arial')
+        self.setFont(font)
         self.set_font_size(12)
 
-    def set_align(self, h_align: int, v_align: int) -> None:
-        self.setTextAlignment(h_align, v_align)
-
-    def get_style_dict(self) -> dict[str, int | float | str]:
+    def get_style(self) -> DATACLASSES.CELL_STYLE:
         """
         Получение стилей ячейки в виде словаря
         
         :return: словарь стилей ячейки 
-        :rtype: dict[str, int | float | str]
+        :rtype: dict[str, DATACLASSES.CELL_STYLE]
         """
         font = self.font()
-        return {'family': font.family(), 
-                'size': self.font_size(),
-                'h_align': self.h_align,
-                'v_align': self.v_align,
-                'bold': font.bold(),
-                'italic': font.italic(),
-                'underline': font.underline()}
+        return DATACLASSES.CELL_STYLE(
+            row=self.row(),
+            column=self.column(),
+            font_family = font.family(),
+            font_size=self.font_size(),
+            bold=font.bold(),
+            italic=font.italic(),
+            underline=font.underline(),
+            align_h = self.textAlignment() & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask,
+            align_v = self.textAlignment() & QtCore.Qt.AlignmentFlag.AlignVertical_Mask)
 
     def font_size(self) -> int:
         return self.original_font_size
@@ -43,7 +49,9 @@ class TableItem(QtWidgets.QTableWidgetItem):
     def set_font_size(self, size: int) -> None:
         self.original_font_size = size
         self.steps_view_font = self.__generate_steps_view_font()
-        self.font().setPointSize(size)
+        font = self.font()
+        font.setPointSize(size)
+        self.setFont(font)
 
     def __generate_steps_view_font(self) -> dict[int, int]:
         dct = {}
