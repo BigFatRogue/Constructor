@@ -120,7 +120,7 @@ class Table(QtWidgets.QTableWidget):
 
         for row in range(self.rowCount()):
             for column in range(self.columnCount()):
-                item: TableBrowserItem = self.item(row, column)
+                item: TableItem = self.item(row, column)
                 style.append(item.get_style())
         return style
 

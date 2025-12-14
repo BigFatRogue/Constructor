@@ -105,7 +105,6 @@ class BrowserWidget(QtWidgets.QWidget):
         self.tree = QtWidgets.QTreeWidget(self)
         self.tree.setItemDelegate(RightIconDelegate(self))
         self.tree.setHeaderLabel('Проекты')
-        self.tree.itemChanged.connect(self.change_tree_item)
         self.tree.itemPressed.connect(self.select_tree_item)
         self.grid_layout.addWidget(self.tree, 1, 0, 1, 1)
 
@@ -224,20 +223,6 @@ class BrowserWidget(QtWidgets.QWidget):
         parent_item.setExpanded(True)
         
         SIGNAL_BUS.satus_bar.emit(f'Таблица {new_item.text()} загружена')
-
-    def change_tree_item(self, item: BrowserWidget) -> None:
-        if item.type_item == ENUMS.TYPE_TREE_ITEM.PROJET:
-            project_name = item.text()
-            item.project_name = project_name
-            self.update_project_name(item, project_name)
-                
-    def update_project_name(self, parent: BrowserWidget, project_name: str) -> None:
-        count = parent.childCount()
-        if count > 0: 
-            for i in range(count):
-                child: BrowserWidget = parent.child(i)
-                child.project_name = project_name
-                self.update_project_name(child, project_name)
         
     def select_tree_item(self, item: QtWidgets.QTreeWidgetItem) -> None:
         SIGNAL_BUS.select_item_browser.emit(item)

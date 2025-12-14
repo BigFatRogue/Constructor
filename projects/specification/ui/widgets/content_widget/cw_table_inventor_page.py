@@ -32,6 +32,9 @@ class PageInventorTable(PageContent):
         super().populate(item)
         self.widget_table.populate(item)
 
+    def update_data_item(self):
+        self.widget_table.update_data_item()
+
     def change_table(self) -> None:
         self.current_item.set_is_init(True)
         self.current_item.set_is_save(False)

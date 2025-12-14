@@ -6,7 +6,7 @@ from projects.specification.config.app_context.app_context import app_context, S
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.content_widget.cw_empty_page import PageEmpty
 from projects.specification.ui.widgets.content_widget.cw_property_project_page import PagePropertyProject
-from projects.specification.ui.widgets.content_widget.cw_table_page import PageInventorTable
+from projects.specification.ui.widgets.content_widget.cw_table_inventor_page import PageInventorTable
 from projects.specification.ui.widgets.content_widget.cw_init_project_page import PageInitProjectPage
 
 

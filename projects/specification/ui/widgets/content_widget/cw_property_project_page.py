@@ -1,12 +1,11 @@
 from PyQt5 import QtCore, QtWidgets
 from transliterate import translit
 
-from projects.specification.config.app_context.app_context import SIGNAL_BUS, ENUMS, SIGNAL_BUS
+from projects.specification.config.app_context.app_context import ENUMS
 
 
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.browser_widget.bw_project_item import ProjectItem 
-
 from projects.specification.core.data_tables import ColumnConfig, PROPERTY_PROJECT_CONFIG
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
@@ -79,7 +78,7 @@ class PagePropertyProject(PageContent):
         super().populate(item)
         data = self.current_item.table_data.get_data()
         self.clear()
-        
+
         for field, lineedit in self.dict_line_edit.items():
             lineedit.setText(data.get(field))
         if (database := self.current_item.table_data.database):
@@ -119,7 +118,7 @@ class PagePropertyProject(PageContent):
         return True
 
     def change_lineedit(self, text: str) -> None:
-        self.current_item.__is_save = False
+        self.current_item.set_is_save(False)
 
     def clear(self) -> None:
         for lineeidt in self.dict_line_edit.values():

@@ -88,8 +88,7 @@ class TableWidget(QtWidgets.QWidget):
     #         if (state := btn.state_sorted) != ENUMS.STATE_SORTED_COLUMN.EMPTY:
     #             self.table_data.data.sort(key=lambda x: x[btn.data_index], reverse=state == ENUMS.STATE_SORTED_COLUMN.SORTED)
     #     self.populate(table_data=self.table_data)
-        
-
+    
     def save(self) -> None:
         """
         Передаёт стили из таблицы в активный элемент барузера
