@@ -1,13 +1,16 @@
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
+from projects.specification.config.app_context.app_context import ENUMS
+
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.table_widget.table_widget import TableWidget
 from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
 from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import AlignCellBlock, FontStyleBlock
+from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
 
 
-class PageInventorTable(PageContent):
+class PageTable(PageContent):
     signal_status = QtCore.pyqtSignal(str)
 
     def __init__(self, parent):
@@ -17,28 +20,28 @@ class PageInventorTable(PageContent):
         self.v_layout.setSpacing(0)
         self.v_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.init_widgets()
-
-    def init_widgets(self) -> None:
         self.widget_table = TableWidget(self)
+        # TODO добавить в ControlPanelTable не добавление блоков, а установку блоков при заполнение или удаление скрытие не нужных 
         control_panel: ControlPanelTable = self.widget_table.set_control_panel()
         control_panel.add_block(FontStyleBlock)
         control_panel.add_block(AlignCellBlock)
-
         self.widget_table.signal_change_table.connect(self.change_table)
         self.v_layout.addWidget(self.widget_table)
 
-    def populate(self, item):
+    def populate(self, item: SpecificationItem):
         super().populate(item)
-        self.widget_table.populate(item)
+        if item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_INV:
 
-    def update_data_item(self):
-        self.widget_table.update_data_item()
+            self.widget_table.populate(item)
+        elif item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_BUY:
+            ...
+        elif item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_PROD:
+            ...
 
     def change_table(self) -> None:
         self.current_item.set_is_init(True)
         self.current_item.set_is_save(False)
     
     def save(self) -> None:
-        self.widget_table.save()
+        # self.widget_table.save()
         self.signal_status.emit(f'Таблица {self.current_item.text(0)} сохранена')

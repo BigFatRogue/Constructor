@@ -171,7 +171,7 @@ class BrowserWidget(QtWidgets.QWidget):
             self.create_main_item_project(project_item)
 
             table_data: PropertyProjectData = project_item.table_data
-            tables = table_data.load(filepath)
+            tables = table_data.load_data(filepath)
             key_project_name = table_data.config.columns[1].field
             project_item.set_project_name(table_data.get_data().get(key_project_name))
             
@@ -197,11 +197,14 @@ class BrowserWidget(QtWidgets.QWidget):
             tp = table['type_spec']
             create_date = table['datetime']
             data = table['data']
+            sid = table['id']
             
             item = None
             if tp == ENUMS.NAME_TABLE_SQL.INVENTOR.value:
                 parent_item = dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV]
-                item = TableInventorItem(tree=self.tree, parent_item=dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV], name=name, data=data)
+                item = TableInventorItem(tree=self.tree, parent_item=dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV], name=name, table_data=data)
+                # item.table_data.set_data(data)
+                # item.table_data.sid = sid
                 item.set_is_init(True)
                 item.set_is_save(True)
             elif tp == ENUMS.NAME_TABLE_SQL.BUY.value:
@@ -217,7 +220,8 @@ class BrowserWidget(QtWidgets.QWidget):
         data = get_specifitaction_inventor_from_xlsx(filepath)
         
         parent_item: SpecificationItem = self.tree.currentItem()
-        new_item = TableInventorItem(tree=self.tree, parent_item=parent_item, name=get_now_time(), data=data)
+        new_item = TableInventorItem(tree=self.tree, parent_item=parent_item, name=get_now_time())
+        new_item.table_data.set_data(data)
         
         parent_item.addChild(new_item)
         parent_item.setExpanded(True)

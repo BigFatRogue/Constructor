@@ -3,7 +3,7 @@ from PyQt5 import QtWidgets
 
 from projects.specification.config.app_context.app_context import ENUMS
 
-from projects.specification.core.data_tables import GeneralDataItem
+from projects.specification.core.data_tables import PropertyProjectData, SpecificationDataItem
 
 
 
@@ -17,7 +17,7 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
         self.__is_init: bool = False
         self.__is_save: bool = False
         self.filepath: str = None
-        self.table_data: GeneralDataItem = None
+        self.table_data: PropertyProjectData | SpecificationDataItem = None
 
         # Для делегата
         self.setData(0, ENUMS.CONSTANTS.QROLE_LINK_ITEM_WIDGET_TREE.value, self)

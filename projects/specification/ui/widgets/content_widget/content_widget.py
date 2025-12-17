@@ -6,7 +6,7 @@ from projects.specification.config.app_context.app_context import app_context, S
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.content_widget.cw_empty_page import PageEmpty
 from projects.specification.ui.widgets.content_widget.cw_property_project_page import PagePropertyProject
-from projects.specification.ui.widgets.content_widget.cw_table_inventor_page import PageInventorTable
+from projects.specification.ui.widgets.content_widget.cw_table_page import PageTable
 from projects.specification.ui.widgets.content_widget.cw_init_project_page import PageInitProjectPage
 
 
@@ -48,7 +48,7 @@ class ContentWidget(QtWidgets.QWidget):
         self.page_create_or_open_project = PageInitProjectPage(self, )
         self.index_page_create_or_open_project = self.stacket.addWidget(self.page_create_or_open_project)
 
-        self.page_table = PageInventorTable(self)
+        self.page_table = PageTable(self)
         self.index_page_table = self.stacket.addWidget(self.page_table)
 
         self.stacket.setCurrentIndex(0)
@@ -59,7 +59,7 @@ class ContentWidget(QtWidgets.QWidget):
 
         if self.prev_item != self.current_item:
             current_page: PageContent = self.stacket.currentWidget()
-            current_page.update_data_item()
+            # current_page.update_data_item()
 
         tp = item.type_item
         if tp == ENUMS.TYPE_TREE_ITEM.PROJET:

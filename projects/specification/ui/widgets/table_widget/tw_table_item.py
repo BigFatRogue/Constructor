@@ -1,4 +1,5 @@
-from PyQt5 import QtWidgets, QtCore
+from typing import Self
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 from projects.specification.config.app_context.app_context import DATACLASSES
 
@@ -7,8 +8,8 @@ class TableItem(QtWidgets.QTableWidgetItem):
     """
     Элемент таблицы
     """
-    def __init__(self, text, min_zoom: int=0, max_zoom: int=200, step_zoom: int=10):
-        super().__init__(text)
+    def __init__(self, min_zoom: int=0, max_zoom: int=200, step_zoom: int=10):
+        super().__init__('')
         self.original_font_size = self.font().pointSizeF()
         self.min_font_size = 2
         self.min_zoom = min_zoom
@@ -18,11 +19,6 @@ class TableItem(QtWidgets.QTableWidgetItem):
         self.h_align = QtCore.Qt.AlignmentFlag.AlignHCenter
         self.v_align = QtCore.Qt.AlignmentFlag.AlignVCenter
         self.setTextAlignment(self.h_align | self.v_align)
-
-        font = self.font()
-        font.setFamily('Arial')
-        self.setFont(font)
-        self.set_font_size(12)
 
     def get_style(self) -> DATACLASSES.CELL_STYLE:
         """
@@ -42,6 +38,41 @@ class TableItem(QtWidgets.QTableWidgetItem):
             underline=font.underline(),
             align_h = self.textAlignment() & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask,
             align_v = self.textAlignment() & QtCore.Qt.AlignmentFlag.AlignVertical_Mask)
+
+    def get_cell(self) -> DATACLASSES.DATA_CELL:
+        font = self.font()
+        return DATACLASSES.DATA_CELL(
+            value=self.text(),
+            font_family = font.family(),
+            font_size=self.font_size(),
+            bold=font.bold(),
+            italic=font.italic(),
+            underline=font.underline(),
+            align_h = self.textAlignment() & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask,
+            align_v = self.textAlignment() & QtCore.Qt.AlignmentFlag.AlignVertical_Mask)
+
+    def set_cell(self, cell: DATACLASSES.DATA_CELL, is_read_only=False) -> None:
+        value = '' if cell.value is None else cell.value
+        self.setText(str(value))
+
+        if is_read_only:
+            self.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled)
+        else:
+            self.setFlags(self.flags())
+        
+        self.setTextAlignment(cell.align_h | cell.align_v)
+        self.setBackground(QtGui.QColor(*cell.background))
+        
+        self.original_font_size = cell.font_size
+        self.steps_view_font = self.__generate_steps_view_font()
+        
+        font = self.font()
+        font.setFamily(cell.font_family)
+        font.setPointSize(cell.font_size)
+        font.setBold(cell.bold)
+        font.setItalic(cell.italic)
+        font.setUnderline(cell.underline)
+        self.setFont(font)
 
     def font_size(self) -> int:
         return self.original_font_size

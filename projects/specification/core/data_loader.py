@@ -16,6 +16,8 @@ from projects.specification.core.config_table import (
     INVENTOR_ITEM_CONFIG,
 )
 
+from projects.specification.config.app_context.app_context import DATACLASSES
+
 
 def __get_dict_from_xlsx(filepath: str) -> dict[tuple[str,...], list[float, str]]:
     config_columns: list[ColumnConfig] = GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns
@@ -61,12 +63,12 @@ def __get_dict_from_xlsx(filepath: str) -> dict[tuple[str,...], list[float, str]
     
     return dict_data
 
-def __dict_data_to_2list(dict_data: OrderedDict[tuple[str], list[float, str]]) -> list[list]:   
-    config_tuple: list[ColumnConfig] = GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns
+def __dict_data_to_2list(dict_data: OrderedDict[tuple[str], list[float, str]]) -> list[list[DATACLASSES.DATA_CELL]]:   
+    columns: list[ColumnConfig] = [col for col in GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns]
         
     key_indexs = []
     value_indexs = []
-    for i, col in enumerate(config_tuple):
+    for i, col in enumerate(columns):
         if col.is_view:
             if col.is_key:
                 key_indexs.append(i)
@@ -74,24 +76,28 @@ def __dict_data_to_2list(dict_data: OrderedDict[tuple[str], list[float, str]]) -
                 value_indexs.append(i)    
 
     list_data = []
-    for number, (key, value) in enumerate(dict_data.items(), 1):
-        row = [None] * len(config_tuple)
-
+    for key, value in dict_data.items():
+        row = [DATACLASSES.DATA_CELL() for _ in columns]
         for i, v in zip(key_indexs + value_indexs, key + tuple(value)):
-            row[i] = v
+            row[i]=DATACLASSES.DATA_CELL(value=v)
 
         list_data.append(row)
     return list_data
 
-def get_specifitaction_inventor_from_xlsx(filepath: str) -> list[list]:
+def get_specifitaction_inventor_from_xlsx(filepath: str) -> list[list[DATACLASSES.DATA_CELL]]:
     dict_xl = __get_dict_from_xlsx(filepath=filepath)
     return __dict_data_to_2list(dict_data=dict_xl)
 
 
 if __name__ == '__main__':
-    p = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.05.01.00.000 - Инвентор.xlsx'
+    p = r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\projects\specification\DEBUG\ALS.1648.8.2.01.Из инвентора.xlsx'
     data = get_specifitaction_inventor_from_xlsx(filepath=p)
-    
+     
+
+    config_tuple: list[ColumnConfig] = [col for col in GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns]
     for row in data:
-        print(row)
+        for name, cell in zip(config_tuple , row):
+            print(name, cell)
+            print()
+        break
 

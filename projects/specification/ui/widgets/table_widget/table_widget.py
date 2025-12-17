@@ -70,12 +70,12 @@ class TableWidget(QtWidgets.QWidget):
         is_init, is_save = self.current_tree_item.is_init, self.current_tree_item.is_save
 
         self.table_data: InventorSpecificationDataItem = item.table_data
-        self.table.populate(item=item, 
-                            is_read_only=is_read_only,
+        self.table.populate(item=item,
                             has_horizontal_filter=has_horizontal_filter,
                             has_vertical_check_box=has_vertical_check_box)
         
-        self.current_tree_item.set_is_init(is_init), self.current_tree_item.set_is_save(is_save)
+        self.current_tree_item.set_is_init(is_init)
+        self.current_tree_item.set_is_save(is_save)
             
     # def sorted_column(self, data: tuple) -> None:
     #     index_data, state_sorted = data
@@ -89,11 +89,11 @@ class TableWidget(QtWidgets.QWidget):
     #             self.table_data.data.sort(key=lambda x: x[btn.data_index], reverse=state == ENUMS.STATE_SORTED_COLUMN.SORTED)
     #     self.populate(table_data=self.table_data)
     
-    def save(self) -> None:
-        """
-        Передаёт стили из таблицы в активный элемент барузера
-        """
-        self.current_tree_item.set_style(self.table.get_style_cells(), self.table.get_style_section())
+    # def save(self) -> None:
+    #     """
+    #     Передаёт стили из таблицы в активный элемент барузера
+    #     """
+    #     self.current_tree_item.set_style(self.table.get_style_cells(), self.table.get_style_section())
 
     def change_table(self) -> None:
         self.signal_change_table.emit()

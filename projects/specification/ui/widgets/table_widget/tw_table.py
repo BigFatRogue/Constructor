@@ -4,8 +4,9 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from projects.specification.config.app_context.app_context import DATACLASSES
 
 from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
+from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
 
-from projects.specification.core.data_tables import ColumnConfig, InventorSpecificationDataItem
+from projects.specification.core.data_tables import ColumnConfig, InventorSpecificationDataItem, SpecificationDataItem
 
 from projects.specification.ui.widgets.table_widget.tw_table_item import TableItem
 from projects.specification.ui.widgets.table_widget.tw_horizontal_header import HorizontalWithOverlayWidgets, ButtonHorizontalHeader
@@ -34,7 +35,12 @@ class Table(QtWidgets.QTableWidget):
         self.custom_horizontal_header: None | HorizontalWithOverlayWidgets = None
         self.custom_vertical_header: None | VerticallWithOverlayWidgets = None
         
+        self.is_read_only = True
+
         self.setWordWrap(False)
+        
+        self.is_populate = False
+        self.itemChanged.connect(self.item_change)
 
     def setRowCount(self, rows):
         super().setRowCount(rows)
@@ -59,13 +65,13 @@ class Table(QtWidgets.QTableWidget):
                 btn = ButtonHorizontalHeader(self)
                 self.custom_horizontal_header.add_widget(btn)
 
-    def populate(self, item: TableBrowserItem, is_read_only=True, has_horizontal_filter: bool=True, has_vertical_check_box: bool=True) -> None:
-        self.current_item_tree = item
-        table_data: InventorSpecificationDataItem = item.table_data
-        
+    def populate(self, item: SpecificationItem, has_horizontal_filter: bool=True, has_vertical_check_box: bool=True) -> None:
+        self.is_populate = True
         self.has_horizontal_filter = has_horizontal_filter
         self.has_vertical_check_box = has_vertical_check_box
-        
+
+        self.current_item_tree = item
+        table_data: SpecificationDataItem = item.table_data
         dataset = table_data.get_data()
         columns: tuple[ColumnConfig] = table_data.config.columns + table_data.unique_config.columns
         columns_name: tuple[str, ...] = tuple(col.column_name for col in columns if col.is_view)
@@ -75,24 +81,24 @@ class Table(QtWidgets.QTableWidget):
         self.setHorizontalHeaderLabels(columns_name)
         
         data_number_index = table_data.get_index_from_name_filed('number_row')
+
         for y, row in enumerate(dataset):            
             if data_number_index != -1:
                 row[data_number_index] = y
-            
             x = 0
-            for col, value in zip(columns, row):
+            for col, cell in zip(columns, row):
                 if col.is_view:
-                    value = '' if value is None else value
-                    qItem = TableItem(str(value), min_zoom=self.min_zoom, max_zoom=self.max_zoom, step_zoom=self.step_zoom)
-                    
-                    if is_read_only:
-                        qItem.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
-                    else:
-                        qItem.setFlags(qItem.flags())
-
+                    qItem = TableItem(self.min_zoom, self.max_zoom, self.step_zoom)
+                    qItem.set_cell(cell, is_read_only=False)
                     self.setItem(y, x, qItem)
                     x += 1
-    
+        
+        self.is_populate = False
+
+    def item_change(self, item: TableItem) -> None:
+        if not self.is_populate:
+            self.current_item_tree.table_data.set_cell(item.row(), item.column(), item.get_cell())
+
     # def sorted_column(self, state_sorted) -> None:
     #     if self.popup_order.is_multi_sorted:
     #         self.signal_sorted_columns.emit(self.custom_h_header.get_widgets())
@@ -102,6 +108,7 @@ class Table(QtWidgets.QTableWidget):
     #     self.signal_change_table.emit()
             
     def reset_view_sorted_header(self) -> None:
+        # TODO пренести в Header. Обнуление знакочков сортировки 
         for btn in self.custom_h_header.get_widgets():
             btn.reset_view_sorted()
 
@@ -115,14 +122,6 @@ class Table(QtWidgets.QTableWidget):
         else:
             super().wheelEvent(event)
 
-    def get_style_cells(self) -> list[DATACLASSES.CELL_STYLE]:
-        style: list[DATACLASSES.CELL_STYLE] = []
-
-        for row in range(self.rowCount()):
-            for column in range(self.columnCount()):
-                item: TableItem = self.item(row, column)
-                style.append(item.get_style())
-        return style
 
     def get_style_section(self) -> list[DATACLASSES.SECTION_STYLE]:
         style: list[DATACLASSES.SECTION_STYLE] = []

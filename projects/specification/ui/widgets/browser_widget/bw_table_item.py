@@ -14,23 +14,17 @@ class TableBrowserItem(BrowserItem):
                 parent_item: SpecificationItem, 
                 name: str, 
                 table_data: SpecificationDataItem,
-                type_item: ENUMS.TYPE_TREE_ITEM.TABLE_INV,
-                data: list[list]=None):
+                type_item: ENUMS.TYPE_TREE_ITEM.TABLE_INV):
+        
         super().__init__(tree, parent_item)
-        self.table_data = table_data
+        self.table_data: SpecificationDataItem = table_data
         self.type_item = type_item
         self.style_cells: DATACLASSES.CELL_STYLE = None
         self.style_section: DATACLASSES.SECTION_STYLE
         self.setText(name)
-        if data:
-            self.table_data.set_data(data)
     
-    def set_style(self, style_cells: DATACLASSES.CELL_STYLE, style_section: DATACLASSES.SECTION_STYLE) -> None:
-        self.style_cells = style_cells
-        self.style_section = style_section
 
     def save(self):
         self.table_data.save()
-        self.table_data.save_style(self.style_cells, self.style_section)
         self.set_is_init(True)
         self.set_is_save(True)

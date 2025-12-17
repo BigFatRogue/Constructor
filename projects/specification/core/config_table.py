@@ -47,6 +47,8 @@ class TableConfig:
         self.columns = columns
         self.columns_property = []
         self.__set_property_columns()
+
+        self.__set_str_fields_and_values()
         
     def __set_property_columns(self) -> None:
         unique = []
@@ -60,6 +62,21 @@ class TableConfig:
             col_unique = ', '.join(unique)
             self.columns_property.append(ColumnConfig('', f'UNIQUE({col_unique})', is_view=False))
     
+    def __set_str_fields_and_values(self) -> None:
+        fields = []
+        fields_without_id = []
+
+        for col in self.columns:
+            fields.append(col.field)
+            if not col.is_id:
+                fields_without_id.append(col.field)  
+
+        self.str_field: str = ', '.join(fields)
+        self.str_value: str = ', '.join(['?'] * len(fields))
+        
+        self.str_field_without_id: str = ', '.join(fields_without_id)
+        self.str_value_without_id: str = ', '.join(['?'] * len(fields_without_id))
+
     def get_foreign_field(self) -> str:
         if self.parent_config:
             for col in self.columns:
@@ -77,6 +94,7 @@ class TableConfig:
     
     def get_values(self) -> tuple[int]:
         return tuple(col for col in self.columns if col.is_value)
+    
 
 
 FIELDS_CONFIG = TableConfig(
