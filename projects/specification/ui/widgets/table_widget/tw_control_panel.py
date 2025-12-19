@@ -1,4 +1,6 @@
 import os
+from dataclasses import fields
+from copy import deepcopy
 from typing import Any, TypeVar, Callable
 from PyQt5 import QtCore, QtWidgets, QtGui
 
@@ -9,10 +11,11 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
+from projects.specification.core.data_tables import SpecificationDataItem
 from projects.specification.config.app_context.app_context import SETTING, DATACLASSES
 
-from projects.specification.ui.widgets.table_widget.tw_table import Table
-from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import BlockControlPanel
+from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import BlockControlPanel, FontStyleBlock, AlignCellBlock
 from projects.tools.custom_qwidget.line_separate import QHLineSeparate, QVLineSeparate
 
 
@@ -20,34 +23,49 @@ T = TypeVar('T')
 
 
 class ControlPanelTable(QtWidgets.QFrame):
-    def __init__(self, parent, table: Table):
+    def __init__(self, parent, table_view: QtWidgets.QTableView):
         super().__init__(parent)
 
-        self.table: Table = table
-        self.blocks: list[BlockControlPanel] = []
+        self.table_view = table_view
+        self.table_model: DataTable = None
+        self.blocks: list[BlockControlPanel] = [FontStyleBlock, AlignCellBlock]
+        self.blocks_inited: list[BlockControlPanel] = []
         
-        self.setMinimumHeight(25)
-        self.init_widgets()
-
-    def init_widgets(self) -> None:
         self.h_layout = QtWidgets.QHBoxLayout(self)
         self.h_layout.addSpacing(2)
         self.h_layout.setContentsMargins(2, 2, 2, 2)
         self.h_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
         self.setLayout(self.h_layout)
+        self.setMinimumHeight(25)
+
+    def on_all_block(self):
+        if self.table_model:
+            for block in self.blocks:
+                self.on_block(block)
+
+    def on_block(self, block: BlockControlPanel) -> None:
+        if self.table_model:
+            block_init: BlockControlPanel = block(self, self.table_model)
+            self.blocks_inited.append(block_init)
+            self.h_layout.addWidget(block_init)
+
+            v_line_separate = QVLineSeparate(self)
+            self.h_layout.addWidget(v_line_separate)
+
+    def set_table_model(self, table_model: DataTable) -> None:
+        self.table_model = table_model
+
+    def view_property(self, selection: list[QtCore.QItemSelectionRange]) -> None:
+        style_ranges = self.table_model.get_style_selection(selection)
+        for block in self.blocks_inited:
+            block.view_property(selection, style_ranges)
+        
+    def on_font_block(self) -> None:
+        self.on_block(FontStyleBlock)
     
-    def add_block(self, block: BlockControlPanel) -> None:
-        block_init: BlockControlPanel = block(self, self.table)
-        self.h_layout.addWidget(block_init)
-        self.blocks.append(block_init)
-
-        v_line_separate = QVLineSeparate(self)
-        self.h_layout.addWidget(v_line_separate)
-
-    def view_property(self, style: DATACLASSES.CELL_STYLE) -> None:
-        for block in self.blocks:
-            block.view_property(style)
-
+    def on_align_block(self) -> None:
+        self.on_block(AlignCellBlock)
+       
 
 class __Window(QtWidgets.QMainWindow):
     def __init__(self):

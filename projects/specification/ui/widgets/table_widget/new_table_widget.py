@@ -11,7 +11,12 @@ if __name__ == '__main__':
 from projects.specification.config.app_context.app_context import SETTING
 
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
-from projects.specification.ui.widgets.table_widget.new_table import Table
+from projects.specification.ui.widgets.table_widget.tw_table_view import TableView
+from projects.specification.ui.widgets.table_widget.tw_zoom import ZoomTable
+from projects.specification.ui.widgets.table_widget.tw_horizontal_header import HorizontalWithOverlayWidgets
+from projects.specification.ui.widgets.table_widget.tw_vertical_header import VerticallWithOverlayWidgets
+from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
+
 
 from projects.specification.core.data_tables import SpecificationDataItem, InventorSpecificationDataItem
 
@@ -19,24 +24,64 @@ from projects.specification.core.data_tables import SpecificationDataItem, Inven
 class TableWidget(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
+        self.range_zoom = (10, 400, 5)
 
         self.v_layout = QtWidgets.QVBoxLayout(self)
 
-        self.table = Table(self)
-        self.v_layout.addWidget(self.table)
+        self.table_view = TableView(self)
+        self.table_model: DataTable = None
         
-        self.current_data_table_model = None
-    
+        self.horizontal_header = HorizontalWithOverlayWidgets(self.table_view, self.range_zoom)
+        self.horizontal_header.sectionResized.connect(self.table_view.resize_rect)        
+        self.table_view.setHorizontalHeader(self.horizontal_header)
+        
+        self.vertical_header = VerticallWithOverlayWidgets(self.table_view, self.range_zoom)
+        self.vertical_header.sectionResized.connect(self.table_view.resize_rect)
+        self.table_view.setVerticalHeader(self.vertical_header)
+        
+        self.control_panel = ControlPanelTable(self, self.table_view)
+        self.zoom_table = ZoomTable(self, self.range_zoom)
+        self.table_view.signal_change_zoom.connect(self.change_zoom)
+        self.zoom_table.signal_current_zoom.connect(self.horizontal_header.set_zoom)
+        self.zoom_table.signal_current_zoom.connect(self.vertical_header.set_zoom)
+        self.zoom_table.signal_current_zoom.connect(self.table_view.resize_rect)
+
+        self.v_layout.addWidget(self.control_panel)
+        self.v_layout.addWidget(self.table_view)
+        self.v_layout.addWidget(self.zoom_table)
+
+    def change_zoom(self, derection: int) -> None:
+        if derection > 0:
+            self.zoom_table.zoom_in()
+        else:
+            self.zoom_table.zoom_out()
+
     def set_item(self, item) -> None:
-        self.current_data_table_model = item.data_table_model
-        self.table.set_model(self.current_data_table_model)
+        self.table_model = item.table_model
+        self.table_view.set_model(self.table_model)
+        self.zoom_table.signal_current_zoom.connect(self.table_model.set_zoom)
 
     def tmp_set_item(self, table_data: SpecificationDataItem) -> None:
-        table_data.data[1][2].color = (255, 255, 0)
-        self.current_data_table_model = DataTable(self, table_data)
-        self.table.set_model(self.current_data_table_model)
-        self.table.set_edited(True)
+        self.table_model = DataTable(self, table_data, self.range_zoom)
+        self.table_view.setModel(self.table_model)
         
+        self.zoom_table.signal_current_zoom.connect(self.table_model.set_zoom)
+        
+        if isinstance(table_data, InventorSpecificationDataItem):
+            self._set_item_invetor()
+
+    def _set_item_invetor(self) -> None:
+        self.table_model.set_edited(True)
+        
+        self.horizontal_header.set_widget()
+        self.vertical_header.set_widget()
+        self.vertical_header.signal_select_row.connect(self.table_model.select_row)
+        
+        self.control_panel.set_table_model(self.table_model)
+        self.control_panel.on_all_block()
+        
+        self.table_view.signale_change_selection.connect(self.control_panel.view_property)
+
 
 class __Window(QtWidgets.QMainWindow):
     def __init__(self):

@@ -44,17 +44,23 @@ class ButtonHorizontalHeader(QtWidgets.QPushButton):
 
 
 class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
-    def __init__(self, table: QtWidgets.QTableWidget):
-        super().__init__(QtCore.Qt.Orientation.Horizontal, table)
+    def __init__(self, table: QtWidgets.QTableWidget, range_zoom):
+        super().__init__(QtCore.Qt.Orientation.Horizontal, table, range_zoom)
         table.horizontalScrollBar().valueChanged.connect(self._update_widgets)
 
-        self.popup_order = PopupOrder(self.table)
+        self.popup_order = PopupOrder(self.table_view)
     
-    def add_widget(self, widget: ButtonHorizontalHeader):
-        super().add_widget(widget)
+    def set_widget(self, align: int=2) -> None:
+        self._align_widget = align
+        for i in range(self.count()):
+            btn_order = ButtonHorizontalHeader(self.table_view)
+            btn_order.setVisible(True)
+            btn_order.raise_()
+            btn_order.index_section = i
+            btn_order.clicked.connect(self.show_popup)
+            self.widgets.append(btn_order)
+        self._update_widgets()
 
-        widget.clicked.connect(self.show_popup)
-    
     def show_popup(self) -> None:
         self.popup_order.show(self.sender())
 

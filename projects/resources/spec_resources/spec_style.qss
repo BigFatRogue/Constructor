@@ -119,3 +119,14 @@ QHeaderView::section:checked {
     background-color: rgb(2, 117, 2);
     border-radius: 0;
 }
+
+#label_show_current_zoom {
+    border: none;
+    border-radius: none;
+    background: none;
+    color: white
+}
+
+#label_show_current_zoom:hover {
+    background-color: rgb(2, 117, 2);
+}

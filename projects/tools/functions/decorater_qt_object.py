@@ -21,7 +21,7 @@ def decorater_set_hand_cursor_button(list_type_widget: list[QtWidgets.QWidget]):
             for name, widget in instance.__dict__.items():
                 for tp_widget in list_type_widget:
                     if isinstance(widget, tp_widget):
-                        widget.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+                        widget.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
             return instance
         return wraper
     return decorator

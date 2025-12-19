@@ -20,9 +20,9 @@ class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
 class SelectionRect(QtWidgets.QWidget):
     signal_view_style_cell = QtCore.pyqtSignal(object)
 
-    def __init__(self, parent: QtWidgets.QTableWidget):
+    def __init__(self, parent: QtWidgets.QTableView):
         super().__init__(parent)
-        self.table = parent
+        self.table_view = parent
         self.table_modificate()
 
         self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
@@ -41,18 +41,25 @@ class SelectionRect(QtWidgets.QWidget):
         self.hide()
 
     def table_modificate(self) -> None:
-        self.table.setItemDelegate(NoSelectionDelegate(self.table))
+        self.table_view.setItemDelegate(NoSelectionDelegate(self.table_view))
         
-        self.table.itemSelectionChanged.connect(self.set_selection)
-        
-        self.table.horizontalHeader().sectionResized.connect(self.resize_rect)
-        self.table.horizontalScrollBar().valueChanged.connect(self.resize_rect)
+        self.table_view.selectionChanged = self.selectionChanged
 
-        self.table.verticalHeader().sectionClicked.connect(self.resize_rect)
-        self.table.verticalHeader().sectionEntered.connect(self.resize_rect)
+        self.table_view.horizontalHeader().sectionResized.connect(self.resize_rect)
+        self.table_view.horizontalScrollBar().valueChanged.connect(self.resize_rect)
+
+        self.table_view.verticalHeader().sectionClicked.connect(self.resize_rect)
+        self.table_view.verticalHeader().sectionEntered.connect(self.resize_rect)
+
+    def selectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection):
+        if not selected.isEmpty():
+            self.show()
+            for index in self.table_view.selectedIndexes():
+                self.__accumulate_coords(index)
+            self.__resize_rect()
 
     def set_selection(self) -> None:
-        list_items: list[TableItem] = self.table.selectedItems() 
+        list_items: list[TableItem] = self.table_view.selectedItems() 
         if list_items:
             self.show()
             
@@ -60,12 +67,12 @@ class SelectionRect(QtWidgets.QWidget):
 
             for item in list_items:
                 self.__accumulate_coords(item)
-                self.__set_style(item)
+                # self.__set_style(item)
             self.__resize_rect()
             self.signal_view_style_cell.emit(self.__range_style)
 
     def resize_rect(self) -> None:
-        list_items: list[TableItem] = self.table.selectedItems() 
+        list_items: list[TableItem] = self.table_view.selectedItems() 
         if list_items:
             self.show()
             
@@ -73,15 +80,15 @@ class SelectionRect(QtWidgets.QWidget):
                 self.__accumulate_coords(item)
             self.__resize_rect()
 
-    def __accumulate_coords(self, item: TableItem) -> None:
+    def __accumulate_coords(self, index: QtCore.QModelIndex) -> None:
         """
         Наколпение координат ячеек в множествах
         
         :param item: Ячейка таблицы
         :type item: TableItem
         """
-        rect = self.table.visualRect(self.table.indexFromItem(item))
-        top_left_in_table = self.table.viewport().mapTo(self.table, rect.topLeft())
+        rect = self.table_view.visualRect(index)
+        top_left_in_table = self.table_view.viewport().mapTo(self.table_view, rect.topLeft())
         
         self.__set_x.add(top_left_in_table.x())
         self.__set_x.add(top_left_in_table.x() + rect.width())

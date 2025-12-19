@@ -49,12 +49,12 @@ class TableWidget(QtWidgets.QWidget):
         self.table_zoom = ZoomTable(self, self.table)
         self.v_layout.addWidget(self.table_zoom)
 
-        self.table_zoom.signal_change_zoom.connect(self.selection_rect.resize_rect)
+        self.table_zoom.signal_current_zoom.connect(self.selection_rect.resize_rect)
         self.table.signal_resize_header.connect(self.selection_rect.resize_rect)
         self.table.signal_zoom_in.connect(self.table_zoom.zoom_in)
         self.table.signal_zoom_out.connect(self.table_zoom.zoom_out)
 
-        self.table_zoom.signal_change_zoom.connect(self.signal_change_table.emit)
+        self.table_zoom.signal_current_zoom.connect(self.signal_change_table.emit)
         self.table.signal_resize_header.connect(self.signal_change_table.emit)
         self.table.itemChanged.connect(self.signal_change_table.emit)
 

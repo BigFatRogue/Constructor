@@ -2,31 +2,32 @@ import os
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, DATACLASSES
-
+from projects.specification.config.app_context.app_context import SETTING, DATACLASSES
+from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 from projects.specification.ui.widgets.table_widget.tw_table import Table, TableItem
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
 
 class BlockControlPanel(QtWidgets.QWidget):
-    def __init__(self, parent: QtWidgets.QFrame, table: Table):
+    def __init__(self, parent: QtWidgets.QFrame, table_model: DataTable):
         super().__init__(parent)
-        self.table = table
+        self.table_model = table_model
+        self.selection = None
 
         self.grid = QtWidgets.QGridLayout(self)
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setSpacing(3)
         self.setLayout(self.grid)
 
-    def view_property(self, style: dict[str, int | float | str]) -> None:
+    def view_property(self, selection: list[QtCore.QItemSelectionRange], style: dict[str, int | float | str]) -> None:
         ...
     
     
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class FontStyleBlock(BlockControlPanel):
-    def __init__(self, parent: QtWidgets.QFrame, table: Table):
-        super().__init__(parent, table)
+    def __init__(self, parent: QtWidgets.QFrame, table_data: DataTable):
+        super().__init__(parent, table_data)
 
         self.h_layout_row_1 = QtWidgets.QHBoxLayout()
         self.h_layout_row_1.setContentsMargins(0, 0, 0, 0)
@@ -90,7 +91,9 @@ class FontStyleBlock(BlockControlPanel):
     def __fill_font_size(self) -> None:
         self.combo_box_font_size.addItems(['8', '9', '10', '11', '12', '14', '16', '18', '20', '22', '24', '26', '28', '36', '48', '72'])
     
-    def view_property(self, style: DATACLASSES.CELL_STYLE):
+    def view_property(self, selection, style: DATACLASSES.CELL_STYLE):
+        self.selection = selection
+        
         self.combo_box_font_family.setCurrentText(style.font_family)
         self.combo_box_font_size.setCurrentText(str(style.font_size))
 
@@ -100,30 +103,23 @@ class FontStyleBlock(BlockControlPanel):
         self.btn_underline.setChecked(check_value(style.underline))
     
     def set_font_family_range(self, value: QtGui.QFont) -> None:
-        for item in self.table.selectedItems():
-            font = item.font()
-            font.setFamily(value.family())
-            item.setFont(font)
+        return
+
 
     def set_font_size_range(self, value: str) -> None:
-        for item in self.table.selectedItems():
-            item: TableItem
-            item.set_font_size(int(value))
-    
+        return
+
     def set_bold_range(self, value) -> None:
-        for item in self.table.selectedItems():
-            font = item.font()
-            font.setBold(value)
-            item.setFont(font)
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_BOLD)
 
     def set_italic_range(self, value) -> None:
-        for item in self.table.selectedItems():
+        for item in self.table_model.selectedItems():
             font = item.font()
             font.setItalic(value)
             item.setFont(font)
 
     def set_underline_range(self, value) -> None:
-        for item in self.table.selectedItems():
+        for item in self.table_model.selectedItems():
             font = item.font()
             font.setUnderline(value)
             item.setFont(font)
@@ -172,7 +168,9 @@ class AlignCellBlock(BlockControlPanel):
 
         return btn_align
 
-    def view_property(self, style: DATACLASSES.CELL_STYLE) -> None:
+    def view_property(self, selection, style: DATACLASSES.CELL_STYLE) -> None:
+        self.selection = selection
+
         if style.align_h is not None:
             btn = self.btns_align.get(style.align_h)
             if btn:
@@ -200,7 +198,7 @@ class AlignCellBlock(BlockControlPanel):
         align_v = [btn.property('flag_align') for btn in self.group_vertical_buttons.buttons() if btn.isChecked()]
         align_v = align_v[0] if align_v else self.align_v_default
 
-        for item in self.table.selectedItems():
+        for item in self.table_model.selectedItems():
             item.setTextAlignment(align_v | align_h)
 
     

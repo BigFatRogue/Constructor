@@ -3,7 +3,9 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 
 from projects.specification.config.app_context.app_context import SIGNAL_BUS
 
-from .tw_header import HeaderWithOverlayWidgets
+from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.ui.widgets.table_widget.tw_header import HeaderWithOverlayWidgets
+
 
 
 class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
@@ -34,27 +36,36 @@ class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
     
 
 class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
-    def __init__(self, table: QtWidgets.QTableWidget):
-        super().__init__(QtCore.Qt.Orientation.Vertical, table)
-        table.verticalScrollBar().valueChanged.connect(self._update_widgets)
+    signal_select_row = QtCore.pyqtSignal(tuple)
+
+    def __init__(self, table_view: QtWidgets.QTableWidget, range_zoom):
+        super().__init__(QtCore.Qt.Orientation.Vertical, table_view, range_zoom)
+        table_view.verticalScrollBar().valueChanged.connect(self._update_widgets)
 
         self.start_row: int = None
         self.end_row: int = None
+        self.table_model: DataTable = self.table_view.model()
 
-    def add_widget(self, widget: CheckBoxVerticalHeader):
-        super().add_widget(widget)
-        widget.signal_signle_choose.connect(self.signle_choose)
-        widget.signal_multi_choose.connect(self.signal_multi_choose)
-    
-    def fill_row(self, row: int, state: bool) -> None:                
-        for column in range(self.table.columnCount()):
-            item = self.table.item(row, column)
-            if item:
-                if state:
-                    item.setBackground(QtGui.QColor(200, 25, 25))
-                else:
-                    item.setBackground(QtGui.QColor(255, 255, 255))
+    def set_widget(self, align: int=2):
+        self._align_widget = align
+        for i in range(self.count()):
+            check_box = CheckBoxVerticalHeader(self.table_view)
+            check_box.setVisible(True)
+            check_box.raise_()
+            check_box.index_section = i
+            check_box.signal_signle_choose.connect(self.signle_choose)
+            check_box.signal_multi_choose.connect(self.signal_multi_choose)
+            self.widgets.append(check_box)
 
+            fm = self.fontMetrics()
+            text_w = fm.horizontalAdvance(str(i))
+            width = check_box.width()
+            self.setMinimumWidth(self.sectionSize(i) + text_w + width)
+        
+        self._update_widgets()
+
+    def fill_row(self, row: int, state: bool) -> None:            
+        self.signal_select_row.emit((row, state))
 
     def signle_choose(self, value: tuple[int, bool]) -> None:
         row, state = value
@@ -66,7 +77,6 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
             self.end_row = None
         
     def signal_multi_choose(self, value: tuple[int, bool]) -> None:
-        print(self.start_row, self.end_row)
         row, state = value
 
         if self.start_row is None:

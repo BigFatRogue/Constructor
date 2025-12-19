@@ -83,19 +83,13 @@ class CustomSlider(QtWidgets.QSlider):
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton, QtWidgets.QSlider])
 class ZoomTable(QtWidgets.QWidget):
-    signal_change_zoom = QtCore.pyqtSignal()
+    signal_current_zoom = QtCore.pyqtSignal(int)
 
-    def __init__(self, parent, table: Table):
+    def __init__(self, parent, range_zoom: tuple[int, int, int]):
         super().__init__(parent)
 
-        self.table: Table = table
-        self.min_zoom = table.min_zoom
-        self.max_zoom = table.max_zoom
-        self.step_zoom = table.step_zoom
+        self.min_zoom, self.max_zoom, self.step_zoom = range_zoom
         self.current_zoom = 100
-
-        self.old_size_vh: list[int] = None
-        self.old_size_hh: list[int] = None
 
         self.init_widgets()
 
@@ -145,18 +139,19 @@ class ZoomTable(QtWidgets.QWidget):
         self.btn_zoom_in.clicked.connect(self.click_btn_zoom_in)
         self.h_layout_frame.addWidget(self.btn_zoom_in)
 
-        self.label = QtWidgets.QLabel(self.frame)
-        self.label.setMaximumSize(40, self.__max_heigth)
-        self.label.setText('100%')
-        self.label.setStyleSheet('QLabel {color: white}')
-        self.h_layout_frame.addWidget(self.label)
+        self.btn_show_current_zoom = QtWidgets.QPushButton(self.frame)
+        self.btn_show_current_zoom.setObjectName('label_show_current_zoom')
+        self.btn_show_current_zoom.setMaximumSize(40, self.__max_heigth)
+        self.btn_show_current_zoom.setText('100%')
+        self.btn_show_current_zoom.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.btn_show_current_zoom.clicked.connect(self.zoom_reset)
+        self.h_layout_frame.addWidget(self.btn_show_current_zoom)
     
     def set_value(self) -> None:
-        self.label.setText(f'{self.current_zoom}%')
+        self.btn_show_current_zoom.setText(f'{self.current_zoom}%')
         self.slider.setValue(self.current_zoom // 2)
-        self.apply_zoom()
-        self.signal_change_zoom.emit()
-
+        self.signal_current_zoom.emit(self.current_zoom)
+        
     def click_btn_zoom_in(self) -> None:
         self.zoom_in()
         self.set_value()
@@ -167,9 +162,8 @@ class ZoomTable(QtWidgets.QWidget):
 
     def moved_slider(self, value: int) -> None:
         self.current_zoom = value * 2
-        self.label.setText(f'{self.current_zoom}%')
-        self.apply_zoom()
-        self.signal_change_zoom.emit()
+        self.btn_show_current_zoom.setText(f'{self.current_zoom}%')
+        self.signal_current_zoom.emit(self.current_zoom)
 
     def zoom_in(self) -> None:
         zoom = self.current_zoom + self.step_zoom
@@ -183,13 +177,9 @@ class ZoomTable(QtWidgets.QWidget):
             self.current_zoom = zoom
         self.set_value()
 
-    def apply_zoom(self):
-        for row in range(self.table.rowCount()):
-            for col in range(self.table.columnCount()):
-                item: TableItem = self.table.item(row, col)
-                item.set_zoom(self.current_zoom)
+    def zoom_reset(self) -> None:
+        self.current_zoom = 100
+        self.slider.setValue(self.current_zoom // 2)
+        self.btn_show_current_zoom.setText(f'{self.current_zoom}%')
+        self.signal_current_zoom.emit(self.current_zoom)
         
-        for header in (self.table.verticalHeader(), self.table.horizontalHeader()):
-            header: HeaderWithOverlayWidgets
-            header.set_zoom(self.current_zoom)
-    
