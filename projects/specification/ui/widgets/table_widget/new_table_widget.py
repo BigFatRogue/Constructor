@@ -101,7 +101,7 @@ class __Window(QtWidgets.QMainWindow):
         self.widgte_table = TableWidget(self)
         self.v_layout.addWidget(self.widgte_table)
         
-        filepath = r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.01Из инвентора.xlsx'
+        filepath = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.05.01.00.000 - Инвентор.xlsx'
         data = get_specifitaction_inventor_from_xlsx(filepath)
         data_item = InventorSpecificationDataItem('')
         data_item.set_data(data)

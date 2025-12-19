@@ -20,7 +20,7 @@ class BlockControlPanel(QtWidgets.QWidget):
         self.grid.setSpacing(3)
         self.setLayout(self.grid)
 
-    def view_property(self, selection: list[QtCore.QItemSelectionRange], style: dict[str, int | float | str]) -> None:
+    def view_property(self, selection: list[QtCore.QItemSelectionRange], style: DATACLASSES.DATA_CELL) -> None:
         ...
     
     
@@ -35,7 +35,7 @@ class FontStyleBlock(BlockControlPanel):
         self.grid.addLayout(self.h_layout_row_1, 0, 0, 1, 1)
 
         self.combo_box_font_family = QtWidgets.QFontComboBox(self)
-        self.combo_box_font_family.currentFontChanged.connect(self.set_font_family_range)
+        self.combo_box_font_family.currentTextChanged.connect(self.set_font_family_range)
         self.h_layout_row_1.addWidget(self.combo_box_font_family)
 
         self.combo_box_font_size = QtWidgets.QComboBox(self)
@@ -84,46 +84,53 @@ class FontStyleBlock(BlockControlPanel):
 
         self.btn_background_color = QtWidgets.QPushButton(self)
         self.btn_background_color.setFixedSize(20, 20)
-        self.btn_background_color.setText('P')
+        self.btn_background_color.setText('BG')
         self.btn_background_color.clicked.connect(lambda: self.color_dialog.getColor())
         self.h_layout_row_2.addWidget(self.btn_background_color)
+
+        self.btn_foreground_clor = QtWidgets.QPushButton(self)
+        self.btn_foreground_clor.setFixedSize(20, 20)
+        self.btn_foreground_clor.setText('FG')
+        self.btn_foreground_clor.clicked.connect(lambda: self.color_dialog.getColor())
+        self.h_layout_row_2.addWidget(self.btn_foreground_clor)
+
+        self.btn_rest_style =  QtWidgets.QPushButton(self)
+        self.btn_rest_style.setFixedSize(20, 20)
+        self.btn_rest_style.setText('R')
+        self.btn_rest_style.clicked.connect(self.reset_style)
+        self.h_layout_row_2.addWidget(self.btn_rest_style)
 
     def __fill_font_size(self) -> None:
         self.combo_box_font_size.addItems(['8', '9', '10', '11', '12', '14', '16', '18', '20', '22', '24', '26', '28', '36', '48', '72'])
     
     def view_property(self, selection, style: DATACLASSES.CELL_STYLE):
-        self.selection = selection
-        
-        self.combo_box_font_family.setCurrentText(style.font_family)
-        self.combo_box_font_size.setCurrentText(str(style.font_size))
+        if style:
+            self.selection = selection
+            self.combo_box_font_family.setCurrentText(style.font_family)
+            self.combo_box_font_size.setCurrentText(str(style.font_size))
 
-        check_value = lambda value: value if value is not None else False
-        self.btn_bold.setChecked(check_value(style.bold))
-        self.btn_italic.setChecked(check_value(style.italic))
-        self.btn_underline.setChecked(check_value(style.underline))
+            check_value = lambda value: value if value is not None else False
+            self.btn_bold.setChecked(check_value(style.bold))
+            self.btn_italic.setChecked(check_value(style.italic))
+            self.btn_underline.setChecked(check_value(style.underline))
     
     def set_font_family_range(self, value: QtGui.QFont) -> None:
-        return
-
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_FAMILY)
 
     def set_font_size_range(self, value: str) -> None:
-        return
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_SIZE)
 
     def set_bold_range(self, value) -> None:
         self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_BOLD)
 
     def set_italic_range(self, value) -> None:
-        for item in self.table_model.selectedItems():
-            font = item.font()
-            font.setItalic(value)
-            item.setFont(font)
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_ITALIC)
 
     def set_underline_range(self, value) -> None:
-        for item in self.table_model.selectedItems():
-            font = item.font()
-            font.setUnderline(value)
-            item.setFont(font)
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_UNDERLINE)
 
+    def reset_style(self) -> None:
+        self.table_model.reset_style(self.selection)
 
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
@@ -168,7 +175,7 @@ class AlignCellBlock(BlockControlPanel):
 
         return btn_align
 
-    def view_property(self, selection, style: DATACLASSES.CELL_STYLE) -> None:
+    def view_property(self, selection, style) -> None:
         self.selection = selection
 
         if style.align_h is not None:
@@ -198,8 +205,6 @@ class AlignCellBlock(BlockControlPanel):
         align_v = [btn.property('flag_align') for btn in self.group_vertical_buttons.buttons() if btn.isChecked()]
         align_v = align_v[0] if align_v else self.align_v_default
 
-        for item in self.table_model.selectedItems():
-            item.setTextAlignment(align_v | align_h)
-
+        self.table_model.set_range_style(ranges=self.selection, role=QtCore.Qt.ItemDataRole.TextAlignmentRole, value=align_v | align_h)
     
 

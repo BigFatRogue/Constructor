@@ -9,11 +9,11 @@ from projects.specification.core.data_tables import SpecificationDataItem
 
 
 class DataTable(QtCore.QAbstractTableModel):
-    FONT_PARAM_FAMILY = 0
-    FONT_PARAM_SIZE = 1
-    FONT_PARAM_BOLD = 2
-    FONT_PARAM_ITALIC = 3
-    FONT_PARAM_UNDERLINE = 4
+    FONT_PARAM_FAMILY = 1
+    FONT_PARAM_SIZE = 2
+    FONT_PARAM_BOLD = 3
+    FONT_PARAM_ITALIC = 4
+    FONT_PARAM_UNDERLINE = 5
 
     def __init__(self, parent, data_item: SpecificationDataItem, range_zoom):
         super().__init__(parent)
@@ -37,11 +37,10 @@ class DataTable(QtCore.QAbstractTableModel):
 
         self._default_family = 'Arial'
         self._default_font_size = 12
-        self._set_steps_zoom_font_size(self._default_font_size)
         self._default_bold = False
         self._default_italic = False
         self._default_underline = False
-        self._default_align = QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        self._default_align = int(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
         self._default_bg_color = QtGui.QColor(255, 255, 255)
         self._default_fg_color = QtGui.QColor(QtCore.Qt.GlobalColor.black)
         self._set_styles()
@@ -79,9 +78,10 @@ class DataTable(QtCore.QAbstractTableModel):
                     font.setUnderline(cell.underline if cell.underline is not None else self._default_underline)
                     self._styles[(y, x, QtCore.Qt.ItemDataRole.FontRole)] = font
 
-    def _set_steps_zoom_font_size(self, value: int) -> None:
+    def get_view_font_size(self, value: int) -> int:
         if value not in self.dict_zoom_steps:
             dct = {}
+            value = int(value)
             for step in range(*self.range_zoom):
                 size = int(value * step / 100)
                 if size < self.min_font_size:
@@ -92,6 +92,8 @@ class DataTable(QtCore.QAbstractTableModel):
                 dct[step] = size
             self.dict_zoom_steps[value] = dct
 
+        return self.dict_zoom_steps[value][self.current_zoom]
+        
     def rowCount(self, parent=QtCore.QModelIndex()):
         return len(self._data)
 
@@ -122,25 +124,39 @@ class DataTable(QtCore.QAbstractTableModel):
         return True
 
     def set_range_style(self, ranges: list[QtCore.QItemSelectionRange], role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param=None) -> None:
+        if not ranges:
+            return
+
         for rng in ranges:
             for row in range(rng.top(), rng.bottom() + 1):
                 for column in range(rng.left(), rng.right() + 1):
                     cell = self._data[row][self._index_column_view[column]]
                     if role == QtCore.Qt.ItemDataRole.FontRole and font_param:
                         font = self._styles[(row, self._index_column_view[column], role)]
-                        if font_param == self.FONT_PARAM_SIZE:
-                            font.setPointSize(value)
-                        elif font_param == self.FONT_PARAM_FAMILY:
-                            font.family(value)
-                        elif font_param == self.FONT_PARAM_BOLD:
-                            cell.bold = value
-                            font.setBold(value)
-                        elif font_param == self.FONT_PARAM_ITALIC:
-                            font.setItalic(value)
-                        elif font_param == self.FONT_PARAM_UNDERLINE:
-                            font.setUnderline(value)
+                        self._set_cell_font_style(cell=cell, font=font, value=value, font_param=font_param)
+                    elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
+                        cell.align_h = value & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
+                        cell.align_v = value & QtCore.Qt.AlignmentFlag.AlignVertical_Mask
+                        self._styles[(row, self._index_column_view[column], role)] = value
 
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), [role])
+
+    def _set_cell_font_style(self, cell: DATACLASSES.DATA_CELL, font, value: int, font_param: int) -> None:
+        if font_param == self.FONT_PARAM_SIZE:
+            cell.font_size = value
+            font.setPointSize(self.get_view_font_size(int(value)))
+        elif font_param == self.FONT_PARAM_FAMILY:
+            cell.font_family = value
+            font.setFamily(value)
+        elif font_param == self.FONT_PARAM_BOLD:
+            cell.bold = value
+            font.setBold(value)
+        elif font_param == self.FONT_PARAM_ITALIC:
+            cell.italic = value
+            font.setItalic(value)
+        elif font_param == self.FONT_PARAM_UNDERLINE:
+            cell.underline = value
+            font.setUnderline(value)
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.DisplayRole:
@@ -171,10 +187,7 @@ class DataTable(QtCore.QAbstractTableModel):
                 cell = self._data[row][column]
                 font = self._styles[(row, column, role)]
 
-                if cell.font_size not in self.dict_zoom_steps:
-                    self._set_steps_zoom_font_size(cell.font_size)
-
-                font.setPointSize(self.dict_zoom_steps[cell.font_size][step])
+                font.setPointSize(self.get_view_font_size(cell.font_size))
 
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.FontRole])
 
@@ -210,3 +223,33 @@ class DataTable(QtCore.QAbstractTableModel):
                             setattr(style_ranges, cell_field.name, None)
         
         return style_ranges
+
+    def reset_style(self, ranges: list[QtCore.QItemSelectionRange]) -> None:
+        if not ranges:
+            return
+
+        for rng in ranges:
+            for row in range(rng.top(), rng.bottom() + 1):
+                for column in range(rng.left(), rng.right() + 1):
+                    cell = self._data[row][self._index_column_view[column]]
+                    
+                    font = self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.FontRole)]
+                    self._set_cell_font_style(cell=cell, font=font, value=self._default_family, font_param=self.FONT_PARAM_FAMILY)
+                    self._set_cell_font_style(cell=cell, font=font, value=self._default_font_size, font_param=self.FONT_PARAM_SIZE)
+                    self._set_cell_font_style(cell=cell, font=font, value=self._default_bold, font_param=self.FONT_PARAM_BOLD)
+                    self._set_cell_font_style(cell=cell, font=font, value=self._default_italic, font_param=self.FONT_PARAM_ITALIC)
+                    self._set_cell_font_style(cell=cell, font=font, value=self._default_underline, font_param=self.FONT_PARAM_UNDERLINE)
+
+                    cell.align_h = self._default_align & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
+                    cell.align_v = self._default_align & QtCore.Qt.AlignmentFlag.AlignVertical_Mask
+                    self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.TextAlignmentRole)] = self._default_align
+                    
+                    cell.background = self._default_bg_color
+                    self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.BackgroundColorRole)] = self._default_bg_color
+                    
+                    cell.color = self._default_fg_color
+                    self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.ForegroundRole)] = self._default_fg_color
+                        
+
+            role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
+            self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), role)

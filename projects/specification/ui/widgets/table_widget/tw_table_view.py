@@ -22,6 +22,8 @@ class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
                               QtWidgets.QStyle.State_MouseOver)
         
         if alignment is not None:
+            if isinstance(alignment, int):
+                alignment = QtCore.Qt.Alignment(alignment)
             option_copy.displayAlignment = alignment
         
         super().paint(painter, option_copy, index)
@@ -38,6 +40,8 @@ class TableView(QtWidgets.QTableView):
 
     def __init__(self, parent):
         super().__init__(parent)
+
+        self.setWordWrap(False)
 
         self.setItemDelegate(NoSelectionDelegate(self))
         self.verticalScrollBar().valueChanged.connect(self.resize_rect)
@@ -57,16 +61,12 @@ class TableView(QtWidgets.QTableView):
         if ranges and len(ranges) == 1:
             self._draw_rect(ranges[0])
     
-    def _draw_rect(self, rng):
+    def _draw_rect(self, rng: QtCore.QItemSelectionRange):
         rect_start = self.visualRect(self.model().index(rng.top(), rng.left()))
         rect_end = self.visualRect(self.model().index(rng.bottom(), rng.right()))
-
-        top_left = self.viewport().mapTo(self, rect_start.topLeft())
-        bottom_right = self.viewport().mapTo(self, rect_end.bottomRight())
-            
-        x0, y0, x1, y1 = top_left.x(), top_left.y(), bottom_right.x(), bottom_right.y()
-        self.frame.setGeometry(x0, y0, abs(x0 - x1), abs(y0 - y1))
-        self.frame.resize(abs(x0 - x1), abs(y0 - y1))
+        
+        rect = QtCore.QRect(self.viewport().mapTo(self, rect_start.topLeft()),self.viewport(). mapTo(self, rect_end.bottomRight()) )
+        self.frame.setGeometry(rect)
     
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
