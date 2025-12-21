@@ -220,7 +220,8 @@ STYLE_CELL_LINK_CONFIG = TableConfig(
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('row','INTEGER'),
         ColumnConfig('column', 'INTEGER'),
-        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True),
+        ColumnConfig('style_id', 'INTEGER', is_view=False),
+        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True)
     ],
     parent_config=SPECIFICATION_CONFIG
 )

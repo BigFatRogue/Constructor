@@ -9,27 +9,38 @@ from projects.specification.core.data_tables import SpecificationDataItem
 
 
 class DataTable(QtCore.QAbstractTableModel):
+    """
+    Модель данных для таблиц
+    """
+    
+    signal_change = QtCore.pyqtSignal()
+
     FONT_PARAM_FAMILY = 1
     FONT_PARAM_SIZE = 2
     FONT_PARAM_BOLD = 3
     FONT_PARAM_ITALIC = 4
     FONT_PARAM_UNDERLINE = 5
 
-    def __init__(self, parent, data_item: SpecificationDataItem, range_zoom):
-        super().__init__(parent)
-        self._data_item: SpecificationDataItem = data_item
-        self.range_zoom = range_zoom
-        self.current_zoom = 100
-        self.min_font_size = 2
-        self.dict_zoom_steps: dict[int, dict[int: int]] = {}
+    def __init__(self, data_item: SpecificationDataItem, range_zoom: tuple[int, int , int]=None):
+        """
+        :param data_item: элемент источника и сохранения данных
+        :type data_item: SpecificationDataItem
+        :param range_zoom: диапазон для масштабирования (мин, макс, шаг)
+        """
+        super().__init__(None)
+        self.item_data: SpecificationDataItem = data_item
+        self._range_zoom = range_zoom
+        self._current_zoom = 100
+        self._min_font_size = 2
+        self._dict_zoom_steps: dict[int, dict[int: int]] = {}
 
-        self._config = self._data_item.config
-        self._unique_config = self._data_item.unique_config
+        self._config = self.item_data.general_config
+        self._unique_config = self.item_data.unique_config
         self._columns: list[ColumnConfig] = self._config.columns + self._unique_config.columns
         self._view_columns = [col for col in self._columns if col.is_view]
         
         self._index_column_view = self._set_index_column_view()
-        self._data: list[list[DATACLASSES.DATA_CELL]] = self._data_item.data
+        self._data: list[list[DATACLASSES.DATA_CELL]] = self.item_data.data
 
         self._flags: QtCore.Qt.ItemFlag = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
 
@@ -61,39 +72,65 @@ class DataTable(QtCore.QAbstractTableModel):
         return dct
     
     def _set_styles(self) -> None:
+        """
+        Создание словаря для стилей ячеек для быстрого отображения
+        
+        :param self: Описание
+        """
         for y, row in enumerate(self._data):
             for x, cell in enumerate(row):
-                x = self._index_column_view.get(x)
-                if x:
-                    if cell.color is not None:
-                        self._styles[(y, y, QtCore.Qt.ItemDataRole.ForegroundRole)] = QtGui.QColor(*cell.color)
-                    if cell.background is not None:
-                        self._styles[(y, x, QtCore.Qt.ItemDataRole.BackgroundRole)] = QtGui.QColor(*cell.color)
 
-                    font = QtGui.QFont()
-                    font.setFamily(cell.font_family or self._default_family)
-                    font.setPointSize(cell.font_size or self._default_font_size)
-                    font.setBold(cell.bold if cell.bold is not None else self._default_bold)
-                    font.setItalic(cell.italic if cell.italic is not None else self._default_italic)
-                    font.setUnderline(cell.underline if cell.underline is not None else self._default_underline)
-                    self._styles[(y, x, QtCore.Qt.ItemDataRole.FontRole)] = font
+                if cell.color is not None:
+                    self._styles[(y, x, QtCore.Qt.ItemDataRole.ForegroundRole)] = QtGui.QColor(*cell.color)
+                if cell.background is not None:
+                    self._styles[(y, x, QtCore.Qt.ItemDataRole.BackgroundRole)] = QtGui.QColor(*cell.color)
+
+                font = QtGui.QFont()
+                font.setFamily(cell.font_family or self._default_family)
+                font.setPointSize(cell.font_size or self._default_font_size)
+                font.setBold(cell.bold if cell.bold is not None else self._default_bold)
+                font.setItalic(cell.italic if cell.italic is not None else self._default_italic)
+                font.setUnderline(cell.underline if cell.underline is not None else self._default_underline)
+                self._styles[(y, x, QtCore.Qt.ItemDataRole.FontRole)] = font
+
+        
+        role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
+        self.dataChanged.emit(self.index(0, 0), self.index(len(self._data), len(self._data[0])), role)
 
     def get_view_font_size(self, value: int) -> int:
-        if value not in self.dict_zoom_steps:
+        """
+        Размер текста для заданного масштаба
+        
+        :param value: размер заданный в ячейки
+        :type value: int
+        :return: размер текста соответствующий масштабу (в данных не меняется)
+        :rtype: int
+        """
+        if value not in self._dict_zoom_steps:
             dct = {}
             value = int(value)
-            for step in range(*self.range_zoom):
+            for step in range(*self._range_zoom):
                 size = int(value * step / 100)
-                if size < self.min_font_size:
-                    size = self.min_font_size
+                if size < self._min_font_size:
+                    size = self._min_font_size
                 elif size == 100:
                     size = value
 
                 dct[step] = size
-            self.dict_zoom_steps[value] = dct
+            self._dict_zoom_steps[value] = dct
 
-        return self.dict_zoom_steps[value][self.current_zoom]
+        return self._dict_zoom_steps[value][self._current_zoom]
+    
+    def set_range_step_zoom(self, range_zoom: tuple[int, int, int]) -> None:
+        """
+        Установка диапазона для масштабирования
         
+        :param self: Описание
+        :param range_zoom: диапазон для масштабирования (мин, макс, шаг)
+        :type range_zoom: tuple[int, int, int]
+        """
+        self._range_zoom = range_zoom
+
     def rowCount(self, parent=QtCore.QModelIndex()):
         return len(self._data)
 
@@ -124,6 +161,17 @@ class DataTable(QtCore.QAbstractTableModel):
         return True
 
     def set_range_style(self, ranges: list[QtCore.QItemSelectionRange], role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param=None) -> None:
+        """
+        Установка стиля ячеек в диапазоне
+        
+        :param ranges: диапазоны
+        :type ranges: list[QtCore.QItemSelectionRange]
+        :param role: роль (свойство)
+        :type role: QtCore.Qt.ItemDataRole
+        :param value: значение
+        :type value: int | str | QtGui.QColor
+        :param font_param: какой параметр текста (размер, шрифт и др.)
+        """
         if not ranges:
             return
 
@@ -131,6 +179,7 @@ class DataTable(QtCore.QAbstractTableModel):
             for row in range(rng.top(), rng.bottom() + 1):
                 for column in range(rng.left(), rng.right() + 1):
                     cell = self._data[row][self._index_column_view[column]]
+                    
                     if role == QtCore.Qt.ItemDataRole.FontRole and font_param:
                         font = self._styles[(row, self._index_column_view[column], role)]
                         self._set_cell_font_style(cell=cell, font=font, value=value, font_param=font_param)
@@ -140,8 +189,20 @@ class DataTable(QtCore.QAbstractTableModel):
                         self._styles[(row, self._index_column_view[column], role)] = value
 
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), [role])
+        self.signal_change.emit()
 
     def _set_cell_font_style(self, cell: DATACLASSES.DATA_CELL, font, value: int, font_param: int) -> None:
+        """
+        Установка стиля текста ячейки
+        
+        :param cell: ячейка
+        :type cell: DATACLASSES.DATA_CELL
+        :param font: шрифт
+        :param value: значнеие
+        :type value: int
+        :param font_param: какой параметр текста (размер, шрифт и др.)
+        :type font_param: int
+        """
         if font_param == self.FONT_PARAM_SIZE:
             cell.font_size = value
             font.setPointSize(self.get_view_font_size(int(value)))
@@ -174,11 +235,23 @@ class DataTable(QtCore.QAbstractTableModel):
         self._flags = flag
 
     def set_edited(self, value: bool) -> None:
+        """
+        Включение / выключение режима редактирования ячеек
+        - True  - включить
+        - False - выключить\n
+        по умолчанию выключено
+        """
         if value:
             self.set_flags(self.get_flags() | QtCore.Qt.ItemFlag.ItemIsEditable)
 
     def set_zoom(self, step: int) -> None:
-        self.current_zoom = step
+        """
+        Установка текущего шага масштабирования
+        
+        :param step: шаг масташабирования (%)
+        :type step: int
+        """
+        self._current_zoom = step
         role = QtCore.Qt.ItemDataRole.FontRole
         
         for row in range(self.rowCount()):
@@ -192,21 +265,36 @@ class DataTable(QtCore.QAbstractTableModel):
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.FontRole])
 
     def select_row(self, value: tuple[int, bool]) -> None:
+        """
+        Выбор строки. Для таблиц у которых есть поле в БД is_select
+        
+        :param value: True - выбрана, False - не выбрана
+        :type value: tuple[int, bool]
+        """
         row, state = value
         role = QtCore.Qt.ItemDataRole.BackgroundRole
 
-        column = self._data_item.get_index_from_name_filed('is_select')
-        self._data[row][column].value = state
+        column = self.item_data.get_index_from_name_filed('is_select')
+        if column >= 0:
+            self._data[row][column].value = state
 
-        color = (200, 60, 60, 200) if state else (255, 255, 255)
-        
-        for x in range(self.columnCount()):
-            self._styles[(row, self._index_column_view[x], role)] = QtGui.QColor(*color)
-            self._data[row][self._index_column_view[x]].background = color
-        
+            color = (200, 60, 60, 200) if state else (255, 255, 255)
+            
+            for x in range(self.columnCount()):
+                self._styles[(row, self._index_column_view[x], role)] = QtGui.QColor(*color)
+                self._data[row][self._index_column_view[x]].background = color
+            
         self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount()), [role])
 
-    def get_style_selection(self, selection: list[QtCore.QItemSelectionRange]) -> DATACLASSES.CELL_STYLE:
+    def get_style_selection(self, selection: list[QtCore.QItemSelectionRange]) -> DATACLASSES.DATA_CELL:
+        """
+        Получение значения стиля диапазонов
+        
+        :param selection: выделение в QtableView
+        :type selection: list[QtCore.QItemSelectionRange]
+        :return: ячейка содержащая общие стили диапазонов
+        :rtype: CELL_STYLE
+        """
         style_ranges = None
         for rng in selection:
             for row in range(rng.top(), rng.bottom() + 1):
@@ -225,6 +313,12 @@ class DataTable(QtCore.QAbstractTableModel):
         return style_ranges
 
     def reset_style(self, ranges: list[QtCore.QItemSelectionRange]) -> None:
+        """
+        Сброс стиля диапазона до стандартных значений
+        
+        :param ranges: выделение в QtableView
+        :type ranges: list[QtCore.QItemSelectionRange]
+        """
         if not ranges:
             return
 
@@ -253,3 +347,4 @@ class DataTable(QtCore.QAbstractTableModel):
 
             role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), role)
+        self.signal_change.emit()

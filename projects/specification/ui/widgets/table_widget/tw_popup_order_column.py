@@ -133,8 +133,7 @@ class PopupOrder(QtWidgets.QWidget):
             self.btn_sorted.setChecked(False)
             self.btn_sorted_reverse.setChecked(True)
 
-    def hide(self) -> None:
-        super().hide()
+    def hideEvent(self, a0):
         if self.current_button_header:
             self.current_button_header.setChecked(False)
 

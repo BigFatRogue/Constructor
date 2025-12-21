@@ -41,16 +41,19 @@ class TableView(QtWidgets.QTableView):
     def __init__(self, parent):
         super().__init__(parent)
 
+        self._is_ctrl = False
+
         self.setWordWrap(False)
 
         self.setItemDelegate(NoSelectionDelegate(self))
         self.verticalScrollBar().valueChanged.connect(self.resize_rect)
         self.horizontalScrollBar().valueChanged.connect(self.resize_rect)
 
-        self.frame = QtWidgets.QFrame(self)
-        self.frame.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
-        self.frame.setStyleSheet('QFrame {background-color: rgba(0, 0, 0, 0); border: 2px solid green}')
-        self.grid = QtWidgets.QGridLayout(self.frame)
+        self._frame_selection_rect = QtWidgets.QFrame(self)
+        self._frame_selection_rect.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
+        self._frame_selection_rect.setStyleSheet('QFrame {background-color: rgba(0, 0, 0, 0); border: 2px solid green}')
+        self.grid = QtWidgets.QGridLayout(self._frame_selection_rect)
+        self._frame_selection_rect.hide()
                 
     def selectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection):
         self.resize_rect()
@@ -58,22 +61,32 @@ class TableView(QtWidgets.QTableView):
     
     def resize_rect(self) -> None:
         ranges = self.selectionModel().selection()
-        if ranges and len(ranges) == 1:
-            self._draw_rect(ranges[0])
+        if ranges and not self._is_ctrl:
+            self._draw_rect(ranges)
     
-    def _draw_rect(self, rng: QtCore.QItemSelectionRange):
-        rect_start = self.visualRect(self.model().index(rng.top(), rng.left()))
-        rect_end = self.visualRect(self.model().index(rng.bottom(), rng.right()))
+    def _draw_rect(self, ranges: list[QtCore.QItemSelectionRange]):
+        top = min(r.top() for r in ranges)
+        left = min(r.left() for r in ranges)
+        bottom = max(r.bottom() for r in ranges)
+        right = max(r.right() for r in ranges)
+
+        rect_start = self.visualRect(self.model().index(top, left))
+        rect_end = self.visualRect(self.model().index(bottom, right))
         
         rect = QtCore.QRect(self.viewport().mapTo(self, rect_start.topLeft()),self.viewport(). mapTo(self, rect_end.bottomRight()) )
-        self.frame.setGeometry(rect)
+        self._frame_selection_rect.setGeometry(rect)
     
+    def hide_selection(self) -> None:
+        self._frame_selection_rect.hide()
+
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             if event.modifiers() & QtCore.Qt.ControlModifier:
-                self.frame.hide()
+                self._is_ctrl = True
+                self._frame_selection_rect.hide()
             else:
-                self.frame.show()
+                self._is_ctrl = False
+                self._frame_selection_rect.show()
             return super().mousePressEvent(event)
 
     def wheelEvent(self, event):

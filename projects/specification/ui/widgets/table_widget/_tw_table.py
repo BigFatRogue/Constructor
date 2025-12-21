@@ -8,7 +8,6 @@ from projects.specification.ui.widgets.browser_widget.bw_specefication_item impo
 
 from projects.specification.core.data_tables import ColumnConfig, InventorSpecificationDataItem, SpecificationDataItem
 
-from projects.specification.ui.widgets.table_widget.tw_table_item import TableItem
 from projects.specification.ui.widgets.table_widget.tw_horizontal_header import HorizontalWithOverlayWidgets, ButtonHorizontalHeader
 from projects.specification.ui.widgets.table_widget.tw_vertical_header import VerticallWithOverlayWidgets, CheckBoxVerticalHeader
 
@@ -73,7 +72,7 @@ class Table(QtWidgets.QTableWidget):
         self.current_item_tree = item
         table_data: SpecificationDataItem = item.table_data
         dataset = table_data.get_data()
-        columns: tuple[ColumnConfig] = table_data.config.columns + table_data.unique_config.columns
+        columns: tuple[ColumnConfig] = table_data.general_config.columns + table_data.unique_config.columns
         columns_name: tuple[str, ...] = tuple(col.column_name for col in columns if col.is_view)
         
         self.setRowCount(len(dataset))

@@ -32,12 +32,15 @@ from projects.specification.core.functions import get_now_time
 
 
 class GeneralDataItem:
+    """
+    Базовый класс для хранения и обработки данных проекта (свойства проекта, таблицы)
+    """
     def __init__(self):
         self.database: DataBase = None        
         self.data: dict[str, str] | list[list[DATACLASSES.DATA_CELL]] = None
         self.config: TableConfig = None
-        self.__is_init: bool = False
-        self.__is_save: bool = False
+        self._is_init: bool = False
+        self._is_save: bool = False
 
     def get_data(self) -> dict[str, str] | list[list[DATACLASSES.DATA_CELL]]:
         return self.data
@@ -47,17 +50,23 @@ class GeneralDataItem:
     
     @property
     def is_init(self) -> bool:
-        return self.__is_init
+        return self._is_init
 
     def set_is_init(self, value: bool) -> True:
-        self.__is_init = value
+        self._is_init = value
 
     @property
     def is_save(self) -> bool:
-        return self.__is_save
+        return self._is_save
 
-    def set_is_save(self, value: bool) -> True:
-        self.__is_save = value
+    def set_is_save(self, value: bool) -> None:
+        """
+        Установка флага, что данные сохранены в БД
+        
+        :param value: True - сохранены, False - не сохранены
+        :type value: bool
+        """
+        self._is_save = value
 
     def save(self) -> None:
         """
@@ -66,21 +75,6 @@ class GeneralDataItem:
         Сохранение self.data в БД для save
 
         :return:
-        """
-        ...
-
-    def __insert_style_sql(self, style_cells: list[DATACLASSES.CELL_STYLE], style_section: list[DATACLASSES.SECTION_STYLE]) -> None:
-        """
-        Сохранение стилей для таблицы
-        
-        """
-
-    def load_data(self) -> dict[str, str] | list[list[DATACLASSES.DATA_CELL]] | None:
-        """
-        Загрузка data из БД
-        
-        :return: dict для свойств проекта и list для спецификаций
-        :rtype: dict | list | None
         """
         ...
 
@@ -102,32 +96,65 @@ class GeneralDataItem:
         """
         
     def get_filepath(self) -> str:
+        """
+        Получение полного пути файла БД, где хранится проект
+        
+        :return: полный путь
+        :rtype: str
+        """
         return '' if self.database is None else self.database.filepath
 
     def get_filed_and_count(self, columns: list[ColumnConfig]) -> tuple[str, str]:
+        """
+        - Генерация строчка, где перечислены поля через запятную без id\n
+        - А также строчка "?, ? ...", где количество вопросов равно длине полей без id"\n
+        Нужно для формирования строчки SQL запроса
+        
+        :param columns: список строчек
+        :type columns: list[ColumnConfig]
+        :return:  'number, description, ...' '?, ?, ...'
+        :rtype: tuple[str, str]
+        """
         fields = tuple(col.field for col in columns if not col.is_id)
         return ', '.join(fields), ', '.join(['?'] * len(fields))
 
-    def get_last_id(self) -> int:
-        return self.database.execute('SELECT last_insert_rowid();').fetchall()[0][0]
-
-    def __create_sql(self) -> None:
+    def _create_sql(self) -> None:
         ...
     
-    def __insert_sql(self) -> None:
+    def _insert_sql(self) -> None:
         ...
     
-    def __update_sql(self) -> None:
+    def _insert_style_sql(self, x: int, y: int, cell: DATACLASSES.DATA_CELL, fields_style: tuple[str,...], fields_style_link: tuple[str, ...]) -> None:
+        """
+        Добавления стилей для каждой ячейки в БД
+        
+        :param x: номер столбца
+        :type x: int
+        :param y: номер строки
+        :type y: int
+        :param cell: ячейка
+        :type cell: DATACLASSES.DATA_CELL
+        :param fields_style: список имён полей стиливой таблицы
+        :type fields_style: tuple[str, ...]
+        :param fields_style_link: списко имён полей таблицы стилей ячейки
+        :type fields_style_link: tuple[str, ...]
+        """
+
+    def _update_sql(self) -> None:
         ...
 
-    def __select_sql(self) -> tuple | None:
+    def _select_sql(self) -> tuple | None:
         ... 
     
-    def __delee_sql(self) -> None:
+    def _delete_sql(self) -> None:
         ...
     
 
 class PropertyProjectData(GeneralDataItem):
+    """
+    - Хранения и обработка данных проекта
+    - Выгрузка из БД всех таблиц 
+    """
     def __init__(self):
         super().__init__()
         self.config: TableConfig = PROPERTY_PROJECT_CONFIG
@@ -141,55 +168,90 @@ class PropertyProjectData(GeneralDataItem):
                 raise SystemError('Необходимо передать filepath')
 
         if not self.is_init:
-            self.__create_sql()
-            self.__insert_sql()
+            self._create_sql()
+            self._insert_sql()
         else:
-            self.__update_sql()
+            self._update_sql()
         
         self.database.commit()
         self.database.close()
 
-    def load_data(self, filepath: str)-> list[dict[str, str | list[list[DATACLASSES.DATA_CELL]]]]:
+    def load_project(self, filepath: str)-> list[dict[str, str | list[list[DATACLASSES.DATA_CELL]]]]:
+        """
+        Загрузка всех данных по проекту
+        
+        :param filepath: Полный путь к проекту
+        :type filepath: str
+        :return: таблицы и их свойства
+        :rtype: list[dict[str, str | list[list[DATA_CELL]]]]
+        """
         if self.database is None:
             if filepath:
                 self.database = DataBase(filepath) 
             else:
                 raise SystemError('Необходимо передать filepath')
 
-        self.set_data(self.__select_sql())
-        tables = self.__get_all_specification_data()
+        self.set_data(self._select_sql())
+        tables = self._get_all_specification_data()
         self.set_is_init(True)
         self.database.close()
 
         return tables
     
     def delete(self):
+        """
+        Удаление проекта из БД
+        """
         return super().delete()
 
-    def __create_sql(self):
-        columns_sql = ", ".join(col.sql_definition for col in self.config.columns)
-        self.database.execute(f"CREATE TABLE IF NOT EXISTS {self.config.name} ({columns_sql})")
+    def _create_sql(self):
+        """
+        Создание таблицы свойств проекта без таблиц
+        """
+        fields = tuple(col.sql_definition for col in self.config.columns)
+        self.database.create(self.config.name, fields)
 
-    def __insert_sql(self):
-        str_values = ', '.join(['?' for _ in range(len(self.data))])
-        str_fields = ', '.join([field for field in self.data.keys()])
-        self.database.execute(f'INSERT INTO {self.config.name} ({str_fields}) VALUES({str_values})', [v for v in self.data.values()])
+    def _insert_sql(self):
+        """
+        Вставка строк в таблицу свойств проекта
+        """
+        self.database.insert(self.config.name, tuple(self.data.keys()), tuple(self.data.values()))
 
-    def __update_sql(self):      
-        str_values = ', '.join([f'{key} = ?' for key in self.data.keys()])
-        self.database.execute(f'UPDATE {self.config.name} SET {str_values} WHERE id=1', list(self.data.values()))
+    def _update_sql(self):  
+        """
+        Обновление данных в таблице свойств проекта
+        """
+        self.database.update(table_name=self.config.name, 
+                            id_row=1, 
+                            fields=tuple(self.data.keys()), 
+                            value=tuple(self.data.values()))    
     
-    def __select_sql(self) -> dict[str, str]:
+    def _select_sql(self) -> dict[str, str]:
+        """
+        Получение из БД свойст проекта без таблиц
+        
+        :param self: Описание
+        :return: словарь, key ключ имя поля, value его значение 
+        :rtype: dict[str, str]
+        """
+        
         view_fields = self.config.get_view_fields()
-        str_fields = ', '.join(view_fields)
-        res = self.database.execute(f'SELECT {str_fields} FROM {self.config.name}')
-
+        res = self.database.select(self.config.name, view_fields)
+        
         return {k: v for k, v in zip(view_fields, res.fetchall()[0])} if res else {}
 
-    def __delete_sql(self) -> None:
-        ...
+    def _delete_sql(self) -> None:
+        """
+        Реализация метода удаление проекта из БД
+        """
 
-    def __get_all_specification_data(self) -> list[dict[str, list[list[DATACLASSES.DATA_CELL]]]]:    
+    def _get_all_specification_data(self) -> list[dict[str, list[list[DATACLASSES.DATA_CELL]]]]:
+        """
+        Загрузка всех спецификация из БД соответствующих данному проекту
+        
+        :return: таблицы и их свойства
+        :rtype: list[dict[str, list[list[DATA_CELL]]]]
+        """    
         if SPECIFICATION_CONFIG.name not in self.database.get_exist_tables():
             return
         
@@ -203,135 +265,96 @@ class PropertyProjectData(GeneralDataItem):
             for col, value in zip(columns, row):
                 table[col.field] = value
             
-            if table['type_spec'] == ENUMS.NAME_TABLE_SQL.INVENTOR.value:
-                data_item = InventorSpecificationDataItem(self.database)
-                data_item.set_sid(table['id'])
-            elif table['type_spec'] == ENUMS.NAME_TABLE_SQL.BUY.value:
-                ...
-            elif table['type_spec'] == ENUMS.NAME_TABLE_SQL.PROD.value:
-                ...
-            data_item.load_data()
-            # query = f"""
-            # SELECT * 
-            # FROM {ENUMS.NAME_TABLE_SQL.GENERAL.value} 
-            # LEFT JOIN {table['type_spec']} ON {table['type_spec']}.parent_id = {ENUMS.NAME_TABLE_SQL.GENERAL.value}.id 
-            # WHERE {ENUMS.NAME_TABLE_SQL.GENERAL.value}.parent_id = {table['id']}
-            # ORDER BY number_row
-            # """
+            query = f"""
+            SELECT * 
+            FROM {ENUMS.NAME_TABLE_SQL.GENERAL.value} 
+            LEFT JOIN {table['type_spec']} ON {table['type_spec']}.parent_id = {ENUMS.NAME_TABLE_SQL.GENERAL.value}.id 
+            WHERE {ENUMS.NAME_TABLE_SQL.GENERAL.value}.parent_id = {table['id']}
+            ORDER BY number_row
+            """
 
-            # data = [[DATACLASSES.DATA_CELL(value=cell) for cell in row] for row in self.database.execute(query).fetchall()]
-            table['data'] = data_item
+            data = [[DATACLASSES.DATA_CELL(value=cell) for cell in row] for row in self.database.execute(query).fetchall()]
+            table['data'] = data
+
+            cells_style = self._load_styles(table['id'])
+            for (row, column), cell_style in cells_style.items():
+                for name_style, value in cell_style.items():
+                    setattr(data[row][column], name_style, value)
+
             tables.append(table)
         return tables
 
+    def _load_styles(self, sid: int) -> dict[tuple[int, int], dict[str, str | bool | int]]:
+        """
+        Загрузка стилей для таблицы
+        
+        :param sid: номер id спецификации
+        :type sid: int
+        :return: {(row, column): {'align_h': 28, ...}}
+        :rtype: dict[tuple[int, int], dict[str, str | bool | int]]
+        """
+        fields_style = tuple(col.field for col in STYLE_CELL_CONFIG.columns if not col.is_id)
+        
+        add_query = f""" LEFT JOIN {STYLE_CELL_LINK_CONFIG.name} ON {STYLE_CELL_LINK_CONFIG.name}.style_id = {STYLE_CELL_CONFIG.name}.id
+        WHERE {STYLE_CELL_LINK_CONFIG.name}.parent_id = {sid}"""
+
+        fields = ('row', 'column') + fields_style
+        res = self.database.select(STYLE_CELL_CONFIG.name, fields, add_query).fetchall()
+
+        dct = {}
+        for data in res:
+            row, column, *style = data
+            dct[(row, column)] = {field: style_value for field, style_value in zip(fields_style, style)}
+        
+        return dct
 
 class SpecificationDataItem(GeneralDataItem):
     def __init__(self, database, unique_config: TableConfig):
         super().__init__()
         self.database: DataBase = database
+
         self.specification_config: TableConfig = SPECIFICATION_CONFIG
-        self.config: TableConfig = GENERAL_ITEM_CONFIG
+        self.general_config: TableConfig = GENERAL_ITEM_CONFIG
         self.unique_config: TableConfig = unique_config
         self.fields_config: TableConfig = FIELDS_CONFIG
         self.style_cell_config: TableConfig = STYLE_CELL_CONFIG
         self.style_cell_link_config: TableConfig = STYLE_CELL_LINK_CONFIG
         self.style_table_config: TableConfig = STYLE_SECTION_CONFIG
-        self.data_index_view = self.__set_data_index()
+        
         self.data: list[list[DATACLASSES.DATA_CELL]] = None
         self.type_spec = None
         self._sid: int = None
+
+        self.total_columns: tuple[ColumnConfig] = tuple(self.general_config.columns + self.unique_config.columns)  
+        self.fields_general: tuple[str] = tuple(col.field for col in self.general_config.columns)
+        self.fields_unique: tuple[str] = tuple(col.field for col in self.unique_config.columns)
+        self.fields_style: tuple[str] = tuple(col.field for col in self.style_cell_config.columns)
+        self.fields_style_link: tuple[str] = tuple(col.field for col in self.style_cell_link_config.columns)
     
     def set_sid(self, sid: int) -> None:
         self._sid = sid
 
-    def __set_data_index(self) -> tuple[int, ...]:
+    def _set_data_index(self) -> tuple[int, ...]:
         """
         Формирование только видимых индексов таблицы
 
         :return: [0, 1, 3, 7, ...] - индексы колонок у которы is_view = True
         :rtype: tuple[int, ...]
         """
-        return tuple(i for i, col in enumerate(self.config.columns + self.unique_config.columns) if col.is_view)
+        return tuple(i for i, col in enumerate(self.general_config.columns + self.unique_config.columns) if col.is_view)
 
     def get_data(self) -> list[list[DATACLASSES.DATA_CELL]]:
         return super().get_data()
 
-    def get_cell(self, row: int, column: int) -> DATACLASSES.DATA_CELL:
-        """
-        Получение ячейки по указанному адресу
-        
-        :param row: Номер строки
-        :type row: int
-        :param column: Номер столбца
-        :type column: int
-        :return: Ячейка
-        :rtype: DATA_CELL
-        """
-        return self.data[row][self.data_index_view[column]]
-
-    def set_cell(self, row: int, column: int, cell: DATACLASSES.DATA_CELL) -> None:
-        """
-        Присваивание значения по указанному адресу
-        
-        :param row: Номер строки
-        :type row: int
-        :param column: Номер столбца
-        :type column: int
-        :param cell: Ячейка
-        :type cell: DATACLASSES.DATA_CELL
-        """
-        self.data[row][self.data_index_view[column]] = cell
-
-    def get_value(self, row: int, column: int) -> int | float | str | None:
-        """
-        Получение значения из указаной ячейки
-
-        :param row: Номер строки
-        :type row: int
-        :param column: Номер колонки
-        :type column: int
-        :return: Значение ячейки
-        :rtype: int | float | str | None
-        """
-        return self.get_cell(row, column).value
-
-    def set_value(self, row: int, column: int, value: int | float | str | None) -> None:
-        """
-        Присваивание значения по указанному адресу
-        
-        :param row: Номер строки
-        :type row: int
-        :param column: Номер колонки
-        :type column: int
-        :param value: Новое значение ячейки
-        :type value: TData
-        """
-        self.data[row][self.data_index_view[column]].value = value
-    
-    def load_data(self) -> None:
-        if self._sid:
-            query = f"""
-            SELECT * 
-            FROM {ENUMS.NAME_TABLE_SQL.GENERAL.value} 
-            LEFT JOIN {self.type_spec.value} ON {self.type_spec.value}.parent_id = {ENUMS.NAME_TABLE_SQL.GENERAL.value}.id 
-            WHERE {ENUMS.NAME_TABLE_SQL.GENERAL.value}.parent_id = {self._sid}
-            ORDER BY number_row
-            """
-            self.set_data(
-                [[DATACLASSES.DATA_CELL(value=cell) if col.is_view else cell for col, cell in zip(self.config.columns + self.unique_config.columns, row)] 
-                    for row in self.database.execute(query).fetchall()]
-            )
-        else:
-            raise AttributeError('Отсутствует sid')
-
     def save(self) -> None:
         if not self.is_init:
-            self.__create_sql()
-            self.__insert_specification_sql(self.type_spec)
-            self.__insert_in_sql_filed()
-            self.__insert_or_update()
+            self._create_sql()
+            self._insert_specification_sql(self.type_spec)
+            self._insert_in_sql_filed()
+            # self._insert_sql()
+            self._insert_or_update_sql()
         else:
-            self.__insert_or_update()
+            self._insert_or_update()
         
         self.database.commit()
         self.database.close()
@@ -342,170 +365,114 @@ class SpecificationDataItem(GeneralDataItem):
             self.database.commit()
             self.database.close()
         
-    def __create_sql(self) -> None:
-        for config in (self.specification_config, self.config, self.unique_config, self.style_cell_config, self.style_cell_link_config, self.style_table_config):
+    def _create_sql(self) -> None:
+        """
+        Создание всех стандартных таблиц, если они ещё не созданы
+        """
+        for config in (self.specification_config, self.general_config, self.unique_config, self.style_cell_config, self.style_cell_link_config, self.style_table_config):
             if config:
-                columns_sql = ", ".join(col.sql_definition for col in config.columns + config.columns_property)
-                self.database.execute(f"CREATE TABLE IF NOT EXISTS {config.name} ({columns_sql})")
+                columns_sql = tuple(col.sql_definition for col in config.columns + config.columns_property)
+                self.database.create(config.name, columns_sql)
 
         self.database.commit()
 
-    def __insert_specification_sql(self, type_spec: ENUMS.NAME_TABLE_SQL) -> None:
-        field_sql = tuple(col.field for col in self.specification_config.columns if not col.is_id)
-        field_str = ', '.join(field_sql)
-        values_str = ', '.join(['?'] * len(field_sql))
+    def _insert_specification_sql(self, type_spec: ENUMS.NAME_TABLE_SQL) -> None:
+        """
+        Вставка записи в таблицу спецификаций о новой таблице
         
+        :param type_spec: тип передаваемой таблицы
+        :type type_spec: ENUMS.NAME_TABLE_SQL
+        """
+        
+        field_sql = tuple(col.field for col in self.specification_config.columns if not col.is_id)
         now_str = get_now_time()
 
-        self.database.execute(f"INSERT INTO {self.specification_config.name} ({field_str}) VALUES({values_str})", (type_spec.value, now_str, now_str))
-        self._sid = self.database.execute('SELECT last_insert_rowid();').fetchall()[0][0]
+        self.database.insert(self.specification_config.name, field_sql, (type_spec.value, now_str, now_str))
+        self._sid = self.database.get_last_id()
 
         self.database.commit()
     
-    def __insert_in_sql_filed(self) -> None:
-        columns_sql = ", ".join(col.sql_definition for col in self.fields_config.columns)
-        self.database.execute(f"CREATE TABLE IF NOT EXISTS {self.fields_config.name} ({columns_sql})")
+    def _insert_in_sql_filed(self) -> None:
+        """
+        Вставка названий колонк для спецификаций в БД
+        """
+        columns_sql = tuple(col.sql_definition for col in self.fields_config.columns)
+        self.database.create(self.fields_config.name, columns_sql)
         
         fields = tuple(col.field for col in self.fields_config.columns if not col.is_id)
-        str_fields = ', '.join(fields)
 
-        for config in (self.config, self.unique_config):
+        for config in (self.general_config, self.unique_config):
             for column in config.columns:
                 if not column.is_id:
                     values = tuple(getattr(column,  field) for field in fields if hasattr(column, field))
-                    count_values = ', '.join(['?'] * len(values))
-                    self.database.execute(f"INSERT INTO {self.fields_config.name} ({str_fields}) VALUES({count_values})", values)
+                    self.database.insert(self.fields_config.name, fields, values)
         self.database.commit()
     
-    def __insert_or_update(self) -> None:
-        total_columns: list[ColumnConfig] = self.config.columns + self.unique_config.columns
-        
-        str_field_config, str_values_config = self.config.get_str_field_and_value_filter()
-        str_field_unique_config, str_values_unique_config = self.get_filed_and_count(self.unique_config.columns)
-
-        str_field_style_cells, str_values_style_cells = self.get_filed_and_count(self.style_cell_config.columns)
-        str_field_style_cell_link, str_values_style_cell_link = self.get_filed_and_count(self.style_cell_link_config.columns)
-                
+    def _insert_or_update_sql(self) -> None:
         for y, row in enumerate(self.data):
-            value_config = []
-            value_unique_config = []
-
-            for x, (cell, col) in enumerate(zip(row, total_columns)):
-                cell_is_data_cell = isinstance(cell, DATACLASSES.DATA_CELL)
-                value = cell.value if cell_is_data_cell else cell
-                if x < len(self.config.columns):
-                    value_config.append(value)
+            if row[0].value is None:
+                self._insert_row_sql(y, row)
+            else:
+                self._update_row_sql(y, row)
+    
+    def _insert_row_sql(self, y: int, row: list[DATACLASSES.DATA_CELL]) -> None:
+        value_config = []
+        value_unique_config = []
+        for x, (cell, col) in enumerate(zip(row, self.total_columns)):
+            if not col.is_id:
+                if x < len(self.general_config.columns):
+                    value_config.append(cell.value)
                 else:
-                    value_unique_config.append(value)
+                    value_unique_config.append(cell.value)
 
-                if cell_is_data_cell:
-                    self.__insert_cell_style_sql(cell, str_field_style_cells, str_values_style_cells)
-                    self.__insert_cell_style_link_sql(y, x, str_field_style_cell_link, str_values_style_cell_link)
-     
-            if value_config[0] is None:
-                self.database.execute(f'INSERT INTO {self.config.name} ({str_field_config}) VALUES({str_values_config})', value_config[1:])
-                last_id = self.get_last_id()
-                self.__set_foreign_key(self.config, last_id=last_id, parent_id=self._sid)
-            else:
-                self.database.execute(f'UPDATE {self.config.name} SET {str_field_config} WHERE id={value_config[0]}', value_config)
+                if col.is_view:
+                    self._insert_style_sql(y, x, cell, self.fields_style[1:], self.fields_style_link[1:])
 
-            if value_unique_config[0] is None:
-                self.database.execute(f'INSERT INTO {self.unique_config.name} ({str_field_unique_config}) VALUES({str_values_unique_config})', value_unique_config[1:])
-                last_id = self.get_last_id()
-                self.__set_foreign_key(self.unique_config, last_id=last_id, parent_id=last_id)
-            else:
-                self.database.execute(f'UPDATE {self.unique_config.name} SET {str_field_unique_config} WHERE id={value_unique_config[0]}', value_unique_config)
+        # Вставка значений в основную таблицу и добавления foreign ключей
+        self.database.insert(self.general_config.name, self.fields_general[1:], value_config)
+        last_id = self.database.get_last_id()
+        self._set_foreign_key(self.general_config, last_id=last_id, parent_id=self._sid)
 
+        # Вставка значений в основную таблицу и добавления foreign ключей
+        self.database.insert(self.unique_config.name, self.fields_unique[1:], value_unique_config)
+        last_id = self.database.get_last_id()
+        self._set_foreign_key(self.unique_config, last_id=last_id, parent_id=last_id)
+    
+    def update_row_sql(self, number: int, row: list[DATACLASSES.DATA_CELL]) -> None:
+        ...
 
-    def __insert_sql(self) -> None:
-        f_columns_without_id = lambda columns: [col for col in columns if not col.is_id]
-
-        str_field_config, str_values_config = self.get_filed_and_count(f_columns_without_id(self.config.columns))
-        str_field_unique_config, str_values_unique_config = self.get_filed_and_count(f_columns_without_id(self.unique_config.columns))
-
-        str_field_style_cells, str_values_style_cells = self.get_filed_and_count(f_columns_without_id(self.style_cell_config.columns))
-        str_field_style_cell_link, str_values_style_cell_link = self.get_filed_and_count(f_columns_without_id(self.style_cell_link_config.columns))
-        
-        total_columns: list[ColumnConfig] = self.config.columns + self.unique_config.columns
-        
-        for y, row in enumerate(self.data):
-            value_config = []
-            value_unique_config = []
-            for x, (cell, col) in enumerate(zip(row, total_columns)):
-                if not col.is_id:
-                    value = cell.value if isinstance(cell, DATACLASSES.DATA_CELL) else cell
-                    if x < len(self.config.columns):
-                        value_config.append(value)
-                    else:
-                        value_unique_config.append(value)
-                    
-                    if isinstance(cell, DATACLASSES.DATA_CELL):
-                        self.__insert_cell_style_sql(cell, str_field_style_cells, str_values_style_cells)
-                        self.__insert_cell_style_link_sql(y, x, str_field_style_cell_link, str_values_style_cell_link)
-
-            self.database.execute(f'INSERT INTO {self.config.name} ({str_field_config}) VALUES({str_values_config})', value_config)
-            last_id = self.get_last_id()
-            self.__set_foreign_key(self.config, last_id=last_id, parent_id=self._sid)
-
-            self.database.execute(f'INSERT INTO {self.unique_config.name} ({str_field_unique_config}) VALUES({str_values_unique_config})', value_unique_config)
-            last_id = self.get_last_id()
-            self.__set_foreign_key(self.unique_config, last_id=last_id, parent_id=last_id)
-        
-        self.database.commit()
-
-    def __insert_value_sql(self, row: list[DATACLASSES.DATA_CELL]) -> None:
-        start = 0
-        for config in (self.config, self.unique_config):
-            if config:
-                len_columns = len(config.columns)
-                part_row = row[start: start + len_columns]
-                start = len_columns
-
-                str_fields, str_values = self.get_filed_and_count(config.columns)
-
-                part_data_row = [data.value for data, col in zip(part_row, config.columns) if not col.is_id]
-                    
-                self.database.execute(f'INSERT INTO {config.name} ({str_fields}) VALUES({str_values})', part_data_row)
-                if config.parent_config:
-                    last_id = self.database.execute('SELECT last_insert_rowid();').fetchall()[0][0]
-                    parent_id = self._sid if config == self.config else last_id
-                    self.__set_foreign_key(config, last_id=last_id, parent_id=parent_id)
-
-    def __set_foreign_key(self, config: TableConfig, last_id:int, parent_id: int) -> None:
+    def _set_foreign_key(self, config: TableConfig, last_id:int, parent_id: int) -> None:
         field_foreign_key = config.get_foreign_field()
         
         if field_foreign_key:       
             self.database.execute(f"UPDATE {config.name} SET {field_foreign_key} = '{parent_id}' WHERE id={last_id}")
 
-    def __insert_cell_style_sql(self, cell: DATACLASSES.DATA_CELL, str_field_style_cells, str_values_style_cells) -> None:
+    def _insert_style_sql(self, y, x, cell, fields_style, fields_style_link):
+        # Добавление уникальных стилей в таблицу стилей
         value_style_cell = [getattr(cell, col.field) for col in self.style_cell_config.columns if hasattr(cell, col.field)]
-        self.database.execute(f"""
-                              INSERT INTO {self.style_cell_config.name} ({str_field_style_cells}) 
-                              VALUES({str_values_style_cells})
-                              ON CONFLICT({str_field_style_cells})
-                              DO NOTHING
-                              """, value_style_cell)
+        add_query = f'ON CONFLICT({", ".join(fields_style)}) DO NOTHING'
+        self.database.insert(self.style_cell_config.name, fields_style, value_style_cell, add_query)
 
-    def __insert_cell_style_link_sql(self, row:int, column: int, str_field_style_cell_link, str_values_style_cell_link) -> None:
-        self.database.execute(f'INSERT INTO {self.style_cell_link_config.name} ({str_field_style_cell_link}) VALUES({str_values_style_cell_link})', [row, column, self._sid])
+        # Добавление адреса ячейка и ссылки на стиль
+        add_query_select = ' WHERE ' + ' AND '.join([f"{field} = {style}" if isinstance(style, bool) else f"{field} = '{style}'"
+                                                                for field, style in zip(fields_style, value_style_cell)])
 
+        style_id = self.database.select(self.style_cell_config.name, ('id', ), add_query_select).fetchall()[0][0]
 
-        # fields_style_table = ", ".join(col.sql_definition for col in self.style_table_config.columns if not col.is_id)
-        # str_values_fields_style_table = ', '.join(['?'] * len(fields_style_table))
+        self.database.insert(self.style_cell_link_config.name, fields_style_link, [y, x, style_id, self._sid])
 
-        # for st_cell in style_cells:
-        #     value = (st_cell.)
+        #TODO реализовать вставка размеров заголовков таблицы
 
-    def __update_sql(self) -> None:
+    def _update_sql(self) -> None:
         f_columns_without_id = lambda columns: [col for col in columns if not col.is_id]
 
-        str_field_config, str_values_config = self.get_filed_and_count(f_columns_without_id(self.config.columns))
+        str_field_config, str_values_config = self.get_filed_and_count(f_columns_without_id(self.general_config.columns))
         str_field_unique_config, str_values_unique_config = self.get_filed_and_count(f_columns_without_id(self.unique_config.columns))
 
         str_field_style_cells, str_values_style_cells = self.get_filed_and_count(f_columns_without_id(self.style_cell_config.columns))
         str_field_style_cell_link, str_values_style_cell_link = self.get_filed_and_count(f_columns_without_id(self.style_cell_link_config.columns))
 
-        total_columns: list[ColumnConfig] = self.config.columns + self.unique_config.columns
+        total_columns: list[ColumnConfig] = self.general_config.columns + self.unique_config.columns
         
         for y, row in enumerate(self.data):
             value_config = []
@@ -513,17 +480,17 @@ class SpecificationDataItem(GeneralDataItem):
             for x, (cell, col) in enumerate(zip(row, total_columns)):
                 if not col.is_id:
                     value = cell.value if isinstance(cell, DATACLASSES.DATA_CELL) else cell
-                    if x < len(self.config.columns):
+                    if x < len(self.general_config.columns):
                         value_config.append(value)
                     else:
                         value_unique_config.append(value)
 
             if isinstance(cell, DATACLASSES.DATA_CELL):
-                    self.__insert_cell_style_sql(cell, str_field_style_cells, str_values_style_cells)
-                    self.__insert_cell_style_link_sql(y, x, str_field_style_cell_link, str_values_style_cell_link)
+                    self._insert_cell_style_sql(cell, str_field_style_cells, str_values_style_cells)
+                    self._insert_cell_style_link_sql(y, x, str_field_style_cell_link, str_values_style_cell_link)
             
             row_id = self.get_index_from_name_filed()
-            self.database.execute(f'UPDATE {self.config.name} SET {str_field_config} WHERE id={self.data}', data)
+            self.database.execute(f'UPDATE {self.general_config.name} SET {str_field_config} WHERE id={self.data}', data)
             # self.database.execute(f'INSERT INTO {self.config.name} ({str_field_config}) VALUES({str_values_config})', value_config)
             # last_id = self.get_last_id()
             # self.__set_foreign_key(self.config, last_id=last_id, parent_id=self._sid)
@@ -532,15 +499,15 @@ class SpecificationDataItem(GeneralDataItem):
             # last_id = self.get_last_id()
             # self.__set_foreign_key(self.unique_config, last_id=last_id, parent_id=last_id)
 
-        str_values = [', '.join([f'{col.field} = ?' for col in config.columns]) for config in (self.config, self.unique_config)]
+        str_values = [', '.join([f'{col.field} = ?' for col in config.columns]) for config in (self.general_config, self.unique_config)]
         
-        index_config = (0, len(self.config.columns))
+        index_config = (0, len(self.general_config.columns))
         index_unique = (index_config[1], index_config[1] + len(self.unique_config.columns))
         
 
 
         for row in self.data:
-            for name, str_value, index in zip((self.config.name, self.unique_config.name), 
+            for name, str_value, index in zip((self.general_config.name, self.unique_config.name), 
                                               str_values, 
                                               (index_config, index_unique)):
                 
@@ -550,7 +517,7 @@ class SpecificationDataItem(GeneralDataItem):
                 self.database.execute(f'UPDATE {name} SET {str_value} WHERE id={data[0]}', data)
 
     def get_index_from_name_filed(self, field: str) -> int:
-        for i, col in enumerate(self.config.columns + self.unique_config.columns):
+        for i, col in enumerate(self.general_config.columns + self.unique_config.columns):
             if col.field == field:
                 return i
         return -1 

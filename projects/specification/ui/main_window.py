@@ -28,7 +28,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_status_bar()
 
-        self.browser_widget.open_project(r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\Proekt 1.scdata')
+        # self.browser_widget.open_project(r'D:\Python\AlfaServis\Constructor\Proekt 1.scdata')
     
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
@@ -98,10 +98,18 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.timer_status.timeout.connect(self.reset_status_bar)
 
     def save(self) -> None:
+        """
+        Сохранение данных в БД
+
+        Вначале вызывается сохранение для content_widget, так как оттуда могут браться данные для сохранения 
+        """
         self.content_widget.save()
         self.browser_widget.save()
     
     def open_project(self) -> None:
+        """
+        Загрузка свойств проекта и всех таблиц из БД
+        """
         dlg = QtWidgets.QFileDialog(self)
         filename = dlg.getOpenFileName(self, 'Выбрать файл', filter=f'SPEC файл (*.{ENUMS.CONSTANTS.MY_FORMAT.value})')
         if filename and filename[0]:
@@ -110,11 +118,21 @@ class WindowSpecification(QtWidgets.QMainWindow):
             self.browser_widget.open_project(filepath)
     
     def set_status(self, text: str, timeout=3000) -> None:
+        """
+        Отображения текущих действий программы в status bar 
+        
+        :param text: текущие джействие
+        :type text: str
+        :param timeout: время (мсек), которое будет видно сообщение
+        """
         self.timer_status.stop()
         self.statusBar().showMessage(text)
         self.timer_status.start(timeout)
 
     def reset_status_bar(self) -> None:
+        """
+        Отоброжение в status bar стандартной надписи: "Ожидание...."
+        """
         self.statusBar().showMessage(ENUMS.STATUS_BAR.WAIT.value) 
 
 

@@ -1,5 +1,5 @@
 import os
-from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtCore
 
 if __name__ == '__main__':
     import sys
@@ -8,96 +8,103 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import SETTING, ENUMS, DATACLASSES
+from projects.specification.config.app_context.app_context import SETTING
 
-
-from projects.specification.core.database import DataBase
-from projects.specification.core.data_tables import InventorSpecificationDataItem
+from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.ui.widgets.table_widget.tw_table_view import TableView
+from projects.specification.ui.widgets.table_widget.tw_zoom import ZoomTable
+from projects.specification.ui.widgets.table_widget.tw_horizontal_header import HorizontalWithOverlayWidgets
+from projects.specification.ui.widgets.table_widget.tw_vertical_header import VerticallWithOverlayWidgets
+from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
 
 from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
 
-from projects.specification.ui.widgets.table_widget.tw_table import Table
-from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
-from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import AlignCellBlock, FontStyleBlock
-from projects.specification.ui.widgets.table_widget.tw_selection_table import SelectionRect
-from projects.specification.ui.widgets.table_widget.tw_zoom import ZoomTable
-
-
-from projects.tools.custom_qwidget.line_separate import QHLineSeparate
+from projects.specification.core.data_tables import SpecificationDataItem, InventorSpecificationDataItem
 
 
 class TableWidget(QtWidgets.QWidget):
+    """
+    Виджет для отображения данных проекта (свойства проекта, таблицы)
+    """
+
     signal_change_table = QtCore.pyqtSignal()
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.current_tree_item: TableBrowserItem = None
-        self.control_panel: ControlPanelTable = None
-        self.table_data = None
+        self.range_zoom = (10, 400, 5)
 
         self.v_layout = QtWidgets.QVBoxLayout(self)
-        self.v_layout.setSpacing(5)
 
-        self.table = Table(self)
-
-        # self.table.signal_sorted_column.connect(self.sorted_column)
-        # self.table.signal_sorted_columns.connect(self.sorted_columns)
-        # self.table.signal_change_table.connect(self.change_table)
-        self.v_layout.addWidget(self.table)
-
-        self.selection_rect = SelectionRect(self.table)
-        self.table_zoom = ZoomTable(self, self.table)
-        self.v_layout.addWidget(self.table_zoom)
-
-        self.table_zoom.signal_current_zoom.connect(self.selection_rect.resize_rect)
-        self.table.signal_resize_header.connect(self.selection_rect.resize_rect)
-        self.table.signal_zoom_in.connect(self.table_zoom.zoom_in)
-        self.table.signal_zoom_out.connect(self.table_zoom.zoom_out)
-
-        self.table_zoom.signal_current_zoom.connect(self.signal_change_table.emit)
-        self.table.signal_resize_header.connect(self.signal_change_table.emit)
-        self.table.itemChanged.connect(self.signal_change_table.emit)
-
-    def set_control_panel(self) -> ControlPanelTable:
-        self.control_panel = ControlPanelTable(self, self.table)
-        self.selection_rect.signal_view_style_cell.connect(self.control_panel.view_property)
-        self.v_layout.insertWidget(0, self.control_panel)
-        self.v_layout.addWidget(QHLineSeparate(self))
-        return self.control_panel
-
-    def populate(self, item: TableBrowserItem, is_read_only=True, has_horizontal_filter=True, has_vertical_check_box=True) -> None:
-        self.current_tree_item = item
-        is_init, is_save = self.current_tree_item.is_init, self.current_tree_item.is_save
-
-        self.table_data: InventorSpecificationDataItem = item.table_data
-        self.table.populate(item=item,
-                            has_horizontal_filter=has_horizontal_filter,
-                            has_vertical_check_box=has_vertical_check_box)
+        self.table_view = TableView(self)
+        self.table_model: DataTable = None
         
-        self.current_tree_item.set_is_init(is_init)
-        self.current_tree_item.set_is_save(is_save)
-            
-    # def sorted_column(self, data: tuple) -> None:
-    #     index_data, state_sorted = data
-    #     self.table_data.data.sort(key=lambda row: [str(i) for i in row][index_data], reverse=state_sorted == ENUMS.STATE_SORTED_COLUMN.SORTED)
-    #     self.populate(table_data=self.table_data)
-    #     self.table.reset_view_sorted_header()
+        self.horizontal_header = HorizontalWithOverlayWidgets(self.table_view, self.range_zoom)
+        self.horizontal_header.sectionResized.connect(self.table_view.resize_rect)      
+        self.horizontal_header.sectionResized.connect(self.signal_change_table.emit)  
+        self.table_view.setHorizontalHeader(self.horizontal_header)
+        
+        self.vertical_header = VerticallWithOverlayWidgets(self.table_view, self.range_zoom)
+        self.vertical_header.sectionResized.connect(self.table_view.resize_rect)
+        self.horizontal_header.sectionResized.connect(self.signal_change_table.emit)  
+        self.table_view.setVerticalHeader(self.vertical_header)
+        
+        self.control_panel = ControlPanelTable(self, self.table_view)
+        self.zoom_table = ZoomTable(self, self.range_zoom)
+        self.table_view.signal_change_zoom.connect(self.change_zoom)
+        self.zoom_table.signal_current_zoom.connect(self.horizontal_header.set_zoom)
+        self.zoom_table.signal_current_zoom.connect(self.vertical_header.set_zoom)
+        self.zoom_table.signal_current_zoom.connect(self.table_view.resize_rect)
 
-    # def sorted_columns(self, buttons: list[ButtonHorizontalHeader]) -> None:  
-    #     for btn in buttons[::-1]:
-    #         if (state := btn.state_sorted) != ENUMS.STATE_SORTED_COLUMN.EMPTY:
-    #             self.table_data.data.sort(key=lambda x: x[btn.data_index], reverse=state == ENUMS.STATE_SORTED_COLUMN.SORTED)
-    #     self.populate(table_data=self.table_data)
-    
-    # def save(self) -> None:
-    #     """
-    #     Передаёт стили из таблицы в активный элемент барузера
-    #     """
-    #     self.current_tree_item.set_style(self.table.get_style_cells(), self.table.get_style_section())
+        self.v_layout.addWidget(self.control_panel)
+        self.v_layout.addWidget(self.table_view)
+        self.v_layout.addWidget(self.zoom_table)
 
-    def change_table(self) -> None:
-        self.signal_change_table.emit()
+    def change_zoom(self, derection: int) -> None:
+        """
+        Измененеие масштабирования таблицы
+        
+        :param derection: derection > 0 - увеличение, derection < 0 уменьшение
+        :type derection: int
+        """
+        if derection > 0:
+            self.zoom_table.zoom_in()
+        else:
+            self.zoom_table.zoom_out()
 
+    def set_item(self, item_tree: TableBrowserItem) -> None:
+        """
+        Получение элемента дерева из бразуера, для отображения данных из элемента
+        
+        :param item_tree: элемент дерева браузера
+        :type item_tree: TableBrowserItem
+        """
+        self.table_view.hide_selection()
+        self.table_model = item_tree.table_data
+        self.table_model.set_range_step_zoom(self.range_zoom)
+        self.table_view.setModel(self.table_model)
+        
+        self.zoom_table.signal_current_zoom.connect(self.table_model.set_zoom)
+        
+        if isinstance(item_tree.item_data, InventorSpecificationDataItem):
+            self._set_item_invetor()
+
+    def _set_item_invetor(self) -> None:
+        """
+        Настройка отображения таблицы Inventor
+        """
+        self.horizontal_header.set_widget()
+        self.vertical_header.set_widget()
+        self.vertical_header.signal_select_row.connect(self.table_model.select_row)
+
+        self.control_panel.set_table_model(self.table_model)
+        self.control_panel.view_all_block(False)
+        self.control_panel.view_font_block(True)
+        self.control_panel.view_align_block(True)
+        
+        self.table_view.signale_change_selection.connect(self.control_panel.view_property)
+
+
+        self.table_view.setSpan(1, 0, 1, 5)
 
 
 class __Window(QtWidgets.QMainWindow):
@@ -116,19 +123,28 @@ class __Window(QtWidgets.QMainWindow):
         self.v_layout = QtWidgets.QVBoxLayout(self.central_widget)
 
         self.widgte_table = TableWidget(self)
-        control_panel = self.widgte_table.set_control_panel()
-        control_panel.add_block(FontStyleBlock)
-        control_panel.add_block(AlignCellBlock)
         self.v_layout.addWidget(self.widgte_table)
         
-        table_data = InventorSpecificationDataItem(DataBase('a'))
         filepath = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.05.01.00.000 - Инвентор.xlsx'
-        table_data.set_data(get_specifitaction_inventor_from_xlsx(filepath))
-        self.widgte_table.populate(table_data)
+        data = get_specifitaction_inventor_from_xlsx(filepath)
+        data_item = InventorSpecificationDataItem('')
+        data_item.set_data(data)
+        self.widgte_table.tmp_set_item(data_item)
+
+        # control_panel = self.widgte_table.set_control_panel()
+        # control_panel.add_block(FontStyleBlock)
+        # control_panel.add_block(AlignCellBlock)
+        # self.v_layout.addWidget(self.widgte_table)
+        
+        # table_data = InventorSpecificationDataItem(DataBase('a'))
+        # filepath = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.5.3.05.01.00.000 - Инвентор.xlsx'
+        # table_data.set_data(get_specifitaction_inventor_from_xlsx(filepath))
+        # self.widgte_table.populate(table_data)
                 
 
 
 if __name__ == '__main__':
+    import sys
     from projects.specification.core.data_loader import get_specifitaction_inventor_from_xlsx
     app = QtWidgets.QApplication(sys.argv)
     window = __Window()

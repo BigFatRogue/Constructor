@@ -3,21 +3,26 @@ from PyQt5 import QtWidgets
 
 from projects.specification.config.app_context.app_context import ENUMS
 
-from projects.specification.core.data_tables import PropertyProjectData, SpecificationDataItem
+from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.core.data_tables import GeneralDataItem
 
 
 
 class BrowserItem(QtWidgets.QTreeWidgetItem):
+    """
+    Базовй элемент дерева браузера
+    """
     def __init__(self, tree: QtWidgets.QTreeWidget, parent_item=None):
         super().__init__()
         self.tree = tree
         
-        self.type_item = None
+        self.type_item: ENUMS.TYPE_TREE_ITEM = None
         self.parent_item: BrowserItem = parent_item
         self.__is_init: bool = False
         self.__is_save: bool = False
         self.filepath: str = None
-        self.table_data: PropertyProjectData | SpecificationDataItem = None
+        self.table_data: DataTable = None
+        self.item_data: GeneralDataItem = None 
 
         # Для делегата
         self.setData(0, ENUMS.CONSTANTS.QROLE_LINK_ITEM_WIDGET_TREE.value, self)
@@ -30,23 +35,48 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
     
     @property
     def is_init(self) -> bool:
+        """
+        - False - если элемент был создан и не сохранён в БД
+        - True - сохранён в БД
+        """
         return self.__is_init
     
     @property
     def is_save(self) -> bool:
+        """
+        - False - элемент не сохранён
+        - True - элемент сохранён
+        """
         return self.__is_save
 
     def set_is_init(self, value: bool) -> None:
+        """
+        Установка статуса инициализирования в БД
+
+        :param value: 
+        - True - сохранён в БД
+        - False - создан но не сохранён в БД
+        """
         self.__is_init = value
-        if self.table_data:
-            self.table_data.set_is_init(value)
+        if self.item_data:
+            self.item_data.set_is_init(value)
         self.tree.update()
 
     def set_is_save(self, value: bool) -> None:
+        """
+        Установка статуса сохранения изменений элемента
+
+        :param value: 
+        - True - изменения сохранены
+        - False - изменения не сохранены
+        """
         self.__is_save = value
-        if self.table_data:
-            self.table_data.set_is_save(value)
+        if self.item_data:
+            self.item_data.set_is_save(value)
         self.tree.update()
 
     def save(self, *args) -> None:
+        """
+        Переопределяемый метод в потомках, для сохранения
+        """
         ...

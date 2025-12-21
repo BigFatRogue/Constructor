@@ -8,7 +8,6 @@ class DataCell:
     align_v: int = 128
     font_family: str = 'Arial'
     font_size: int = 12
-    font_size_view: int = 12
     bold: bool = False
     italic: bool = False
     underline: bool = False
@@ -40,5 +39,4 @@ class SectionStyle:
 @dataclass
 class AppContextDataClasses:
     DATA_CELL = DataCell
-    CELL_STYLE = CellStyle
     SECTION_STYLE = SectionStyle

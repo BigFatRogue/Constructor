@@ -76,20 +76,20 @@ class PagePropertyProject(PageContent):
     
     def populate(self, item: ProjectItem):
         super().populate(item)
-        data = self.current_item.table_data.get_data()
+        data = self.current_item.item_data.get_data()
         self.clear()
 
         for field, lineedit in self.dict_line_edit.items():
             lineedit.setText(data.get(field))
-        if (database := self.current_item.table_data.database):
+        if (database := self.current_item.item_data.database):
             self.lineedit_project_filepath.setText(database.filepath)
-        self.current_item.__is_save = True
+        self.current_item.set_is_save(True)
 
     def update_data_item(self):
-        data = self.current_item.table_data.get_data()
+        data = self.current_item.item_data.get_data()
         for field, lineedit in self.dict_line_edit.items():
             data[field] = lineedit.text()
-        self.current_item.table_data.set_data(data)
+        self.current_item.item_data.set_data(data)
 
     def save(self) -> None:
         if self.check_fill_lineedit():

@@ -57,9 +57,8 @@ class StateSortedColumn(Enum):
     
 
 class TypeBlockPropertyControlPanel(Enum):
-    MAIN = auto()
-    ALIGN = auto()
     FONT = auto()
+    ALIGN = auto()
     MARGIN = auto()
 
 

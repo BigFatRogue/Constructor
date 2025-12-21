@@ -6,6 +6,7 @@ class DataBase:
         self.filepath = filepath
         self.conn: sqlite3.Connection = None
         self.cur: sqlite3.Cursor = None
+        self._hash_str_fields: dict[tuple, str] = {}
     
     def connect(self) -> None:
         if self.conn:
@@ -59,6 +60,38 @@ class DataBase:
         #     print('Ошибка выполнения запроса')
         #     print(query, *args, **kwargs, sep='\n')
 
+    def get_last_id(self) -> int:
+        """
+        Последний добавленый id в БД. Должен вызывается сразу же после команды по вставки новой строки  
+        
+        :return: id
+        :rtype: int
+        """
+        return self.execute('SELECT last_insert_rowid();').fetchall()[0][0]
+
+    def _list_fields_to_str(self, fields: list[str] | tuple[str, ...]) -> str:
+        if not isinstance(fields, tuple):
+            fields = tuple(fields)
+
+        if fields not in self._hash_str_fields:
+            self._hash_str_fields[fields] = ', '.join(i for i in fields)
+
+        return self._hash_str_fields[fields]
+
+    def create(self, table_name: str, fields: list[str] | tuple[str, ...]) -> None:
+        self.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({self._list_fields_to_str(fields)})")
+
+    def insert(self, table_name: str, fields: list[str] | tuple[str, ...], values: list[str | int | float | bool], add_qurey: str = '') -> None:
+        count_values = ', '.join(['?'] * len(fields))
+        query = f"INSERT INTO {table_name} ({self._list_fields_to_str(fields)}) VALUES({count_values})" + add_qurey
+        self.execute(query, values)
+
+    def update(self, table_name: str, id_row: int, fields: list[str] | tuple[str, ...], value) -> None:
+        str_values = ', '.join([f'{f} = ?' for f in fields])
+        self.execute(f'UPDATE {table_name} SET {str_values} WHERE id={id_row}', value)
+
+    def select(self, table_table: str, fields: list[str] | tuple[str, ...], add_qurey='') -> sqlite3.Cursor:
+        return self.execute(f'SELECT {self._list_fields_to_str(fields)} FROM {table_table}' + add_qurey)
 
 if __name__ == '__main__':
     import os

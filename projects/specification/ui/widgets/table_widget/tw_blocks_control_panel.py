@@ -2,32 +2,58 @@ import os
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from projects.specification.config.app_context.app_context import SETTING, DATACLASSES
+from projects.specification.config.app_context.app_context import SETTING, DATACLASSES, ENUMS
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
-from projects.specification.ui.widgets.table_widget.tw_table import Table, TableItem
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
 
 class BlockControlPanel(QtWidgets.QWidget):
+    """
+    Базовый элемент для блока панели управления таблицей
+    """
     def __init__(self, parent: QtWidgets.QFrame, table_model: DataTable):
         super().__init__(parent)
         self.table_model = table_model
         self.selection = None
-
+        self.type_block: ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL = None
         self.grid = QtWidgets.QGridLayout(self)
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setSpacing(3)
         self.setLayout(self.grid)
 
+    def set_table_model(self, table_model: DataTable) -> None:
+        """
+        Установка модели данных, в которой будет производится изменения
+        
+        :param table_model: модель данных
+        :type table_model: DataTable
+        """
+        self.table_model = table_model
+
     def view_property(self, selection: list[QtCore.QItemSelectionRange], style: DATACLASSES.DATA_CELL) -> None:
+        """
+        Отображения свойств текущего выделеня
+        
+        :param selection: выделение в QTableView
+        :type selection: list[QtCore.QItemSelectionRange]
+        :param style: общие стили ячеек в выделения
+        :type style: DATACLASSES.DATA_CELL
+        """
         ...
     
     
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class FontStyleBlock(BlockControlPanel):
+    """
+    Блок управления стилями ячеек в выдлененных диапазонах
+    """
     def __init__(self, parent: QtWidgets.QFrame, table_data: DataTable):
         super().__init__(parent, table_data)
+
+        self.type_block = ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT
+
+        self._is_view = True
 
         self.h_layout_row_1 = QtWidgets.QHBoxLayout()
         self.h_layout_row_1.setContentsMargins(0, 0, 0, 0)
@@ -101,10 +127,14 @@ class FontStyleBlock(BlockControlPanel):
         self.h_layout_row_2.addWidget(self.btn_rest_style)
 
     def __fill_font_size(self) -> None:
+        """
+        Заполнение выпадающего списка для изменение размера текста
+        """
         self.combo_box_font_size.addItems(['8', '9', '10', '11', '12', '14', '16', '18', '20', '22', '24', '26', '28', '36', '48', '72'])
     
-    def view_property(self, selection, style: DATACLASSES.CELL_STYLE):
+    def view_property(self, selection, style: DATACLASSES.DATA_CELL):
         if style:
+            self._is_view = True
             self.selection = selection
             self.combo_box_font_family.setCurrentText(style.font_family)
             self.combo_box_font_size.setCurrentText(str(style.font_size))
@@ -113,12 +143,15 @@ class FontStyleBlock(BlockControlPanel):
             self.btn_bold.setChecked(check_value(style.bold))
             self.btn_italic.setChecked(check_value(style.italic))
             self.btn_underline.setChecked(check_value(style.underline))
+            self._is_view = False
     
     def set_font_family_range(self, value: QtGui.QFont) -> None:
-        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_FAMILY)
+        if not self._is_view:
+            self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_FAMILY)
 
     def set_font_size_range(self, value: str) -> None:
-        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_SIZE)
+        if not self._is_view:
+            self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_SIZE)
 
     def set_bold_range(self, value) -> None:
         self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_BOLD)
@@ -135,8 +168,13 @@ class FontStyleBlock(BlockControlPanel):
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class AlignCellBlock(BlockControlPanel):
-    def __init__(self, parent: QtWidgets.QFrame, table: Table):
-        super().__init__(parent, table)
+    """
+    Блок управления выравниванием для ячеек в диапазонах
+    """
+    def __init__(self, parent: QtWidgets.QFrame, table_model: DataTable):
+        super().__init__(parent, table_model)
+
+        self.type_block = ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN
 
         self.align_h_default = QtCore.Qt.AlignmentFlag.AlignLeft
         self.align_v_default = QtCore.Qt.AlignmentFlag.AlignTop
@@ -156,6 +194,20 @@ class AlignCellBlock(BlockControlPanel):
         self.btn_align_r = self.__create_btn(1, 2, 'align_h_rigth.png', QtCore.Qt.AlignmentFlag.AlignRight, self.group_horizontal_buttons)
     
     def __create_btn(self, row, column, icon_name: str, flag_align: int, group: QtWidgets.QButtonGroup) -> QtWidgets.QPushButton:
+        """
+        Создание кнопок для имзезения выравнивания
+        
+        :param row: номер строки
+        :param column: номер столбцы
+        :param icon_name: имя иконки
+        :type icon_name: str
+        :param flag_align: флаг выравнивания
+        :type flag_align: int
+        :param group: группа выравнивания по горизонатли | вертикали  
+        :type group: QtWidgets.QButtonGroup
+        :return: кнопка
+        :rtype: QPushButton
+        """
         btn_align = QtWidgets.QPushButton(self)
         btn_align.setCheckable(True)
         btn_align.setFixedSize(25, 25)
@@ -199,6 +251,11 @@ class AlignCellBlock(BlockControlPanel):
             self.group_vertical_buttons.setExclusive(True)
         
     def set_align_range(self):
+        """
+        Установка выравнивания для ячеек в диапазоне
+        
+        :param self: Описание
+        """
         align_h = [btn.property('flag_align') for btn in self.group_horizontal_buttons.buttons() if btn.isChecked()]
         align_h = align_h[0] if align_h else self.align_h_default
 

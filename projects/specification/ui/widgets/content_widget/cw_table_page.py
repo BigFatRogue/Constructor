@@ -21,18 +21,13 @@ class PageTable(PageContent):
         self.v_layout.setContentsMargins(0, 0, 0, 0)
 
         self.widget_table = TableWidget(self)
-        # TODO добавить в ControlPanelTable не добавление блоков, а установку блоков при заполнение или удаление скрытие не нужных 
-        control_panel: ControlPanelTable = self.widget_table.set_control_panel()
-        control_panel.add_block(FontStyleBlock)
-        control_panel.add_block(AlignCellBlock)
         self.widget_table.signal_change_table.connect(self.change_table)
         self.v_layout.addWidget(self.widget_table)
 
     def populate(self, item: SpecificationItem):
         super().populate(item)
         if item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_INV:
-
-            self.widget_table.populate(item)
+            self.widget_table.set_item(item)
         elif item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_BUY:
             ...
         elif item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_PROD:
