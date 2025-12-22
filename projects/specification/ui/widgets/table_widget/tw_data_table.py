@@ -77,9 +77,12 @@ class DataTable(QtCore.QAbstractTableModel):
         
         :param self: Описание
         """
+        number_index = self.item_data.get_index_from_name_filed('number_row')
         for y, row in enumerate(self._data):
             for x, cell in enumerate(row):
-
+                if number_index == x:
+                    cell.value = y
+                    
                 if cell.color is not None:
                     self._styles[(y, x, QtCore.Qt.ItemDataRole.ForegroundRole)] = QtGui.QColor(*cell.color)
                 if cell.background is not None:
@@ -93,7 +96,6 @@ class DataTable(QtCore.QAbstractTableModel):
                 font.setUnderline(cell.underline if cell.underline is not None else self._default_underline)
                 self._styles[(y, x, QtCore.Qt.ItemDataRole.FontRole)] = font
 
-        
         role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
         self.dataChanged.emit(self.index(0, 0), self.index(len(self._data), len(self._data[0])), role)
 
@@ -251,6 +253,9 @@ class DataTable(QtCore.QAbstractTableModel):
         :param step: шаг масташабирования (%)
         :type step: int
         """
+        if step == self._current_zoom:
+            return
+        
         self._current_zoom = step
         role = QtCore.Qt.ItemDataRole.FontRole
         
@@ -344,7 +349,6 @@ class DataTable(QtCore.QAbstractTableModel):
                     cell.color = self._default_fg_color
                     self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.ForegroundRole)] = self._default_fg_color
                         
-
             role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), role)
         self.signal_change.emit()

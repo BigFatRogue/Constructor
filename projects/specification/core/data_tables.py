@@ -26,7 +26,8 @@ from projects.specification.core.config_table import (
     PROD_ITEM_CONFG,
     STYLE_CELL_CONFIG,
     STYLE_CELL_LINK_CONFIG,
-    STYLE_SECTION_CONFIG
+    STYLE_SECTION_CONFIG,
+    STYLE_SPECIFICATION
 )
 from projects.specification.core.functions import get_now_time
 
@@ -124,21 +125,21 @@ class GeneralDataItem:
     def _insert_sql(self) -> None:
         ...
     
-    def _insert_style_sql(self, x: int, y: int, cell: DATACLASSES.DATA_CELL, fields_style: tuple[str,...], fields_style_link: tuple[str, ...]) -> None:
-        """
-        Добавления стилей для каждой ячейки в БД
+    # def _insert_style_sql(self, x: int, y: int, fields_style: tuple[str,...], value_style_cell: list[str | int | bool], fields_style_link: tuple[str, ...]) -> None:
+    #     """
+    #     Добавления стилей для каждой ячейки в БД
         
-        :param x: номер столбца
-        :type x: int
-        :param y: номер строки
-        :type y: int
-        :param cell: ячейка
-        :type cell: DATACLASSES.DATA_CELL
-        :param fields_style: список имён полей стиливой таблицы
-        :type fields_style: tuple[str, ...]
-        :param fields_style_link: списко имён полей таблицы стилей ячейки
-        :type fields_style_link: tuple[str, ...]
-        """
+    #     :param x: номер столбца
+    #     :type x: int
+    #     :param y: номер строки
+    #     :type y: int
+    #     :param value_style_cell: стили ячейки
+    #     :type cell: DATACLASSES.DATA_CELL
+    #     :param fields_style: список имён полей стиливой таблицы
+    #     :type fields_style: tuple[str, ...]
+    #     :param fields_style_link: списко имён полей таблицы стилей ячейки
+    #     :type fields_style_link: tuple[str, ...]
+    #     """
 
     def _update_sql(self) -> None:
         ...
@@ -280,7 +281,6 @@ class PropertyProjectData(GeneralDataItem):
             for (row, column), cell_style in cells_style.items():
                 for name_style, value in cell_style.items():
                     setattr(data[row][column], name_style, value)
-
             tables.append(table)
         return tables
 
@@ -295,11 +295,21 @@ class PropertyProjectData(GeneralDataItem):
         """
         fields_style = tuple(col.field for col in STYLE_CELL_CONFIG.columns if not col.is_id)
         
-        add_query = f""" LEFT JOIN {STYLE_CELL_LINK_CONFIG.name} ON {STYLE_CELL_LINK_CONFIG.name}.style_id = {STYLE_CELL_CONFIG.name}.id
-        WHERE {STYLE_CELL_LINK_CONFIG.name}.parent_id = {sid}"""
+        # add_query = f""" LEFT JOIN {STYLE_CELL_LINK_CONFIG.name} ON {STYLE_CELL_LINK_CONFIG.name}.style_id = {STYLE_CELL_CONFIG.name}.id
+        # WHERE {STYLE_CELL_LINK_CONFIG.name}.parent_id = {sid}"""
 
-        fields = ('row', 'column') + fields_style
-        res = self.database.select(STYLE_CELL_CONFIG.name, fields, add_query).fetchall()
+        # fields = ('row', 'column') + fields_style
+
+        res = self.database.execute(f"""
+        SELECT number_row, column, {', '.join(fields_style)}
+        FROM {STYLE_CELL_LINK_CONFIG.name}
+        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {STYLE_CELL_LINK_CONFIG.name}.parent_id
+        LEFT JOIN {STYLE_CELL_CONFIG.name} ON {STYLE_CELL_CONFIG.name}.id = {STYLE_CELL_LINK_CONFIG.name}.style_id
+        WHERE sid = {sid}
+        ORDER BY number_row
+        """)
+
+        # res = self.database.select(STYLE_CELL_CONFIG.name, fields, add_query).fetchall()
 
         dct = {}
         for data in res:
@@ -307,6 +317,7 @@ class PropertyProjectData(GeneralDataItem):
             dct[(row, column)] = {field: style_value for field, style_value in zip(fields_style, style)}
         
         return dct
+
 
 class SpecificationDataItem(GeneralDataItem):
     def __init__(self, database, unique_config: TableConfig):
@@ -319,9 +330,13 @@ class SpecificationDataItem(GeneralDataItem):
         self.fields_config: TableConfig = FIELDS_CONFIG
         self.style_cell_config: TableConfig = STYLE_CELL_CONFIG
         self.style_cell_link_config: TableConfig = STYLE_CELL_LINK_CONFIG
-        self.style_table_config: TableConfig = STYLE_SECTION_CONFIG
+        self.style_section_config: TableConfig = STYLE_SECTION_CONFIG
+        self.style_spcefication_config: TableConfig =  STYLE_SPECIFICATION
         
         self.data: list[list[DATACLASSES.DATA_CELL]] = None
+        self.data_style_section: list [DATACLASSES.SECTION_STYLE] = None
+        self.current_zoom: int = 100
+        self.active_cell: tuple[int, int] = (0, 0)
         self.type_spec = None
         self._sid: int = None
 
@@ -351,10 +366,10 @@ class SpecificationDataItem(GeneralDataItem):
             self._create_sql()
             self._insert_specification_sql(self.type_spec)
             self._insert_in_sql_filed()
-            # self._insert_sql()
             self._insert_or_update_sql()
+            self._insert_section_style()
         else:
-            self._insert_or_update()
+            self._insert_or_update_sql()
         
         self.database.commit()
         self.database.close()
@@ -369,7 +384,13 @@ class SpecificationDataItem(GeneralDataItem):
         """
         Создание всех стандартных таблиц, если они ещё не созданы
         """
-        for config in (self.specification_config, self.general_config, self.unique_config, self.style_cell_config, self.style_cell_link_config, self.style_table_config):
+        for config in (self.specification_config, 
+                       self.general_config, 
+                       self.unique_config, 
+                       self.style_cell_config, 
+                       self.style_cell_link_config, 
+                       self.style_section_config, 
+                       self.style_spcefication_config):
             if config:
                 columns_sql = tuple(col.sql_definition for col in config.columns + config.columns_property)
                 self.database.create(config.name, columns_sql)
@@ -416,30 +437,74 @@ class SpecificationDataItem(GeneralDataItem):
                 self._update_row_sql(y, row)
     
     def _insert_row_sql(self, y: int, row: list[DATACLASSES.DATA_CELL]) -> None:
-        value_config = []
-        value_unique_config = []
+        id_general, *value_general = [cell.value for cell in row[:len(self.general_config.columns)]]
+        id_unique, *value_unique = [cell.value for cell in row[len(self.general_config.columns): ]]
+
+        self.database.insert(self.general_config.name, self.fields_general[1:], value_general)
+        id_general = self.database.get_last_id()
+        self._set_foreign_key(self.general_config, last_id=id_general, parent_id=self._sid)
+
+        self.database.insert(self.unique_config.name, self.fields_unique[1:], value_unique)
+        id_unique = self.database.get_last_id()
+        self._set_foreign_key(self.unique_config, last_id=id_unique, parent_id=id_unique)
+
         for x, (cell, col) in enumerate(zip(row, self.total_columns)):
-            if not col.is_id:
-                if x < len(self.general_config.columns):
-                    value_config.append(cell.value)
-                else:
-                    value_unique_config.append(cell.value)
+            if not col.is_id and col.is_view:
+                value_style_cell = [getattr(cell, col.field) for col in self.style_cell_config.columns if hasattr(cell, col.field)]
+                self._insert_sytle_sql(value_style_cell)
+                self._insert_cell_style_sql(id_general, x, value_style_cell)
 
-                if col.is_view:
-                    self._insert_style_sql(y, x, cell, self.fields_style[1:], self.fields_style_link[1:])
+    def _update_row_sql(self, y: int, row: list[DATACLASSES.DATA_CELL]) -> None:
+        id_general, *value_general = [cell.value for cell in row[:len(self.general_config.columns)]]
+        id_unique, *value_unique = [cell.value for cell in row[len(self.general_config.columns): ]]
 
-        # Вставка значений в основную таблицу и добавления foreign ключей
-        self.database.insert(self.general_config.name, self.fields_general[1:], value_config)
-        last_id = self.database.get_last_id()
-        self._set_foreign_key(self.general_config, last_id=last_id, parent_id=self._sid)
+        self.database.update(self.general_config.name, self.fields_general[1:], value_general, id_general)
+        self.database.update(self.unique_config.name, self.fields_unique[1:], value_unique, id_unique)
 
-        # Вставка значений в основную таблицу и добавления foreign ключей
-        self.database.insert(self.unique_config.name, self.fields_unique[1:], value_unique_config)
-        last_id = self.database.get_last_id()
-        self._set_foreign_key(self.unique_config, last_id=last_id, parent_id=last_id)
+        for x, (cell, col) in enumerate(zip(row, self.total_columns)):
+            if col.is_view and col.is_view:
+                value_style_cell = [getattr(cell, col.field) for col in self.style_cell_config.columns if hasattr(cell, col.field)]
+                self._insert_sytle_sql(value_style_cell)
+                self._updata_cell_style_sql(id_general, x, value_style_cell)
+
+    def _insert_sytle_sql(self, values: list[int | str | bool]) -> None:
+        """
+        Добавление уникальных стилей в таблицу стилей
+        """
+        add_query = f'ON CONFLICT({", ".join(self.fields_style[1:])}) DO NOTHING'
+        self.database.insert(self.style_cell_config.name, self.fields_style[1:], values, add_query)
+
+    def _insert_cell_style_sql(self, id_general: int, column: int, values: list[int | str | bool]) -> None:
+        """
+        Добавление адреса ячейка и ссылки на стиль
+        """
+        style_id = self._get_id_style(values)
+        self.database.insert(self.style_cell_link_config.name, self.fields_style_link[1:], [id_general, column, self._sid, style_id])
+
+        #TODO реализовать вставка размеров заголовков таблицы
     
-    def update_row_sql(self, number: int, row: list[DATACLASSES.DATA_CELL]) -> None:
-        ...
+    def _updata_cell_style_sql(self, id_general: int, x: int, values: list[int | str | bool]) -> None:
+        """
+        Обновление стиля для ячейки
+        """
+        style_id = self._get_id_style(values)
+        add_query = f" WHERE parent_id='{id_general}' AND column='{x}'"
+        self.database.update(table_name=self.style_cell_link_config.name, fields=['style_id'], value=[style_id], add_query=add_query)
+
+    def _get_id_style(self, values: tuple[str | int | bool]) -> int | None:
+        """
+        Получение id стиля из таблицы по заданным значениям. Так как значение стиля уникальное, то надо передать все значения стиля
+        
+        :param values: значения стиля
+        :type values: tuple[str | int | bool]
+        :return: id стиля в таблице
+        :rtype: int | None
+        """
+        add_query_select = ' WHERE ' + ' AND '.join([f"{field} = {style}" if isinstance(style, bool) else f"{field} = '{style}'"
+                                                                for field, style in zip(self.fields_style[1:], values)])
+        res = self.database.select(self.style_cell_config.name, ('id', ), add_query_select).fetchall()
+        if res:
+            return res[0][0]
 
     def _set_foreign_key(self, config: TableConfig, last_id:int, parent_id: int) -> None:
         field_foreign_key = config.get_foreign_field()
@@ -447,74 +512,50 @@ class SpecificationDataItem(GeneralDataItem):
         if field_foreign_key:       
             self.database.execute(f"UPDATE {config.name} SET {field_foreign_key} = '{parent_id}' WHERE id={last_id}")
 
-    def _insert_style_sql(self, y, x, cell, fields_style, fields_style_link):
-        # Добавление уникальных стилей в таблицу стилей
-        value_style_cell = [getattr(cell, col.field) for col in self.style_cell_config.columns if hasattr(cell, col.field)]
-        add_query = f'ON CONFLICT({", ".join(fields_style)}) DO NOTHING'
-        self.database.insert(self.style_cell_config.name, fields_style, value_style_cell, add_query)
+    def _insert_or_update_section_style(self) -> None:
+        if self.data_style_section:
+            str_fields = tuple(col.field for col in self.style_section_config.columns if not col.is_id)
+            for cell in self.data_style_section:
+                value = []
+                for prop in fields(cell):
+                    for field in str_fields:
+                        if field == prop.name:
+                            value.append(getattr(cell, prop.name))
+                value.append(self._sid)
 
-        # Добавление адреса ячейка и ссылки на стиль
-        add_query_select = ' WHERE ' + ' AND '.join([f"{field} = {style}" if isinstance(style, bool) else f"{field} = '{style}'"
-                                                                for field, style in zip(fields_style, value_style_cell)])
-
-        style_id = self.database.select(self.style_cell_config.name, ('id', ), add_query_select).fetchall()[0][0]
-
-        self.database.insert(self.style_cell_link_config.name, fields_style_link, [y, x, style_id, self._sid])
-
-        #TODO реализовать вставка размеров заголовков таблицы
-
-    def _update_sql(self) -> None:
-        f_columns_without_id = lambda columns: [col for col in columns if not col.is_id]
-
-        str_field_config, str_values_config = self.get_filed_and_count(f_columns_without_id(self.general_config.columns))
-        str_field_unique_config, str_values_unique_config = self.get_filed_and_count(f_columns_without_id(self.unique_config.columns))
-
-        str_field_style_cells, str_values_style_cells = self.get_filed_and_count(f_columns_without_id(self.style_cell_config.columns))
-        str_field_style_cell_link, str_values_style_cell_link = self.get_filed_and_count(f_columns_without_id(self.style_cell_link_config.columns))
-
-        total_columns: list[ColumnConfig] = self.general_config.columns + self.unique_config.columns
-        
-        for y, row in enumerate(self.data):
-            value_config = []
-            value_unique_config = []
-            for x, (cell, col) in enumerate(zip(row, total_columns)):
-                if not col.is_id:
-                    value = cell.value if isinstance(cell, DATACLASSES.DATA_CELL) else cell
-                    if x < len(self.general_config.columns):
-                        value_config.append(value)
-                    else:
-                        value_unique_config.append(value)
-
-            if isinstance(cell, DATACLASSES.DATA_CELL):
-                    self._insert_cell_style_sql(cell, str_field_style_cells, str_values_style_cells)
-                    self._insert_cell_style_link_sql(y, x, str_field_style_cell_link, str_values_style_cell_link)
-            
-            row_id = self.get_index_from_name_filed()
-            self.database.execute(f'UPDATE {self.general_config.name} SET {str_field_config} WHERE id={self.data}', data)
-            # self.database.execute(f'INSERT INTO {self.config.name} ({str_field_config}) VALUES({str_values_config})', value_config)
-            # last_id = self.get_last_id()
-            # self.__set_foreign_key(self.config, last_id=last_id, parent_id=self._sid)
-
-            # self.database.execute(f'INSERT INTO {self.unique_config.name} ({str_field_unique_config}) VALUES({str_values_unique_config})', value_unique_config)
-            # last_id = self.get_last_id()
-            # self.__set_foreign_key(self.unique_config, last_id=last_id, parent_id=last_id)
-
-        str_values = [', '.join([f'{col.field} = ?' for col in config.columns]) for config in (self.general_config, self.unique_config)]
-        
-        index_config = (0, len(self.general_config.columns))
-        index_unique = (index_config[1], index_config[1] + len(self.unique_config.columns))
-        
+                query = f"""
+                SELECT
+                    EXISTS(SELECT * FROM style_section WHERE row = 1 AND column = -1 AND parent_id = 1) as cell
+                """
+                exist = self.database.execute(query).fetchall[0][0]
+                if exist == 1:
+                    self._updat_section_style_sql()
+                else:
+                    self._insert_section_style()
 
 
-        for row in self.data:
-            for name, str_value, index in zip((self.general_config.name, self.unique_config.name), 
-                                              str_values, 
-                                              (index_config, index_unique)):
+    def _insert_section_style(self) -> None:
+        if self.data_style_section:
+            str_fields = tuple(col.field for col in self.style_section_config.columns if not col.is_id)
+            for cell in self.data_style_section:
+                value = []
+                for prop in fields(cell):
+                    for field in str_fields:
+                        if field == prop.name:
+                            value.append(getattr(cell, prop.name))
                 
-                index_start, index_end = index
-                data = [cell.value if isinstance(cell, DATACLASSES.DATA_CELL) else cell for cell in row[index_start: index_end]]
+                value.append(self._sid)
+                self.database.insert(self.style_section_config.name, str_fields, value)
+    
+    def _updat_section_style_sql(self) -> None:
+        if self.data_style_section:
+            str_fields = tuple(col.field for col in self.style_section_config.columns if not col.is_id)
+    
+    def _insert_specification_style(self) -> None:
+        ...
 
-                self.database.execute(f'UPDATE {name} SET {str_value} WHERE id={data[0]}', data)
+    def _update_specicication_style(self) -> None:
+        ...
 
     def get_index_from_name_filed(self, field: str) -> int:
         for i, col in enumerate(self.general_config.columns + self.unique_config.columns):

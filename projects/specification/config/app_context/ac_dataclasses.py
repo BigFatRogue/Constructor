@@ -33,7 +33,7 @@ class SectionStyle:
     row: int
     column: int
     size: float
-    state_sorted: int = 0
+    state: int = 0
 
 
 @dataclass

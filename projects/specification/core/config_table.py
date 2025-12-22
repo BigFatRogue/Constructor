@@ -24,6 +24,7 @@ class ColumnConfig:
     is_id: bool = False
     is_foreign_id: bool = False
     is_foreign_key: bool = False
+    parent_table_name: str = None
     is_key: bool = False
     is_value: bool = False
     is_unique: bool = False
@@ -39,11 +40,9 @@ class ColumnConfig:
         return f'{self.field} {self.column_name}' 
 
 
-
 class TableConfig:
-    def __init__(self, name: str, columns: list[ColumnConfig], parent_config=None):
+    def __init__(self, name: str, columns: list[ColumnConfig]):
         self.name = name
-        self.parent_config = parent_config
         self.columns = columns
         self.columns_property = []
         self.__set_property_columns()
@@ -53,8 +52,8 @@ class TableConfig:
     def __set_property_columns(self) -> None:
         unique = []
         for col in self.columns:
-            if col.is_foreign_id and self.parent_config is not None:
-                col_foreign_key = ColumnConfig('', f'FOREIGN KEY ({col.field}) REFERENCES {self.parent_config.name} ON UPDATE CASCADE ON DELETE CASCADE', is_foreign_key=True, is_view=False)
+            if col.is_foreign_id and col.parent_table_name is not None:
+                col_foreign_key = ColumnConfig('', f'FOREIGN KEY ({col.field}) REFERENCES {col.parent_table_name} ON UPDATE CASCADE ON DELETE CASCADE', is_foreign_key=True, is_view=False)
                 self.columns_property.append(col_foreign_key)
             if col.is_unique:
                 unique.append(col.field)
@@ -78,10 +77,9 @@ class TableConfig:
         self.str_value_without_id: str = ', '.join(['?'] * len(fields_without_id))
 
     def get_foreign_field(self) -> str:
-        if self.parent_config:
-            for col in self.columns:
-                if col.is_foreign_id:
-                    return col.field
+        for col in self.columns:
+            if col.is_foreign_id:
+                return col.field
     
     def get_view_fields(self) -> tuple[str]:
         return tuple(col.field for col in self.columns if col.is_view)
@@ -95,7 +93,6 @@ class TableConfig:
     def get_values(self) -> tuple[int]:
         return tuple(col for col in self.columns if col.is_value)
     
-
 
 FIELDS_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.NAME_FIELDS.value,
@@ -155,9 +152,8 @@ GENERAL_ITEM_CONFIG = TableConfig(
         ColumnConfig('quantity', 'REAL', 'КОЛ.', is_value=True),
         ColumnConfig('unit', 'TEXT', 'Единичная величина', is_value=True),
         ColumnConfig('material', 'TEXT', 'Материал', internal_name='Material', is_key=True),
-        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True),
-    ],
-    parent_config=SPECIFICATION_CONFIG
+        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name),
+    ]
 )
 
 INVENTOR_ITEM_CONFIG = TableConfig(
@@ -168,9 +164,8 @@ INVENTOR_ITEM_CONFIG = TableConfig(
         ColumnConfig('name', 'TEXT', 'Обозначение', internal_name='Part Number', is_key=True),
         ColumnConfig('groups', 'TEXT', 'Раздел', internal_name='Раздел', is_key=True),
         ColumnConfig('diff', 'REAL', 'Изменение количества'),
-        ColumnConfig('parent_id', 'INTEGER', 'Связь', is_view=False, is_foreign_id=True),
-    ],
-    parent_config=GENERAL_ITEM_CONFIG
+        ColumnConfig('parent_id', 'INTEGER', 'Связь', is_view=False, is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name),
+    ]
 )
 
 BUY_ITEM_CONFIG = TableConfig(
@@ -181,9 +176,8 @@ BUY_ITEM_CONFIG = TableConfig(
         ColumnConfig('note', 'TEXT', 'Примечание'),
         ColumnConfig('invoice', 'TEXT', 'Счёт ОМТС'),
         ColumnConfig('link', 'BOOLEAN', 'Связь', is_link=True),
-        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True)
-    ],
-    parent_config=GENERAL_ITEM_CONFIG
+        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name)
+    ]
 )
 
 PROD_ITEM_CONFG = TableConfig(
@@ -195,9 +189,8 @@ PROD_ITEM_CONFG = TableConfig(
         ColumnConfig('note', 'TEXT', 'Примечание'),
         ColumnConfig('invoice', 'TEXT', 'Счёт ОМТС'),
         ColumnConfig('link', 'BOOLEAN', 'Связь', is_link=True),
-        ColumnConfig('parent_id', 'INTEGER',is_view=False, is_foreign_id=True)
-    ],
-    parent_config=GENERAL_ITEM_CONFIG
+        ColumnConfig('parent_id', 'INTEGER',is_view=False, is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name)
+    ]
 )
 
 STYLE_CELL_CONFIG = TableConfig(
@@ -218,12 +211,11 @@ STYLE_CELL_LINK_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.STYLE_CELL_LINK.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
-        ColumnConfig('row','INTEGER'),
+        ColumnConfig('parent_id', 'INTEGER', is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name),
         ColumnConfig('column', 'INTEGER'),
-        ColumnConfig('style_id', 'INTEGER', is_view=False),
-        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True)
+        ColumnConfig('sid', 'INTEGER'),
+        ColumnConfig('style_id', 'INTEGER'),
     ],
-    parent_config=SPECIFICATION_CONFIG
 )
 
 STYLE_SECTION_CONFIG = TableConfig(
@@ -233,10 +225,20 @@ STYLE_SECTION_CONFIG = TableConfig(
         ColumnConfig('row', 'INTEGER'),
         ColumnConfig('column', 'INTEGER'),
         ColumnConfig('size', 'REAL'),
-        ColumnConfig('state_sorted', 'INTEGER'),
-        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True)
-    ],
-    parent_config=SPECIFICATION_CONFIG
+        ColumnConfig('state', 'INTEGER'),
+        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
+    ]
+)
+
+STYLE_SPECIFICATION = TableConfig(
+    name=ENUMS.NAME_TABLE_SQL.STYLE_SPECEFICATION.value,
+    columns=[
+        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
+        ColumnConfig('current_zoom', 'INTEGER'),
+        ColumnConfig('active_row', 'INTEGER'),
+        ColumnConfig('active_column', 'INTEGER'),
+        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
+    ]
 )
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import SETTING
+from projects.specification.config.app_context.app_context import SETTING, DATACLASSES, ENUMS
 
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 from projects.specification.ui.widgets.table_widget.tw_table_view import TableView
@@ -41,6 +41,7 @@ class TableWidget(QtWidgets.QWidget):
         self.horizontal_header = HorizontalWithOverlayWidgets(self.table_view, self.range_zoom)
         self.horizontal_header.sectionResized.connect(self.table_view.resize_rect)      
         self.horizontal_header.sectionResized.connect(self.signal_change_table.emit)  
+        self.horizontal_header.signal_size_section.connect(self.set_current_section_size_item_data)
         self.table_view.setHorizontalHeader(self.horizontal_header)
         
         self.vertical_header = VerticallWithOverlayWidgets(self.table_view, self.range_zoom)
@@ -51,9 +52,8 @@ class TableWidget(QtWidgets.QWidget):
         self.control_panel = ControlPanelTable(self, self.table_view)
         self.zoom_table = ZoomTable(self, self.range_zoom)
         self.table_view.signal_change_zoom.connect(self.change_zoom)
-        self.zoom_table.signal_current_zoom.connect(self.horizontal_header.set_zoom)
-        self.zoom_table.signal_current_zoom.connect(self.vertical_header.set_zoom)
-        self.zoom_table.signal_current_zoom.connect(self.table_view.resize_rect)
+        self.zoom_table.signal_current_zoom.connect(self.set_zoom)
+        self.zoom_table.signal_current_zoom.connect(self.set_current_zoom_item_data)
 
         self.v_layout.addWidget(self.control_panel)
         self.v_layout.addWidget(self.table_view)
@@ -70,6 +70,30 @@ class TableWidget(QtWidgets.QWidget):
             self.zoom_table.zoom_in()
         else:
             self.zoom_table.zoom_out()
+    
+    def set_current_zoom_item_data(self, step) -> None:
+        self.table_model.item_data.current_zoom = step
+
+    def set_current_section_size_item_data(self) -> None:
+        style: list[DATACLASSES.SECTION_STYLE] = []
+
+        h_size = self.horizontal_header.get_section_size()
+        h_sorted_status = self.horizontal_header.get_state_column_sorted()
+
+        for i, (size, state) in enumerate(zip(h_size, h_sorted_status)):
+            style.append(DATACLASSES.SECTION_STYLE(row=-1, column=i, size=size, state=state))
+
+        for i, size in enumerate(self.vertical_header.get_section_size()):
+            style.append(DATACLASSES.SECTION_STYLE(row=i, column=-1, size=size))
+
+        self.table_model.item_data.data_style_section = style
+
+    def set_zoom(self, step) -> None:
+        self.horizontal_header.set_zoom(step)
+        self.vertical_header.set_zoom(step)
+        self.table_model.set_zoom(step)
+        self.table_view.resize_rect()
+        self.zoom_table.set_value(step)
 
     def set_item(self, item_tree: TableBrowserItem) -> None:
         """
@@ -88,6 +112,9 @@ class TableWidget(QtWidgets.QWidget):
         if isinstance(item_tree.item_data, InventorSpecificationDataItem):
             self._set_item_invetor()
 
+        self.set_zoom(self.table_model.item_data.current_zoom)
+        self.set_style_section(self.table_model.item_data.data_style_section)
+
     def _set_item_invetor(self) -> None:
         """
         Настройка отображения таблицы Inventor
@@ -105,6 +132,16 @@ class TableWidget(QtWidgets.QWidget):
 
 
         self.table_view.setSpan(1, 0, 1, 5)
+
+    def set_style_section(self, style_section: list[DATACLASSES.SECTION_STYLE]) -> None:
+        if style_section:
+            for cell_style in style_section:
+                if cell_style.row == -1:
+                    self.horizontal_header.resizeSection(cell_style.column, cell_style.size)
+                    # TODO привязать к соботию сортировки
+                    self.horizontal_header.widgets[cell_style.column].set_sorted_state(cell_style.state)
+                else:
+                    self.vertical_header.resizeSection(cell_style.row, cell_style.size)
 
 
 class __Window(QtWidgets.QMainWindow):

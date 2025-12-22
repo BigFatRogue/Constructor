@@ -34,8 +34,8 @@ class PageTable(PageContent):
             ...
 
     def change_table(self) -> None:
-        self.current_item.set_is_init(True)
-        self.current_item.set_is_save(False)
+        if self.current_item.is_init:
+            self.current_item.set_is_save(False)
     
     def save(self) -> None:
         # self.widget_table.save()

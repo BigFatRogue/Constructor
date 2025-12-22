@@ -15,6 +15,7 @@ class NameTableSQL(Enum):
     STYLE_CELL = 'style_cell'
     STYLE_SECTION = 'style_section'
     STYLE_CELL_LINK = 'style_cell_link'
+    STYLE_SPECEFICATION = 'style_specefication'
 
 
 class TypeTreeItem(Enum):

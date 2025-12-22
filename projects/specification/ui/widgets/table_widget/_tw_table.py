@@ -144,7 +144,7 @@ class Table(QtWidgets.QTableWidget):
 
             if isinstance(h_header, HorizontalWithOverlayWidgets):
                 widget: ButtonHorizontalHeader = h_header.widgets[col]
-                dt.state_sorted = widget.state_sorted.value     
+                dt.state = widget.state_sorted.value     
 
             style.append(dt)
 

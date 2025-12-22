@@ -86,9 +86,11 @@ class DataBase:
         query = f"INSERT INTO {table_name} ({self._list_fields_to_str(fields)}) VALUES({count_values})" + add_qurey
         self.execute(query, values)
 
-    def update(self, table_name: str, id_row: int, fields: list[str] | tuple[str, ...], value) -> None:
+    def update(self, table_name: str, fields: list[str] | tuple[str, ...], value: list[int | float | str | bool], id_row: int = None, add_query: str = '') -> None:
+        id_where = f' WHERE id={id_row}' if id_row is not None else ''
+        
         str_values = ', '.join([f'{f} = ?' for f in fields])
-        self.execute(f'UPDATE {table_name} SET {str_values} WHERE id={id_row}', value)
+        self.execute(f'UPDATE {table_name} SET {str_values}' + id_where + add_query, value)
 
     def select(self, table_table: str, fields: list[str] | tuple[str, ...], add_qurey='') -> sqlite3.Cursor:
         return self.execute(f'SELECT {self._list_fields_to_str(fields)} FROM {table_table}' + add_qurey)

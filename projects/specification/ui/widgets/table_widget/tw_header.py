@@ -8,6 +8,8 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
     позволяющий добавлять виджеты поверх секций.
     Поддерживает горизонтальные и вертикальные заголовки.
     """
+    signal_size_section = QtCore.pyqtSignal()
+
     ALIGN_LEFT = 0
     ALIGN_CENTER = 1
     ALIGN_RIGHT = 2
@@ -20,7 +22,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         self.min_zoom, self.max_zoom, self.step_zoom = range_zoom
         self._align_widget = self.ALIGN_RIGHT
 
-        self.current_step = 100
+        self._current_step = 100
         self.steps_section_size: dict [int, dict[int, int]] = self.__generate_steps_for_zoom_size_section()
         self.original_font_size = self.font().pointSize()
         self.min_font_size = 2
@@ -88,7 +90,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         dct: dict [int, dict[int, int]] = {}
         
         for index_sec in range(self.count()):
-            size_100 = int(self.sectionSize(index_sec) / (self.current_step / 100))
+            size_100 = int(self.sectionSize(index_sec) / (self._current_step / 100))
             dct_section: dict[int, int] = {}
             for step in range(self.min_zoom, self.max_zoom + self.step_zoom, self.step_zoom):
                 size = int(size_100 * step / 100)
@@ -111,7 +113,10 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         return dct
 
     def set_zoom(self, step: int) -> None:
-        self.current_step = step
+        if self._current_step == step:
+            return
+        
+        self._current_step = step
         font = self.font()
         font.setPointSize(self.steps_view_font[step])
         self.setFont(font)
@@ -119,9 +124,13 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
             self.steps_section_size = self.__generate_steps_for_zoom_size_section()
         for sec, dct_sec_size in self.steps_section_size.items():
             self.resizeSection(sec, dct_sec_size[step])
-                        
+
+    def get_section_size(self) -> tuple[int, ...]:
+        return tuple(self.sectionSize(i) for i in range(self.count()))
+
     def mouseReleaseEvent(self, event):
         self.steps_section_size = self.__generate_steps_for_zoom_size_section()
+        self.signal_size_section.emit()
         return super().mouseReleaseEvent(event)
     
 
