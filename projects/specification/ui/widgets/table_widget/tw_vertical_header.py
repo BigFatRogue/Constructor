@@ -41,9 +41,10 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
     def __init__(self, table_view: QtWidgets.QTableWidget, range_zoom):
         super().__init__(QtCore.Qt.Orientation.Vertical, table_view, range_zoom)
         table_view.verticalScrollBar().valueChanged.connect(self._update_widgets)
-
-        self.start_row: int = None
-        self.end_row: int = None
+        self.widgets: list[CheckBoxVerticalHeader
+                           ]
+        self._start_row: int = None
+        self._end_row: int = None
         self.table_model: DataTable = self.table_view.model()
 
     def set_widget(self, align: int=2):
@@ -64,33 +65,34 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         
         self._update_widgets()
 
-    def fill_row(self, row: int, state: bool) -> None:            
+    def fill_row(self, row: int, state: bool) -> None:   
         self.signal_select_row.emit((row, state))
+        
 
     def signle_choose(self, value: tuple[int, bool]) -> None:
         row, state = value
-        self.start_row = row
+        self._start_row = row
         self.fill_row(row, state)
 
         if not state:
-            self.start_row = None 
-            self.end_row = None
+            self._start_row = None 
+            self._end_row = None
         
     def signal_multi_choose(self, value: tuple[int, bool]) -> None:
         row, state = value
 
-        if self.start_row is None:
-            self.start_row = row
+        if self._start_row is None:
+            self._start_row = row
         else:
-            self.end_row = row
+            self._end_row = row
         
-        if self.end_row is not None:
-            if self.start_row > self.end_row:
-                self.start_row, self.end_row = self.end_row, self.start_row
+        if self._end_row is not None:
+            if self._start_row > self._end_row:
+                self._start_row, self._end_row = self._end_row, self._start_row
 
-            for i in range(self.start_row, self.end_row + 1):
+            for i in range(self._start_row, self._end_row + 1):
                 check_box: CheckBoxVerticalHeader = self.widgets[i]
-                if not check_box.checkState() or i == self.end_row or i == self.start_row:
+                if not check_box.checkState() or i == self._end_row or i == self._start_row:
                     check_box.setChecked(True)
                     self.fill_row(i, True)
 

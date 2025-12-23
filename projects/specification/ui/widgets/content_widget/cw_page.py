@@ -14,7 +14,10 @@ class PageContent(QtWidgets.QWidget):
         self.current_item: ProjectItem | SpecificationItem | TableBrowserItem = None
     
     def populate(self, item: ProjectItem | SpecificationItem | TableBrowserItem) -> None:
-        self.current_item = item
+        if self.current_item is None or self.current_item != item:
+            self.current_item = item
+        else:
+            return
 
     def update_data_item(self) -> None:
         ...

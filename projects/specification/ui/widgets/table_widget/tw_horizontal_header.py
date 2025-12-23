@@ -30,10 +30,10 @@ class ButtonHorizontalHeader(QtWidgets.QPushButton):
             ico = QtGui.QIcon()
             ico.addFile(os.path.join(SETTING.ICO_FOLDER, icon_name))
             self.dict_icon[state] = (ico, tool_tip)
-        self.clicked.connect(lambda: self.signal_click.emit(self.index_section))
+        # self.clicked.connect(lambda: self.signal_click.emit(self.index_section))
         self.reset_view_sorted()
 
-    def set_sorted_state(self, state: ENUMS.STATE_SORTED_COLUMN.EMPTY) -> None:
+    def set_sorted_state(self, state: ENUMS.STATE_SORTED_COLUMN) -> None:
         """
         Установка отображения состояния сортировки.Можно передать int, так как и БД приходит int
         """
@@ -53,12 +53,16 @@ class ButtonHorizontalHeader(QtWidgets.QPushButton):
 
 
 class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
+    signal_sorted = QtCore.pyqtSignal(list)
+
     def __init__(self, table: QtWidgets.QTableWidget, range_zoom):
         super().__init__(QtCore.Qt.Orientation.Horizontal, table, range_zoom)
         self.widgets: list[ButtonHorizontalHeader]
         table.horizontalScrollBar().valueChanged.connect(self._update_widgets)
 
+        self._state_column_sorted: tuple[int, ...] | list [int] = None
         self.popup_order = PopupOrder(self.table_view)
+        self.popup_order.signal_sorted.connect(self._set_state_column_sorted)
     
     def set_widget(self, align: int=2) -> None:
         self._align_widget = align
@@ -74,6 +78,19 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
     def show_popup(self) -> None:
         self.popup_order.show(self.sender())
 
-    def get_state_column_sorted(self) -> tuple[int]:
-        return tuple(btn.state_sorted.value for btn in self.widgets)
+    def _set_state_column_sorted(self, value: tuple[int, ENUMS.STATE_SORTED_COLUMN, bool]) -> None:
+        column, state, is_milti_sorted = value
+        self._state_column_sorted = [0] * self.count()
+
+        if is_milti_sorted:
+            self._state_column_sorted = [btn.state_sorted.value for btn in self.widgets]
+        else:
+            for btn in self.widgets:
+                btn.set_sorted_state(ENUMS.STATE_SORTED_COLUMN.EMPTY)
+            self._state_column_sorted[column] = state.value
+        
+        self.signal_sorted.emit(self._state_column_sorted)
     
+    def state_column_sorted(self) -> list[int]:
+        self._state_column_sorted = [0] * self.count()
+        return self._state_column_sorted

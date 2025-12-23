@@ -2,7 +2,7 @@ from dataclasses import fields
 from copy import deepcopy
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from projects.specification.config.app_context.app_context import DATACLASSES
+from projects.specification.config.app_context.app_context import DATACLASSES, ENUMS
 
 from projects.specification.core.config_table import ColumnConfig, SPECIFICATION_CONFIG
 from projects.specification.core.data_tables import SpecificationDataItem
@@ -221,10 +221,14 @@ class DataTable(QtCore.QAbstractTableModel):
             cell.underline = value
             font.setUnderline(value)
 
-    def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.DisplayRole):
-        if role == QtCore.Qt.DisplayRole:
-            if orientation == QtCore.Qt.Horizontal:
+    def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+            if orientation == QtCore.Qt.Orientation.Horizontal:
                 return self._view_columns[section].column_name
+        
+        # elif role == QtCore.Qt.ItemDataRole.BackgroundColorRole :
+        #     return QtGui.QColor(255, 0, 0)
+        
         return super().headerData(section, orientation, role)
 
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
@@ -288,8 +292,10 @@ class DataTable(QtCore.QAbstractTableModel):
             for x in range(self.columnCount()):
                 self._styles[(row, self._index_column_view[x], role)] = QtGui.QColor(*color)
                 self._data[row][self._index_column_view[x]].background = color
-            
+        
+        
         self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount()), [role])
+        self.headerDataChanged.emit(QtCore.Qt.Orientation.Vertical, row, row + 1)
 
     def get_style_selection(self, selection: list[QtCore.QItemSelectionRange]) -> DATACLASSES.DATA_CELL:
         """
@@ -352,3 +358,12 @@ class DataTable(QtCore.QAbstractTableModel):
             role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), role)
         self.signal_change.emit()
+    
+    def sorted_column(self, state_sorted: list[int]) -> int:
+        index_column = [*range(len(state_sorted))]
+
+        for column, state in zip(index_column[::-1], state_sorted[::-1]):
+            if state != ENUMS.STATE_SORTED_COLUMN.EMPTY.value:
+                self._data.sort(key=lambda x: x[self._index_column_view[column]].value, reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE.value)
+
+        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])

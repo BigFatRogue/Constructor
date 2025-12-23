@@ -5,14 +5,12 @@ from projects.specification.config.app_context.app_context import SETTING, ENUMS
 
 
 class PopupOrder(QtWidgets.QWidget):
-    signal_sorted = QtCore.pyqtSignal(ENUMS.STATE_SORTED_COLUMN)
+    signal_sorted = QtCore.pyqtSignal(tuple)
 
     def __init__(self, parent):
         super().__init__(parent)
         self.current_button_header: QtWidgets.QPushButton = None
         self.is_multi_sorted = False
-        self.curent_column_index: int = None
-        self.data_index: int = None
 
         self.is_left_click = False
         self.is_move = False
@@ -57,9 +55,6 @@ class PopupOrder(QtWidgets.QWidget):
         self.check_box_multi_sorted.setCheckState(QtCore.Qt.CheckState.Unchecked)
         self.check_box_multi_sorted.clicked.connect(self.click_check_box_multi_sorted)
         self.v_layout_frame.addWidget(self.check_box_multi_sorted)
-
-    def set_column_index(self, index: int) -> None:
-        self.curent_column_index = index
 
     def set_pos(self) -> None:
         button_global_pos = self.current_button_header.mapToGlobal(QtCore.QPoint(0, 0))
@@ -106,7 +101,6 @@ class PopupOrder(QtWidgets.QWidget):
     def eventFilter(self, obj, event):
         """Фильтр событий для отслеживания кликов вне окна"""
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            print(event)
             if not self.geometry().contains(event.globalPos()):
                 self.close()
                 return True
@@ -133,23 +127,23 @@ class PopupOrder(QtWidgets.QWidget):
             self.btn_sorted.setChecked(False)
             self.btn_sorted_reverse.setChecked(True)
 
-    def hideEvent(self, a0):
+    def hideEvent(self, event):
         if self.current_button_header:
             self.current_button_header.setChecked(False)
-
+    
     def click_btn_sorted(self) -> None:
         if self.current_button_header.state_sorted == ENUMS.STATE_SORTED_COLUMN.SORTED:
             self.set_state_button_sorted(ENUMS.STATE_SORTED_COLUMN.EMPTY)
         else:
             self.set_state_button_sorted(ENUMS.STATE_SORTED_COLUMN.SORTED)
-            self.signal_sorted.emit(ENUMS.STATE_SORTED_COLUMN.SORTED)
+            self.signal_sorted.emit((self.current_button_header.index_section ,ENUMS.STATE_SORTED_COLUMN.SORTED, self.is_multi_sorted))
     
     def click_btn_sorted_reverse(self) -> None:
         if self.current_button_header.state_sorted == ENUMS.STATE_SORTED_COLUMN.REVERSE:
             self.set_state_button_sorted(ENUMS.STATE_SORTED_COLUMN.EMPTY)
         else:
             self.set_state_button_sorted(ENUMS.STATE_SORTED_COLUMN.REVERSE)
-            self.signal_sorted.emit(ENUMS.STATE_SORTED_COLUMN.REVERSE)
+            self.signal_sorted.emit((self.current_button_header.index_section, ENUMS.STATE_SORTED_COLUMN.REVERSE, self.is_multi_sorted))
     
     def click_check_box_multi_sorted(self, value) -> None:
         self.is_multi_sorted = value

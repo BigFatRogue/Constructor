@@ -78,7 +78,7 @@ class TableWidget(QtWidgets.QWidget):
         style: list[DATACLASSES.SECTION_STYLE] = []
 
         h_size = self.horizontal_header.get_section_size()
-        h_sorted_status = self.horizontal_header.get_state_column_sorted()
+        h_sorted_status = self.horizontal_header.state_column_sorted()
 
         for i, (size, state) in enumerate(zip(h_size, h_sorted_status)):
             style.append(DATACLASSES.SECTION_STYLE(row=-1, column=i, size=size, state=state))
@@ -120,6 +120,8 @@ class TableWidget(QtWidgets.QWidget):
         Настройка отображения таблицы Inventor
         """
         self.horizontal_header.set_widget()
+        self.horizontal_header.signal_sorted.connect(self.table_model.sorted_column)
+        
         self.vertical_header.set_widget()
         self.vertical_header.signal_select_row.connect(self.table_model.select_row)
 
@@ -129,10 +131,7 @@ class TableWidget(QtWidgets.QWidget):
         self.control_panel.view_align_block(True)
         
         self.table_view.signale_change_selection.connect(self.control_panel.view_property)
-
-
-        self.table_view.setSpan(1, 0, 1, 5)
-
+        
     def set_style_section(self, style_section: list[DATACLASSES.SECTION_STYLE]) -> None:
         if style_section:
             for cell_style in style_section:
@@ -142,7 +141,7 @@ class TableWidget(QtWidgets.QWidget):
                     self.horizontal_header.widgets[cell_style.column].set_sorted_state(cell_style.state)
                 else:
                     self.vertical_header.resizeSection(cell_style.row, cell_style.size)
-
+        
 
 class __Window(QtWidgets.QMainWindow):
     def __init__(self):
