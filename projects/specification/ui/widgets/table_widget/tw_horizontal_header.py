@@ -1,7 +1,7 @@
 import os
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-from projects.specification.config.app_context.app_context import SETTING, ENUMS
+from projects.specification.config.app_context import SETTING, ENUMS
 
 from projects.specification.ui.widgets.table_widget.tw_header import HeaderWithOverlayWidgets
 from projects.specification.ui.widgets.table_widget.tw_popup_order_column import PopupOrder

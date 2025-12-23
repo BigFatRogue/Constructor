@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from projects.specification.config.app_context.app_context import DATACLASSES
+from projects.specification.config.app_context import DATACLASSES
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 
 

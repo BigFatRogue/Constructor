@@ -4,7 +4,7 @@ from typing import Union, Iterable
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 
-from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS
+from projects.specification.config.app_context import SETTING, SIGNAL_BUS, ENUMS
 
 from projects.specification.core.data_tables import  GeneralDataItem, PropertyProjectData, InventorSpecificationDataItem, BuySpecificationDataItem, ProdSpecificationDataItem
 from projects.specification.core.functions import get_now_time
@@ -291,7 +291,7 @@ class BrowserWidget(QtWidgets.QWidget):
         item: BrowserItem = self.tree.currentItem()
         
         if not item.is_save:
-            if isinstance(item, ProjectItem) and not item.is_init:
+            if isinstance(item, ProjectItem) and not item.is_init and item.filepath:
                 self.create_main_item_project(item)
             
             item.save()

@@ -2,7 +2,7 @@ from dataclasses import fields
 from copy import deepcopy
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from projects.specification.config.app_context.app_context import DATACLASSES, ENUMS
+from projects.specification.config.app_context import DATACLASSES, ENUMS
 
 from projects.specification.core.config_table import ColumnConfig, SPECIFICATION_CONFIG
 from projects.specification.core.data_tables import SpecificationDataItem
@@ -86,7 +86,7 @@ class DataTable(QtCore.QAbstractTableModel):
                 if cell.color is not None:
                     self._styles[(y, x, QtCore.Qt.ItemDataRole.ForegroundRole)] = QtGui.QColor(*cell.color)
                 if cell.background is not None:
-                    self._styles[(y, x, QtCore.Qt.ItemDataRole.BackgroundRole)] = QtGui.QColor(*cell.color)
+                    self._styles[(y, x, QtCore.Qt.ItemDataRole.BackgroundRole)] = QtGui.QColor(*cell.background)
 
                 font = QtGui.QFont()
                 font.setFamily(cell.font_family or self._default_family)

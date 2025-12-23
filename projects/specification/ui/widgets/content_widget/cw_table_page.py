@@ -1,12 +1,10 @@
 
-from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5 import QtCore, QtWidgets
 
-from projects.specification.config.app_context.app_context import ENUMS
+from projects.specification.config.app_context import ENUMS
 
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.table_widget.table_widget import TableWidget
-from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
-from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import AlignCellBlock, FontStyleBlock
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
 
 
@@ -36,7 +34,6 @@ class PageTable(PageContent):
     def change_table(self) -> None:
         if self.current_item.is_init:
             self.current_item.set_is_save(False)
-    
+
     def save(self) -> None:
-        # self.widget_table.save()
         self.signal_status.emit(f'Таблица {self.current_item.text(0)} сохранена')

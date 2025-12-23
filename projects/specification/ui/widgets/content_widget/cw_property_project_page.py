@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtWidgets
 from transliterate import translit
 
-from projects.specification.config.app_context.app_context import ENUMS
+from projects.specification.config.app_context import ENUMS
 
 
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
@@ -17,8 +17,6 @@ from projects.tools.custom_qwidget.message_Inforation import MessageInforation
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class PagePropertyProject(PageContent):
-    signal_status = QtCore.pyqtSignal(str)
-
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -104,7 +102,7 @@ class PagePropertyProject(PageContent):
                     self.current_item.set_filepath(dir_path)
                 
             self.current_item.set_project_name(self.lineedti_project_name.text())
-            self.signal_status.emit(f'{ENUMS.STATUS_BAR.PROJECT_SAVE.value}: {self.current_item.project_name}')
+
 
     def check_fill_lineedit(self) -> bool:
         for col in self.columns_config:

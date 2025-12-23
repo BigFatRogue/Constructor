@@ -1,7 +1,7 @@
 import os 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from projects.specification.config.app_context.app_context import SETTING, ENUMS
+from projects.specification.config.app_context import SETTING, ENUMS
 
 
 class PopupOrder(QtWidgets.QWidget):

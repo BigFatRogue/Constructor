@@ -1,7 +1,7 @@
 import os
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-from projects.specification.config.app_context.app_context import SIGNAL_BUS
+from projects.specification.config.app_context import SIGNAL_BUS
 
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 from projects.specification.ui.widgets.table_widget.tw_header import HeaderWithOverlayWidgets

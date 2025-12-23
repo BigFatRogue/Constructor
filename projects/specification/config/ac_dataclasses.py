@@ -15,17 +15,19 @@ class DataCell:
     background: tuple[int, int, int, int] = None
     span: tuple[int, int] = (1, 1)
 
-@dataclass
-class CellStyle:
-    row: int
-    column: int
-    font_family: str
-    font_size: int
-    bold: bool
-    italic: bool
-    underline: bool
-    align_h: int
-    align_v: int
+    def get_dcit_style(self) -> dict[str, int | float| str | bool | tuple[int, ...]]:
+        return {
+            'align_h': self.align_h,
+            'align_v': self.align_v,
+            'font_family': self.font_family,
+            'font_size': self.font_size,
+            'bold': self.bold,
+            'italic': self.italic,
+            'underline': self.underline,
+            'color': self.color,
+            'background': self.background,
+            'span': self.span,
+        }
 
 
 @dataclass

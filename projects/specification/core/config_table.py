@@ -8,8 +8,7 @@ if __name__ == '__main__':
     sys.path.append(test_path)
 
 
-from projects.specification.config.app_context.app_context import app_context
-ENUMS = app_context.context_enums
+from projects.specification.config.app_context import ENUMS
 
 
 @dataclass
@@ -197,13 +196,7 @@ STYLE_CELL_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.STYLE_CELL.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
-        ColumnConfig('align_h', 'INTEGER', is_unique=True),
-        ColumnConfig('align_v', 'INTEGER', is_unique=True),
-        ColumnConfig('font_family', 'TEXT', is_unique=True),
-        ColumnConfig('font_size', 'INTEGER', is_unique=True),
-        ColumnConfig('bold', 'BOOLEAN', is_unique=True),
-        ColumnConfig('italic', 'BOOLEAN', is_unique=True),
-        ColumnConfig('underline', 'BOOLEAN', is_unique=True),
+        ColumnConfig('style', 'TEXT', is_unique=True)
     ]
 )
 

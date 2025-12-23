@@ -1,5 +1,6 @@
 from typing import Union
 from dataclasses import dataclass, fields
+import json
 
 if __name__ == '__main__':
     import sys
@@ -9,7 +10,7 @@ if __name__ == '__main__':
 
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import DATACLASSES, ENUMS
+from projects.specification.config.app_context import DATACLASSES, ENUMS
 
 
 from projects.specification.core.database import DataBase
@@ -309,12 +310,10 @@ class PropertyProjectData(GeneralDataItem):
         ORDER BY number_row
         """)
 
-        # res = self.database.select(STYLE_CELL_CONFIG.name, fields, add_query).fetchall()
-
         dct = {}
         for data in res:
-            row, column, *style = data
-            dct[(row, column)] = {field: style_value for field, style_value in zip(fields_style, style)}
+            row, column, style = data
+            dct[(row, column)] = json.loads(style)
         
         return dct
 
@@ -450,7 +449,7 @@ class SpecificationDataItem(GeneralDataItem):
 
         for x, (cell, col) in enumerate(zip(row, self.total_columns)):
             if not col.is_id and col.is_view:
-                value_style_cell = [getattr(cell, col.field) for col in self.style_cell_config.columns if hasattr(cell, col.field)]
+                value_style_cell: str = json.dumps(cell.get_dcit_style())
                 self._insert_sytle_sql(value_style_cell)
                 self._insert_cell_style_sql(id_general, x, value_style_cell)
 
@@ -463,35 +462,35 @@ class SpecificationDataItem(GeneralDataItem):
 
         for x, (cell, col) in enumerate(zip(row, self.total_columns)):
             if col.is_view and col.is_view:
-                value_style_cell = [getattr(cell, col.field) for col in self.style_cell_config.columns if hasattr(cell, col.field)]
+                value_style_cell: str = json.dumps(cell.get_dcit_style())
                 self._insert_sytle_sql(value_style_cell)
                 self._updata_cell_style_sql(id_general, x, value_style_cell)
 
-    def _insert_sytle_sql(self, values: list[int | str | bool]) -> None:
+    def _insert_sytle_sql(self, value: str) -> None:
         """
         Добавление уникальных стилей в таблицу стилей
         """
         add_query = f'ON CONFLICT({", ".join(self.fields_style[1:])}) DO NOTHING'
-        self.database.insert(self.style_cell_config.name, self.fields_style[1:], values, add_query)
+        self.database.insert(self.style_cell_config.name, self.fields_style[1:], [value], add_query)
 
-    def _insert_cell_style_sql(self, id_general: int, column: int, values: list[int | str | bool]) -> None:
+    def _insert_cell_style_sql(self, id_general: int, column: int, value: str) -> None:
         """
         Добавление адреса ячейка и ссылки на стиль
         """
-        style_id = self._get_id_style(values)
+        style_id = self._get_id_style(value)
         self.database.insert(self.style_cell_link_config.name, self.fields_style_link[1:], [id_general, column, self._sid, style_id])
 
         #TODO реализовать вставка размеров заголовков таблицы
     
-    def _updata_cell_style_sql(self, id_general: int, x: int, values: list[int | str | bool]) -> None:
+    def _updata_cell_style_sql(self, id_general: int, x: int, value: str) -> None:
         """
         Обновление стиля для ячейки
         """
-        style_id = self._get_id_style(values)
+        style_id = self._get_id_style(value)
         add_query = f" WHERE parent_id='{id_general}' AND column='{x}'"
         self.database.update(table_name=self.style_cell_link_config.name, fields=['style_id'], value=[style_id], add_query=add_query)
 
-    def _get_id_style(self, values: tuple[str | int | bool]) -> int | None:
+    def _get_id_style(self, value: str) -> int | None:
         """
         Получение id стиля из таблицы по заданным значениям. Так как значение стиля уникальное, то надо передать все значения стиля
         
@@ -500,8 +499,7 @@ class SpecificationDataItem(GeneralDataItem):
         :return: id стиля в таблице
         :rtype: int | None
         """
-        add_query_select = ' WHERE ' + ' AND '.join([f"{field} = {style}" if isinstance(style, bool) else f"{field} = '{style}'"
-                                                                for field, style in zip(self.fields_style[1:], values)])
+        add_query_select = f" WHERE style = '{value}'"
         res = self.database.select(self.style_cell_config.name, ('id', ), add_query_select).fetchall()
         if res:
             return res[0][0]

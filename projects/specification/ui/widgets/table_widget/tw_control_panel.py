@@ -12,7 +12,7 @@ if __name__ == '__main__':
     sys.path.append(test_path)
 
 
-from projects.specification.config.app_context.app_context import SETTING, ENUMS
+from projects.specification.config.app_context import SETTING, ENUMS
 
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 from projects.specification.ui.widgets.table_widget.tw_blocks_control_panel import BlockControlPanel, FontStyleBlock, AlignCellBlock

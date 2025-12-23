@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 
-from projects.specification.config.app_context.app_context import DATACLASSES, ENUMS
+from projects.specification.config.app_context import SIGNAL_BUS, ENUMS
 
 from projects.specification.ui.widgets.browser_widget.bw_item import BrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
@@ -35,3 +35,4 @@ class TableBrowserItem(BrowserItem):
         self.item_data.save()
         self.set_is_init(True)
         self.set_is_save(True)
+        SIGNAL_BUS.satus_bar.emit(f'Таблица {self.text()} сохранена')

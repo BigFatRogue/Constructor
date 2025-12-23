@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 
-from projects.specification.config.app_context.app_context import DATACLASSES, ENUMS
+from projects.specification.config.app_context import DATACLASSES, ENUMS
 from  projects.specification.core.data_tables import InventorSpecificationDataItem
 
 from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem

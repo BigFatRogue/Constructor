@@ -1,7 +1,7 @@
 from __future__ import annotations
 from PyQt5 import QtWidgets
 
-from projects.specification.config.app_context.app_context import ENUMS
+from projects.specification.config.app_context import ENUMS
 
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 from projects.specification.core.data_tables import GeneralDataItem
@@ -73,7 +73,8 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
         self.__is_save = value
         if self.item_data:
             self.item_data.set_is_save(value)
-        self.tree.update()
+        # self.tree.update()
+        self.tree.viewport().update()
 
     def save(self, *args) -> None:
         """

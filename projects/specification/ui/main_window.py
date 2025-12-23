@@ -7,10 +7,10 @@ if __name__ == '__main__':
     import sys
     # Для запуска через IDE
     from pathlib import Path
-    test_path = str(Path(__file__).parent.parent.parent.parent)
+    test_path = str(Path(__file__).parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS
+from projects.specification.config.app_context import SETTING, SIGNAL_BUS, ENUMS
 
 from projects.specification.ui.widgets.control_panel_application import ControlPanelAppliction
 from projects.specification.ui.widgets.browser_widget import BrowserWidget
@@ -28,7 +28,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_status_bar()
 
-        self.browser_widget.open_project(r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\1.scdata')
+        # self.browser_widget.open_project(r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\1.scdata')
     
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
@@ -103,6 +103,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
 
         Вначале вызывается сохранение для content_widget, так как оттуда могут браться данные для сохранения 
         """
+        self.set_status('Процесс сохранения...')
         self.content_widget.save()
         self.browser_widget.save()
     

@@ -1,7 +1,7 @@
 from typing import Union
 from PyQt5 import QtCore, QtWidgets
 
-from projects.specification.config.app_context.app_context import app_context, SETTING, SIGNAL_BUS, ENUMS
+from projects.specification.config.app_context import SETTING, SIGNAL_BUS, ENUMS
 
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.content_widget.cw_empty_page import PageEmpty

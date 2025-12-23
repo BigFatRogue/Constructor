@@ -16,7 +16,7 @@ from projects.specification.core.config_table import (
     INVENTOR_ITEM_CONFIG,
 )
 
-from projects.specification.config.app_context.app_context import DATACLASSES
+from projects.specification.config.app_context import DATACLASSES
 
 
 def __get_dict_from_xlsx(filepath: str) -> dict[tuple[str,...], list[float, str]]:

@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 
-from projects.specification.config.app_context.app_context import ENUMS
+from projects.specification.config.app_context import ENUMS, SIGNAL_BUS
 from projects.specification.ui.widgets.browser_widget.bw_item import BrowserItem
 
 from projects.specification.core.data_tables import PropertyProjectData
@@ -48,3 +48,4 @@ class ProjectItem(BrowserItem):
             self.item_data.save(self.filepath)
             self.set_is_init(True)
             self.set_is_save(True)
+            SIGNAL_BUS.satus_bar.emit(f'Проект <b>{self.project_name}</b> сохранён')

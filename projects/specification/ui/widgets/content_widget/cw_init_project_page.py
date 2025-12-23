@@ -2,7 +2,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from dataclasses import dataclass
 from typing import Callable
 
-from projects.specification.config.app_context.app_context import SETTING, SIGNAL_BUS, ENUMS
+from projects.specification.config.app_context import SIGNAL_BUS, ENUMS
 
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem 
