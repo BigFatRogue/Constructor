@@ -385,7 +385,7 @@ class DataTable(QtCore.QAbstractTableModel):
             for row in range(self.rowCount()):
                 data = self._data[row][number_row]
                 
-                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.horizontal_header_data[column].parameters:
+                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.vertical_header_data[column].parameters:
                     state_select_row[row] = self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
                     
                     if data.value in state_select_row:

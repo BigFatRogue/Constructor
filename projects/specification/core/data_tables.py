@@ -394,7 +394,7 @@ class SpecificationDataItem(GeneralDataItem):
 
     def delete(self) -> None:
         if self._sid:
-            self.__delete_sql()
+            self._delete_sql()
             self.database.commit()
             self.database.close()
         
@@ -561,8 +561,8 @@ class SpecificationDataItem(GeneralDataItem):
                 return i
         return -1 
 
-    def __delete_sql(self) -> None:
-        self.database.execute(f'DELETE FROM {self.specification_config.name} WHERE id={self._sid}')
+    def _delete_sql(self) -> None:
+        self.database.delete(self.specification_config.name, id_row=self._sid)
 
 
 class InventorSpecificationDataItem(SpecificationDataItem):

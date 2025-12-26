@@ -1,5 +1,5 @@
 from __future__ import annotations
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 
 from projects.specification.config.app_context import ENUMS
 
@@ -88,4 +88,10 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
         """
         Переопределяемый метод в потомках, для сохранения
         """
+        ...
+    
+    def init_context_menu(self) -> None:
+        ...
+
+    def show_context_menu(self, position: QtCore.QPoint) -> None:
         ...

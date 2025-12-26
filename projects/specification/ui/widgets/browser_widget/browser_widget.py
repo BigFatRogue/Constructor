@@ -65,7 +65,13 @@ class ButtonBrowser(QtWidgets.QPushButton):
         icon = QtGui.QIcon()
         icon.addFile(os.path.join(SETTING.ICO_FOLDER, name_ico))
         self.setIcon(icon)
-       
+
+
+class Tree(QtWidgets.QTreeWidget):
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            event.accept()
+            return super().mousePressEvent(event)
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class BrowserWidget(QtWidgets.QWidget):
@@ -80,6 +86,7 @@ class BrowserWidget(QtWidgets.QWidget):
         SIGNAL_BUS.load_specification_from_xlsx.connect(self.load_specification_from_xlsx)
 
         self.init_widgets()
+        self.init_context_menu()
 
     def init_widgets(self) -> None:
         self.grid_layout = QtWidgets.QGridLayout(self)
@@ -116,11 +123,28 @@ class BrowserWidget(QtWidgets.QWidget):
         self.h_layout_frame_panel.addWidget(self.line_edit)
 
         # --------------------------------- Tree ---------------------------------------------- 
-        self.tree = QtWidgets.QTreeWidget(self)
+        self.tree = Tree(self)
         self.tree.setItemDelegate(RightDrawDelegate(self))
         self.tree.setHeaderLabel('Проекты')
         self.tree.itemPressed.connect(self.select_tree_item)
         self.grid_layout.addWidget(self.tree, 1, 0, 1, 1)
+
+    def init_context_menu(self) -> None:
+        self.tree.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self.show_context_menu)
+
+        self.context_menu = QtWidgets.QMenu(self.tree)
+
+        self.action_open_project = QtWidgets.QAction(self.context_menu)
+        self.action_open_project.setText('Открыть проект')
+        self.context_menu.addAction(self.action_open_project)
+
+    def show_context_menu(self, position: QtCore.QPoint) -> None:
+        item: BrowserItem = self.tree.itemAt(position)
+        if item:
+            item.show_context_menu(self.tree.viewport().mapToGlobal(position))
+        else:
+            self.context_menu.exec_(self.tree.viewport().mapToGlobal(position))
 
     def create_project(self) -> ProjectItem:
         """
@@ -313,3 +337,4 @@ class BrowserWidget(QtWidgets.QWidget):
                 self.create_main_item_project(item)
             
             item.save()
+

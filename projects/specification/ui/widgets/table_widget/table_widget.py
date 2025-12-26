@@ -94,7 +94,6 @@ class TableWidget(QtWidgets.QWidget):
         Настройка отображения таблицы Inventor
         """
         self.current_item: TableInventorItem
-
         self.horizontal_header.set_widget()
         self.vertical_header.set_widget()
 

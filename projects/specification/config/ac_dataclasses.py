@@ -55,12 +55,12 @@ class ParameterHeaders:
 
     parameter содержит дополнительные уникальные свойства для кастомных заголовков
     """
-    def __init__(self, row: int = None, column: int = None, size: int = None, is_view: bool = True, parameters: dict[str, str | int | float | bool] = {}):
+    def __init__(self, row: int = None, column: int = None, size: int = None, is_view: bool = True, parameters: dict[str, str | int | float | bool] = None):
         self.row = row
         self.column = column
         self.size = size
         self.is_view = is_view
-        self.parameters = parameters
+        self.parameters = {} if parameters is None else parameters
 
     def get_dict_data(self) -> list[str | int | float | bool]:
         parameters = {}

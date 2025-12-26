@@ -29,6 +29,7 @@ class ContentWidget(QtWidgets.QWidget):
         self.init_widgets()
 
         SIGNAL_BUS.select_item_browser.connect(self.set_item)
+        SIGNAL_BUS.delele_item.connect(self.view_empty_page)
 
     def init_widgets(self) -> None:
         self.v_layout = QtWidgets.QVBoxLayout(self)
@@ -71,7 +72,7 @@ class ContentWidget(QtWidgets.QWidget):
         elif tp in (ENUMS.TYPE_TREE_ITEM.TABLE_INV, ENUMS.TYPE_TREE_ITEM.TABLE_BUY, ENUMS.TYPE_TREE_ITEM.TABLE_PROD):
             self.page_table.populate(item)
             self.stacket.setCurrentIndex(self.index_page_table)
-    
+
     def view_empty_page(self) -> None:
         self.stacket.setCurrentIndex(self.index_page_empty)
 

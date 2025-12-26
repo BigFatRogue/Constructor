@@ -97,6 +97,7 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         
         :param self: Описание
         """
+
         if self._table_model.item_data.vertical_header_data:
             for i, data in enumerate(self._table_model.item_data.vertical_header_data):
                 state = data.parameters.get(ENUMS.PARAMETERS_HEADER.SELECT_ROW.name)
@@ -105,6 +106,7 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
                 else:
                     self.widgets[i].setCheckState(QtCore.Qt.CheckState.Unchecked)
                     data.parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = False
+
 
     def fill_row(self, row: int, state: bool) -> None:
         if self._table_model:

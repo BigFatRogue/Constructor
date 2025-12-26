@@ -94,6 +94,11 @@ class DataBase:
 
     def select(self, table_table: str, fields: list[str] | tuple[str, ...], add_qurey='') -> sqlite3.Cursor:
         return self.execute(f'SELECT {self._list_fields_to_str(fields)} FROM {table_table}' + add_qurey)
+    
+    def delete(self, table_name: str, id_row: int = None, add_query: str = '') -> None:
+        id_where = f' WHERE id={id_row}' if id_row is not None else ''
+        
+        self.execute(f'DELETE FROM {table_name}' + id_where + add_query)
 
 if __name__ == '__main__':
     import os
