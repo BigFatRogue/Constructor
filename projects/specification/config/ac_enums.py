@@ -12,10 +12,10 @@ class NameTableSQL(Enum):
     INVENTOR = 'specification_inventor'
     BUY = 'specification_buy'
     PROD = 'specification_prod'
-    STYLE_CELL = 'style_cell'
-    STYLE_SECTION = 'style_section'
-    STYLE_CELL_LINK = 'style_cell_link'
-    STYLE_SPECEFICATION = 'style_specefication'
+    PARAMETER_CELL = 'paramater_cell'
+    PARAMETER_CELL_LINK = 'parameter_cell_link'
+    PARAETER_SECTION = 'paramater_section'
+    PARAMETER_TABLE = 'parameter_table'
 
 
 class TypeTreeItem(Enum):
@@ -57,20 +57,19 @@ class StateSortedColumn(Enum):
     EMPTY = 0
     
 
+class ParamatersHeader(Enum):
+    STATE_SORTED = auto()
+    SELECT_ROW = auto()
+
+
+class PatametersTable(Enum):
+    ACTIVE_RANGE = auto()
+
+
 class TypeBlockPropertyControlPanel(Enum):
     FONT = auto()
     ALIGN = auto()
     MARGIN = auto()
-
-
-class TypeSignalFromControlPanel(Enum):
-    SAVE = auto()
-    SET_ALIGN = auto()
-    FONT_FAMILY = auto()
-    FONT_SIZE = auto()
-    FONT_BOLD = auto()
-    FONT_ITALIC = auto()
-    FONT_UNDERLINE = auto()
 
 
 class Constants(Enum):
@@ -87,9 +86,8 @@ class AppContextEnums:
     TYPE_TREE_ITEM = TypeTreeItem
     TYPE_CREATE_LOAD_SPEC = TypeCreateLoadSpec
     STATUS_BAR = EnumStatusBar
-    TYPE_ALIGN_TEXT = TypeAlignText
     STATE_SORTED_COLUMN = StateSortedColumn
     TYPE_BLOCK_PROPERTY_CONTROL_PANEL = TypeBlockPropertyControlPanel
-    TYPE_SIGNAL_FROM_CONTROL_PANEL = TypeSignalFromControlPanel
     CONSTANTS = Constants
-    
+    PARAMETERS_HEADER = ParamatersHeader
+    PARAMETERS_TABLE = PatametersTable

@@ -53,7 +53,7 @@ def move_file_inventor_project() -> None:
     mkdir_tree(path=PATH_TMP)
     project_inventor_full_filename = os.path.join(PATH_TMP, PROJECT_INVENTOR_FILENAME)
     if not os.path.exists(project_inventor_full_filename):
-        shutil.copy(os.path.join(PROJECT_ROOT, 'resources', PROJECT_INVENTOR_FILENAME), project_inventor_full_filename)
+        shutil.copy(os.path.join(RESOURCES_PATH, PROJECT_INVENTOR_FILENAME), project_inventor_full_filename)
 
 def copy_file_assembly(full_filename: str) -> str:
     """

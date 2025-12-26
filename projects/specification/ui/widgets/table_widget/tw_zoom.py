@@ -2,6 +2,7 @@ import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.app_context import SETTING
+from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
@@ -81,11 +82,12 @@ class CustomSlider(QtWidgets.QSlider):
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton, QtWidgets.QSlider])
 class ZoomTable(QtWidgets.QWidget):
-    signal_current_zoom = QtCore.pyqtSignal(int)
+    signal_change_zoom = QtCore.pyqtSignal(int)
 
     def __init__(self, parent, range_zoom: tuple[int, int, int]):
         super().__init__(parent)
 
+        self._table_model = None
         self.min_zoom, self.max_zoom, self.step_zoom = range_zoom
         self.current_zoom = 100
 
@@ -145,13 +147,24 @@ class ZoomTable(QtWidgets.QWidget):
         self.btn_show_current_zoom.clicked.connect(self.zoom_reset)
         self.h_layout_frame.addWidget(self.btn_show_current_zoom)
     
+    @property
+    def table_model(self) -> DataTable:
+        return self._table_model
+
+    def set_table_model(self, table_model: DataTable) -> None:
+        self._table_model = table_model
+        
     def set_value(self, value: int) -> None:
+        if self.current_zoom == value:
+            return
+        
         self.btn_show_current_zoom.setText(f'{value}%')
         self.slider.setValue(self.current_zoom // 2)
 
     def _set_value(self, value: int) -> None:
         self.set_value(value)
-        self.signal_current_zoom.emit(self.current_zoom)
+        self._set_current_zoom_in_model()
+        self.signal_change_zoom.emit(self.current_zoom)
         
     def _click_btn_zoom_in(self) -> None:
         self.zoom_in()
@@ -162,7 +175,8 @@ class ZoomTable(QtWidgets.QWidget):
     def _moved_slider(self, value: int) -> None:
         self.current_zoom = value * 2
         self.btn_show_current_zoom.setText(f'{self.current_zoom}%')
-        self.signal_current_zoom.emit(self.current_zoom)
+        self._set_current_zoom_in_model()
+        self.signal_change_zoom.emit(self.current_zoom)
 
     def zoom_in(self) -> None:
         zoom = self.current_zoom + self.step_zoom
@@ -180,5 +194,9 @@ class ZoomTable(QtWidgets.QWidget):
         self.current_zoom = 100
         self.slider.setValue(self.current_zoom // 2)
         self.btn_show_current_zoom.setText(f'{self.current_zoom}%')
-        self.signal_current_zoom.emit(self.current_zoom)
+        self._set_current_zoom_in_model()
+        self.signal_change_zoom.emit(self.current_zoom)
         
+    def _set_current_zoom_in_model(self) -> None:
+        if self.table_model:
+            self.table_model.set_zoom(self.current_zoom)

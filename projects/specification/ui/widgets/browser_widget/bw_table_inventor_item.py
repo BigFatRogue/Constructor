@@ -21,10 +21,11 @@ class TableInventorItem(TableBrowserItem):
                 data: list[list[DATACLASSES.DATA_CELL]]
                 ):
         
-        item_data = InventorSpecificationDataItem(parent_item.parent_item.item_data.database)
+        item_data: InventorSpecificationDataItem = InventorSpecificationDataItem(parent_item.parent_item.item_data.database)
         item_data.set_data(data)
         table_data = DataTable(item_data)
         table_data.signal_change.connect(lambda: self.set_is_save(False))
         type_item = ENUMS.TYPE_TREE_ITEM.TABLE_INV
 
         super().__init__(tree=tree, parent_item=parent_item, name=name, table_data=table_data, item_data=item_data, type_item=type_item)
+        self.item_data: InventorSpecificationDataItem

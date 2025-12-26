@@ -103,7 +103,6 @@ class PagePropertyProject(PageContent):
                 
             self.current_item.set_project_name(self.lineedti_project_name.text())
 
-
     def check_fill_lineedit(self) -> bool:
         for col in self.columns_config:
             if col.mode_column_name:

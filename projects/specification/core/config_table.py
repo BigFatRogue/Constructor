@@ -192,16 +192,16 @@ PROD_ITEM_CONFG = TableConfig(
     ]
 )
 
-STYLE_CELL_CONFIG = TableConfig(
-    name=ENUMS.NAME_TABLE_SQL.STYLE_CELL.value,
+PARAMETER_CELL_CONFIG = TableConfig(
+    name=ENUMS.NAME_TABLE_SQL.PARAMETER_CELL.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('style', 'TEXT', is_unique=True)
     ]
 )
 
-STYLE_CELL_LINK_CONFIG = TableConfig(
-    name=ENUMS.NAME_TABLE_SQL.STYLE_CELL_LINK.value,
+PARAMETER_CELL_LINK_CONFIG = TableConfig(
+    name=ENUMS.NAME_TABLE_SQL.PARAMETER_CELL_LINK.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('parent_id', 'INTEGER', is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name),
@@ -211,20 +211,21 @@ STYLE_CELL_LINK_CONFIG = TableConfig(
     ],
 )
 
-STYLE_SECTION_CONFIG = TableConfig(
-    name=ENUMS.NAME_TABLE_SQL.STYLE_SECTION.value,
+PARAMETER_HEADER_CONFIG = TableConfig(
+    name=ENUMS.NAME_TABLE_SQL.PARAETER_SECTION.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('row', 'INTEGER'),
         ColumnConfig('column', 'INTEGER'),
-        ColumnConfig('size', 'REAL'),
-        ColumnConfig('state', 'INTEGER'),
+        ColumnConfig('size', 'INTEGER'),
+        ColumnConfig('is_view', 'BOOLEAN'),
+        ColumnConfig('parameters', 'TEXT'),
         ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
     ]
 )
 
-STYLE_SPECIFICATION = TableConfig(
-    name=ENUMS.NAME_TABLE_SQL.STYLE_SPECEFICATION.value,
+PARAMETER_TABLE_CONFIG = TableConfig(
+    name=ENUMS.NAME_TABLE_SQL.PARAMETER_TABLE.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('current_zoom', 'INTEGER'),
@@ -233,6 +234,7 @@ STYLE_SPECIFICATION = TableConfig(
         ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
     ]
 )
+
 
 if __name__ == '__main__':
     for i in INVENTOR_ITEM_CONFIG.columns:

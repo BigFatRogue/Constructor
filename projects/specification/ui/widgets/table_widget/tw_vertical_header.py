@@ -1,7 +1,7 @@
 import os
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-from projects.specification.config.app_context import SIGNAL_BUS
+from projects.specification.config.app_context import SETTING, ENUMS, DATACLASSES
 
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 from projects.specification.ui.widgets.table_widget.tw_header import HeaderWithOverlayWidgets
@@ -20,10 +20,11 @@ class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
         self.clicked.connect(self.choose_row)
 
     def choose_row(self) -> None:
+        state: bool = True if self.checkState() == QtCore.Qt.CheckState.Checked else False
         if self.is_shift:
-            self.signal_multi_choose.emit((self.index_section, self.checkState()))
+            self.signal_multi_choose.emit((self.index_section, state))
         else:
-            self.signal_signle_choose.emit((self.index_section, self.checkState()))
+            self.signal_signle_choose.emit((self.index_section, state))
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
@@ -37,6 +38,7 @@ class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
 
 class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
     signal_select_row = QtCore.pyqtSignal(tuple)
+    signal_change = QtCore.pyqtSignal()
 
     def __init__(self, table_view: QtWidgets.QTableWidget, range_zoom):
         super().__init__(QtCore.Qt.Orientation.Vertical, table_view, range_zoom)
@@ -45,7 +47,28 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
                            ]
         self._start_row: int = None
         self._end_row: int = None
-        self.table_model: DataTable = self.table_view.model()
+
+    def set_table_model(self, table_model):
+        super().set_table_model(table_model)
+        self._set_size_section()
+        
+    def _set_size_section(self) -> None:
+        """
+        Установка параметров заголовка из item_data
+
+        Если в item_data ещё нет параметров, то они будут заданны из заголовка
+        
+        :param self: Описание
+        """
+        if self._table_model.item_data.vertical_header_data:
+            for data in self._table_model.item_data.vertical_header_data:
+                self.resizeSection(data.row, data.size)
+        else:
+            headers: list[DATACLASSES.DATA_HEADERS] = []
+            for i in range(self.count()):
+                header_data = DATACLASSES.DATA_HEADERS(i, -1, self.sectionSize(i), self.isVisible())
+                headers.append(header_data)
+            self._table_model.item_data.vertical_header_data = headers
 
     def set_widget(self, align: int=2):
         self._align_widget = align
@@ -63,11 +86,29 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
             width = check_box.width()
             self.setMinimumWidth(self.sectionSize(i) + text_w + width)
         
+        self._set_parameters_widget()
         self._update_widgets()
 
-    def fill_row(self, row: int, state: bool) -> None:   
-        self.signal_select_row.emit((row, state))
+    def _set_parameters_widget(self) -> None:
+        """
+        Установка параметров заголовка из item_data
+
+        Если в item_data ещё нет параметров, то они будут заданны из заголовка
         
+        :param self: Описание
+        """
+        if self._table_model.item_data.vertical_header_data:
+            for i, data in enumerate(self._table_model.item_data.vertical_header_data):
+                state = data.parameters.get(ENUMS.PARAMETERS_HEADER.SELECT_ROW.name)
+                if state is not None:
+                    self.widgets[i].setCheckState(QtCore.Qt.CheckState.Checked if state else QtCore.Qt.CheckState.Unchecked)
+                else:
+                    self.widgets[i].setCheckState(QtCore.Qt.CheckState.Unchecked)
+                    data.parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = False
+
+    def fill_row(self, row: int, state: bool) -> None:
+        if self._table_model:
+            self._table_model.select_row(row, state)   
 
     def signle_choose(self, value: tuple[int, bool]) -> None:
         row, state = value

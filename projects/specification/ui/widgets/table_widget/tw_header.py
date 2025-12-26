@@ -1,5 +1,8 @@
 
 from PyQt5 import QtWidgets, QtCore
+from projects.specification.config.app_context import DATACLASSES
+
+from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 
 
 class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
@@ -8,7 +11,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
     позволяющий добавлять виджеты поверх секций.
     Поддерживает горизонтальные и вертикальные заголовки.
     """
-    signal_size_section = QtCore.pyqtSignal()
+    signal_resize_section = QtCore.pyqtSignal()
 
     ALIGN_LEFT = 0
     ALIGN_CENTER = 1
@@ -19,6 +22,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
 
         self.widgets: list[QtWidgets.QWidget] = [] 
         self.table_view = table_view
+        self._table_model = None
         self.min_zoom, self.max_zoom, self.step_zoom = range_zoom
         self._align_widget = self.ALIGN_RIGHT
 
@@ -38,8 +42,38 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         self.sectionMoved.connect(self._update_widgets)
         self.geometriesChanged.connect(self._update_widgets)        
     
-    def set_widget(self) -> None:
-        ...
+    @property
+    def table_model(self) -> DataTable:
+        return self._table_model
+
+    def set_table_model(self, table_model: DataTable) -> None:
+        self._table_model = table_model
+
+    def _set_size_section(self) -> None:
+        """
+        Установка размеров секций
+        
+        Переопределяемый метод
+        """
+    
+    def set_widget(self, align: int) -> None:
+        """
+        Установка виджета в секцию заголовка
+
+        :param align: выравнивание (0 -лево, 1- середина, 2 -право)
+        :type align: int
+        """
+
+    def _set_parameters_widget(self) -> None:
+        """
+        Установка параметров виджетов
+        
+        Переопределяемый метод
+        """ 
+
+    def _hide_widget(self):
+        for widget in self.widgets:
+            widget.hide()
 
     def _update_widgets(self):
         for i in range(len(self.widgets)):
@@ -128,9 +162,21 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
     def get_section_size(self) -> tuple[int, ...]:
         return tuple(self.sectionSize(i) for i in range(self.count()))
 
+
     def mouseReleaseEvent(self, event):
         self.steps_section_size = self.__generate_steps_for_zoom_size_section()
-        self.signal_size_section.emit()
+        self.signal_resize_section.emit()
+        self._set_current_header_size_item_data()
         return super().mouseReleaseEvent(event)
     
+    def _set_current_header_size_item_data(self):
+        """
+        Установка текущих значений в размеров заголвков в header_data 
+        """
+        if self.orientation() == QtCore.Qt.Orientation.Horizontal:
+            data = self._table_model.item_data.horizontal_header_data
+        else:
+            data = self._table_model.item_data.vertical_header_data
+        for size, header in zip(self.get_section_size(), data):
+            header.size = size
 

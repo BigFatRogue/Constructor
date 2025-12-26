@@ -74,6 +74,8 @@ class BrowserWidget(QtWidgets.QWidget):
     """
     def __init__(self, parent):
         super().__init__(parent)
+        self._current_item: BrowserItem = None
+        self._prev_item: BrowserItem = None
 
         SIGNAL_BUS.load_specification_from_xlsx.connect(self.load_specification_from_xlsx)
 
@@ -127,6 +129,7 @@ class BrowserWidget(QtWidgets.QWidget):
         :return: коренвой элемент проекта
         :rtype: ProjectItem
         """
+        
         project_item = ProjectItem(self.tree)  
         project_item.setExpanded(True)
 
@@ -147,6 +150,7 @@ class BrowserWidget(QtWidgets.QWidget):
         :param project_item: корневой элемент проекта
         :type project_item: ProjectItem
         """
+
         spec_inv_item = SpecificationItem(self.tree, project_item, 'Спецификация из Inventor', os.path.join(SETTING.ICO_FOLDER, 'inventor.png'))
         spec_inv_item.parent_item = project_item
         spec_inv_item.type_item = ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV
@@ -240,12 +244,14 @@ class BrowserWidget(QtWidgets.QWidget):
             tp = table['type_spec']
             create_date = table['datetime']
             data = table['data']
+            header_data = table['header_data']
             sid = table['id']
             
             item = None
             if tp == ENUMS.NAME_TABLE_SQL.INVENTOR.value:
                 parent_item = dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV]
                 item = TableInventorItem(tree=self.tree, parent_item=dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV], name=name, data=data)
+                item.item_data.set_header_data(header_data)
                 item.item_data.set_sid(sid)
                 item.set_is_init(True)
                 item.set_is_save(True)
@@ -281,6 +287,18 @@ class BrowserWidget(QtWidgets.QWidget):
         :param item: элемент браузера
         :type item: BrowserItem
         """
+        item.set_is_active(False)
+
+        if self._current_item is None:
+            self._current_item = item
+            self._prev_item = item
+        
+        self._prev_item = self._current_item
+        self._current_item = item
+
+        self._prev_item.set_is_active(False)
+        self._current_item.set_is_active(True)
+        
         SIGNAL_BUS.select_item_browser.emit(item)
     
     def save(self) -> None:

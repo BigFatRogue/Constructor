@@ -25,10 +25,10 @@ from projects.specification.core.config_table import (
     INVENTOR_ITEM_CONFIG,
     BUY_ITEM_CONFIG,
     PROD_ITEM_CONFG,
-    STYLE_CELL_CONFIG,
-    STYLE_CELL_LINK_CONFIG,
-    STYLE_SECTION_CONFIG,
-    STYLE_SPECIFICATION
+    PARAMETER_CELL_CONFIG,
+    PARAMETER_CELL_LINK_CONFIG,
+    PARAMETER_HEADER_CONFIG,
+    PARAMETER_TABLE_CONFIG
 )
 from projects.specification.core.functions import get_now_time
 
@@ -283,6 +283,9 @@ class PropertyProjectData(GeneralDataItem):
                 for name_style, value in cell_style.items():
                     setattr(data[row][column], name_style, value)
             tables.append(table)
+
+            table['header_data'] = self._load_parameter_header(table['id'])
+
         return tables
 
     def _load_styles(self, sid: int) -> dict[tuple[int, int], dict[str, str | bool | int]]:
@@ -294,18 +297,13 @@ class PropertyProjectData(GeneralDataItem):
         :return: {(row, column): {'align_h': 28, ...}}
         :rtype: dict[tuple[int, int], dict[str, str | bool | int]]
         """
-        fields_style = tuple(col.field for col in STYLE_CELL_CONFIG.columns if not col.is_id)
+        fields_style = tuple(col.field for col in PARAMETER_CELL_CONFIG.columns if not col.is_id)
         
-        # add_query = f""" LEFT JOIN {STYLE_CELL_LINK_CONFIG.name} ON {STYLE_CELL_LINK_CONFIG.name}.style_id = {STYLE_CELL_CONFIG.name}.id
-        # WHERE {STYLE_CELL_LINK_CONFIG.name}.parent_id = {sid}"""
-
-        # fields = ('row', 'column') + fields_style
-
         res = self.database.execute(f"""
         SELECT number_row, column, {', '.join(fields_style)}
-        FROM {STYLE_CELL_LINK_CONFIG.name}
-        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {STYLE_CELL_LINK_CONFIG.name}.parent_id
-        LEFT JOIN {STYLE_CELL_CONFIG.name} ON {STYLE_CELL_CONFIG.name}.id = {STYLE_CELL_LINK_CONFIG.name}.style_id
+        FROM {PARAMETER_CELL_LINK_CONFIG.name}
+        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {PARAMETER_CELL_LINK_CONFIG.name}.parent_id
+        LEFT JOIN {PARAMETER_CELL_CONFIG.name} ON {PARAMETER_CELL_CONFIG.name}.id = {PARAMETER_CELL_LINK_CONFIG.name}.style_id
         WHERE sid = {sid}
         ORDER BY number_row
         """)
@@ -317,6 +315,16 @@ class PropertyProjectData(GeneralDataItem):
         
         return dct
 
+    def _load_parameter_header(self, sid: int) -> list[list]:
+        fields: list[str] = [col.field for col in PARAMETER_HEADER_CONFIG.columns if not col.is_id and not col.is_foreign_id]
+        add_query = f' WHERE parent_id = {sid}'
+        res = self.database.select(PARAMETER_HEADER_CONFIG.name, fields, add_query).fetchall()
+
+        data_header = []
+        for row in res:
+            data_header.append(DATACLASSES.DATA_HEADERS(**{k: v for k, v in zip(fields, row)}))
+        return data_header
+
 
 class SpecificationDataItem(GeneralDataItem):
     def __init__(self, database, unique_config: TableConfig):
@@ -327,23 +335,24 @@ class SpecificationDataItem(GeneralDataItem):
         self.general_config: TableConfig = GENERAL_ITEM_CONFIG
         self.unique_config: TableConfig = unique_config
         self.fields_config: TableConfig = FIELDS_CONFIG
-        self.style_cell_config: TableConfig = STYLE_CELL_CONFIG
-        self.style_cell_link_config: TableConfig = STYLE_CELL_LINK_CONFIG
-        self.style_section_config: TableConfig = STYLE_SECTION_CONFIG
-        self.style_spcefication_config: TableConfig =  STYLE_SPECIFICATION
+        self.parameter_cell_config: TableConfig = PARAMETER_CELL_CONFIG
+        self.parameter_cell_link_config: TableConfig = PARAMETER_CELL_LINK_CONFIG
+        self.parameter_header_config: TableConfig = PARAMETER_HEADER_CONFIG
+        self.parameter_table_config: TableConfig =  PARAMETER_TABLE_CONFIG
         
         self.data: list[list[DATACLASSES.DATA_CELL]] = None
-        self.data_style_section: list [DATACLASSES.SECTION_STYLE] = None
-        self.current_zoom: int = 100
-        self.active_cell: tuple[int, int] = (0, 0)
+        self.table_data: DATACLASSES.PARAMETER_TABLE = None
+        self.horizontal_header_data: list [DATACLASSES.DATA_HEADERS] = None
+        self.vertical_header_data: list [DATACLASSES.DATA_HEADERS] = None
+        
         self.type_spec = None
         self._sid: int = None
 
         self.total_columns: tuple[ColumnConfig] = tuple(self.general_config.columns + self.unique_config.columns)  
         self.fields_general: tuple[str] = tuple(col.field for col in self.general_config.columns)
         self.fields_unique: tuple[str] = tuple(col.field for col in self.unique_config.columns)
-        self.fields_style: tuple[str] = tuple(col.field for col in self.style_cell_config.columns)
-        self.fields_style_link: tuple[str] = tuple(col.field for col in self.style_cell_link_config.columns)
+        self.fields_style: tuple[str] = tuple(col.field for col in self.parameter_cell_config.columns)
+        self.fields_style_link: tuple[str] = tuple(col.field for col in self.parameter_cell_link_config.columns)
     
     def set_sid(self, sid: int) -> None:
         self._sid = sid
@@ -360,15 +369,25 @@ class SpecificationDataItem(GeneralDataItem):
     def get_data(self) -> list[list[DATACLASSES.DATA_CELL]]:
         return super().get_data()
 
+    def set_header_data(self, header_data: list[DATACLASSES.DATA_HEADERS]) -> None:
+        self.vertical_header_data = []
+        self.horizontal_header_data = []
+        for data in header_data:
+            if isinstance(data.parameters, str):
+                data.parameters = json.loads(data.parameters)
+            if data.row == -1:
+                self.horizontal_header_data.append(data)
+            else:
+                self.vertical_header_data.append(data)
+
     def save(self) -> None:
         if not self.is_init:
             self._create_sql()
             self._insert_specification_sql(self.type_spec)
             self._insert_in_sql_filed()
-            self._insert_or_update_sql()
-            self._insert_section_style()
-        else:
-            self._insert_or_update_sql()
+
+        self._insert_or_update_sql()
+        self._insert_or_update_header_data()
         
         self.database.commit()
         self.database.close()
@@ -386,10 +405,10 @@ class SpecificationDataItem(GeneralDataItem):
         for config in (self.specification_config, 
                        self.general_config, 
                        self.unique_config, 
-                       self.style_cell_config, 
-                       self.style_cell_link_config, 
-                       self.style_section_config, 
-                       self.style_spcefication_config):
+                       self.parameter_cell_config, 
+                       self.parameter_cell_link_config, 
+                       self.parameter_header_config, 
+                       self.parameter_table_config):
             if config:
                 columns_sql = tuple(col.sql_definition for col in config.columns + config.columns_property)
                 self.database.create(config.name, columns_sql)
@@ -449,7 +468,7 @@ class SpecificationDataItem(GeneralDataItem):
 
         for x, (cell, col) in enumerate(zip(row, self.total_columns)):
             if not col.is_id and col.is_view:
-                value_style_cell: str = json.dumps(cell.get_dcit_style())
+                value_style_cell: str = json.dumps(cell.get_dict_style())
                 self._insert_sytle_sql(value_style_cell)
                 self._insert_cell_style_sql(id_general, x, value_style_cell)
 
@@ -462,7 +481,7 @@ class SpecificationDataItem(GeneralDataItem):
 
         for x, (cell, col) in enumerate(zip(row, self.total_columns)):
             if col.is_view and col.is_view:
-                value_style_cell: str = json.dumps(cell.get_dcit_style())
+                value_style_cell: str = json.dumps(cell.get_dict_style())
                 self._insert_sytle_sql(value_style_cell)
                 self._updata_cell_style_sql(id_general, x, value_style_cell)
 
@@ -471,14 +490,14 @@ class SpecificationDataItem(GeneralDataItem):
         Добавление уникальных стилей в таблицу стилей
         """
         add_query = f'ON CONFLICT({", ".join(self.fields_style[1:])}) DO NOTHING'
-        self.database.insert(self.style_cell_config.name, self.fields_style[1:], [value], add_query)
+        self.database.insert(self.parameter_cell_config.name, self.fields_style[1:], [value], add_query)
 
     def _insert_cell_style_sql(self, id_general: int, column: int, value: str) -> None:
         """
         Добавление адреса ячейка и ссылки на стиль
         """
         style_id = self._get_id_style(value)
-        self.database.insert(self.style_cell_link_config.name, self.fields_style_link[1:], [id_general, column, self._sid, style_id])
+        self.database.insert(self.parameter_cell_link_config.name, self.fields_style_link[1:], [id_general, column, self._sid, style_id])
 
         #TODO реализовать вставка размеров заголовков таблицы
     
@@ -488,7 +507,7 @@ class SpecificationDataItem(GeneralDataItem):
         """
         style_id = self._get_id_style(value)
         add_query = f" WHERE parent_id='{id_general}' AND column='{x}'"
-        self.database.update(table_name=self.style_cell_link_config.name, fields=['style_id'], value=[style_id], add_query=add_query)
+        self.database.update(table_name=self.parameter_cell_link_config.name, fields=['style_id'], value=[style_id], add_query=add_query)
 
     def _get_id_style(self, value: str) -> int | None:
         """
@@ -500,7 +519,7 @@ class SpecificationDataItem(GeneralDataItem):
         :rtype: int | None
         """
         add_query_select = f" WHERE style = '{value}'"
-        res = self.database.select(self.style_cell_config.name, ('id', ), add_query_select).fetchall()
+        res = self.database.select(self.parameter_cell_config.name, ('id', ), add_query_select).fetchall()
         if res:
             return res[0][0]
 
@@ -510,51 +529,32 @@ class SpecificationDataItem(GeneralDataItem):
         if field_foreign_key:       
             self.database.execute(f"UPDATE {config.name} SET {field_foreign_key} = '{parent_id}' WHERE id={last_id}")
 
-    def _insert_or_update_section_style(self) -> None:
-        if self.data_style_section:
-            str_fields = tuple(col.field for col in self.style_section_config.columns if not col.is_id)
-            for cell in self.data_style_section:
-                value = []
-                for prop in fields(cell):
-                    for field in str_fields:
-                        if field == prop.name:
-                            value.append(getattr(cell, prop.name))
-                value.append(self._sid)
+    def _insert_or_update_header_data(self) -> None:
+        fields: list[str ]= [col.field for col in self.parameter_header_config.columns if not col.is_id]
 
-                query = f"""
-                SELECT
-                    EXISTS(SELECT * FROM style_section WHERE row = 1 AND column = -1 AND parent_id = 1) as cell
-                """
-                exist = self.database.execute(query).fetchall[0][0]
-                if exist == 1:
-                    self._updat_section_style_sql()
-                else:
-                    self._insert_section_style()
-
-
-    def _insert_section_style(self) -> None:
-        if self.data_style_section:
-            str_fields = tuple(col.field for col in self.style_section_config.columns if not col.is_id)
-            for cell in self.data_style_section:
-                value = []
-                for prop in fields(cell):
-                    for field in str_fields:
-                        if field == prop.name:
-                            value.append(getattr(cell, prop.name))
-                
-                value.append(self._sid)
-                self.database.insert(self.style_section_config.name, str_fields, value)
-    
-    def _updat_section_style_sql(self) -> None:
-        if self.data_style_section:
-            str_fields = tuple(col.field for col in self.style_section_config.columns if not col.is_id)
-    
-    def _insert_specification_style(self) -> None:
-        ...
-
-    def _update_specicication_style(self) -> None:
-        ...
-
+        for header_data in self.horizontal_header_data + self.vertical_header_data:
+            dict_data_header = header_data.get_dict_data()
+            values = []
+            for field in fields:
+                param = dict_data_header.get(field)
+                if param is not None:
+                    if isinstance(param, dict):
+                        param = json.dumps(param)
+                    values.append(param)
+            values.append(self._sid)
+            
+            query = f"""
+            SELECT
+                EXISTS(SELECT * FROM {self.parameter_header_config.name} WHERE row = {header_data.row} AND column = {header_data.column} AND parent_id = {self._sid}) as cell
+            """
+            exist = self.database.execute(query).fetchall()[0][0]
+        
+            if exist == 0:
+                self.database.insert(PARAMETER_HEADER_CONFIG.name, fields, values)
+            else:
+                add_query = f" WHERE row = {header_data.row} AND column = {header_data.column} AND parent_id = {self._sid}"
+                self.database.update(table_name=PARAMETER_HEADER_CONFIG.name, fields=fields, value=values, add_query=add_query)
+ 
     def get_index_from_name_filed(self, field: str) -> int:
         for i, col in enumerate(self.general_config.columns + self.unique_config.columns):
             if col.field == field:

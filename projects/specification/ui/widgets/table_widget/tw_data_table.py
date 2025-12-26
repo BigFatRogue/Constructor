@@ -21,14 +21,14 @@ class DataTable(QtCore.QAbstractTableModel):
     FONT_PARAM_ITALIC = 4
     FONT_PARAM_UNDERLINE = 5
 
-    def __init__(self, data_item: SpecificationDataItem, range_zoom: tuple[int, int , int]=None):
+    def __init__(self, item_data: SpecificationDataItem, range_zoom: tuple[int, int , int]=None):
         """
         :param data_item: элемент источника и сохранения данных
         :type data_item: SpecificationDataItem
         :param range_zoom: диапазон для масштабирования (мин, макс, шаг)
         """
         super().__init__(None)
-        self.item_data: SpecificationDataItem = data_item
+        self.item_data: SpecificationDataItem = item_data
         self._range_zoom = range_zoom
         self._current_zoom = 100
         self._min_font_size = 2
@@ -273,29 +273,31 @@ class DataTable(QtCore.QAbstractTableModel):
 
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.FontRole])
 
-    def select_row(self, value: tuple[int, bool]) -> None:
+    def select_row(self, row: int, state: bool) -> None:
         """
         Выбор строки. Для таблиц у которых есть поле в БД is_select
         
-        :param value: True - выбрана, False - не выбрана
-        :type value: tuple[int, bool]
+        :param row: Номер строки
+        :type row: int
+        :param state: True - выбрана, False - не выбрана
+        :type state: bool
         """
-        row, state = value
+
         role = QtCore.Qt.ItemDataRole.BackgroundRole
 
         column = self.item_data.get_index_from_name_filed('is_select')
         if column >= 0:
             self._data[row][column].value = state
+            self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = state
 
             color = (200, 60, 60, 200) if state else (255, 255, 255)
             
             for x in range(self.columnCount()):
                 self._styles[(row, self._index_column_view[x], role)] = QtGui.QColor(*color)
                 self._data[row][self._index_column_view[x]].background = color
-        
-        
+
         self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount()), [role])
-        self.headerDataChanged.emit(QtCore.Qt.Orientation.Vertical, row, row + 1)
+        # self.headerDataChanged.emit(QtCore.Qt.Orientation.Vertical, row, row + 1)
 
     def get_style_selection(self, selection: list[QtCore.QItemSelectionRange]) -> DATACLASSES.DATA_CELL:
         """
@@ -359,11 +361,40 @@ class DataTable(QtCore.QAbstractTableModel):
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), role)
         self.signal_change.emit()
     
-    def sorted_column(self, state_sorted: list[int]) -> int:
+    def sorted_column(self, state_sorted: list[ENUMS.STATE_SORTED_COLUMN]) -> None:
+        """
+        Сортировка по нескольким столбца
+
+        После сортировки перенумирования строк и перевыделение выделенных строк 
+        
+        :param self: Описание
+        :param state_sorted: Описание
+        :type state_sorted: list[ENUMS.STATE_SORTED_COLUMN]
+        """
         index_column = [*range(len(state_sorted))]
 
         for column, state in zip(index_column[::-1], state_sorted[::-1]):
-            if state != ENUMS.STATE_SORTED_COLUMN.EMPTY.value:
-                self._data.sort(key=lambda x: x[self._index_column_view[column]].value, reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE.value)
+            if state != ENUMS.STATE_SORTED_COLUMN.EMPTY:
+                self._data.sort(key=lambda x: x[self._index_column_view[column]].value, reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE)
+
+            self.item_data.horizontal_header_data[column].parameters[ENUMS.PARAMETERS_HEADER.STATE_SORTED.name] = state.value 
+
+        number_row = self.item_data.get_index_from_name_filed('number_row')
+        if number_row != -1:
+            state_select_row = {}
+            for row in range(self.rowCount()):
+                data = self._data[row][number_row]
+                
+                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.horizontal_header_data[column].parameters:
+                    state_select_row[row] = self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
+                    
+                    if data.value in state_select_row:
+                        state = state_select_row[data.value ]
+                    else:
+                        state = self.item_data.vertical_header_data[data.value].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
+                    
+                    self.select_row(row, state)                
+                
+                data.value = row
 
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])

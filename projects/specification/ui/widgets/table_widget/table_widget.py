@@ -18,8 +18,9 @@ from projects.specification.ui.widgets.table_widget.tw_vertical_header import Ve
 from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
 
 from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
+from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
 
-from projects.specification.core.data_tables import SpecificationDataItem, InventorSpecificationDataItem
+from projects.specification.core.data_tables import SpecificationDataItem, InventorSpecificationDataItem, BuySpecificationDataItem, ProdSpecificationDataItem
 
 
 class TableWidget(QtWidgets.QWidget):
@@ -32,6 +33,7 @@ class TableWidget(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.range_zoom = (10, 400, 5)
+        self.current_item: TableBrowserItem = None
 
         self.v_layout = QtWidgets.QVBoxLayout(self)
 
@@ -41,59 +43,23 @@ class TableWidget(QtWidgets.QWidget):
         self.horizontal_header = HorizontalWithOverlayWidgets(self.table_view, self.range_zoom)
         self.horizontal_header.sectionResized.connect(self.table_view.resize_rect)      
         self.horizontal_header.sectionResized.connect(self.signal_change_table.emit)  
-        self.horizontal_header.signal_size_section.connect(self.set_current_section_size_item_data)
+        self.horizontal_header.signal_change.connect(self.signal_change_table.emit)
         self.table_view.setHorizontalHeader(self.horizontal_header)
         
         self.vertical_header = VerticallWithOverlayWidgets(self.table_view, self.range_zoom)
         self.vertical_header.sectionResized.connect(self.table_view.resize_rect)
-        self.horizontal_header.sectionResized.connect(self.signal_change_table.emit)  
+        self.vertical_header.sectionResized.connect(self.signal_change_table.emit)  
+        self.vertical_header.signal_change.connect(self.signal_change_table.emit)
         self.table_view.setVerticalHeader(self.vertical_header)
         
         self.control_panel = ControlPanelTable(self, self.table_view)
-        self.zoom_table = ZoomTable(self, self.range_zoom)
-        self.table_view.signal_change_zoom.connect(self.change_zoom)
-        self.zoom_table.signal_current_zoom.connect(self.set_zoom)
-        self.zoom_table.signal_current_zoom.connect(self.set_current_zoom_item_data)
+        self.zoom_table = ZoomTable(parent=self, range_zoom=self.range_zoom)
+        self.table_view.signal_change_zoom.connect(self._change_zoom)
+        self.zoom_table.signal_change_zoom.connect(self._set_zoom)
 
         self.v_layout.addWidget(self.control_panel)
         self.v_layout.addWidget(self.table_view)
         self.v_layout.addWidget(self.zoom_table)
-
-    def change_zoom(self, derection: int) -> None:
-        """
-        Измененеие масштабирования таблицы
-        
-        :param derection: derection > 0 - увеличение, derection < 0 уменьшение
-        :type derection: int
-        """
-        if derection > 0:
-            self.zoom_table.zoom_in()
-        else:
-            self.zoom_table.zoom_out()
-    
-    def set_current_zoom_item_data(self, step) -> None:
-        self.table_model.item_data.current_zoom = step
-
-    def set_current_section_size_item_data(self) -> None:
-        style: list[DATACLASSES.SECTION_STYLE] = []
-
-        h_size = self.horizontal_header.get_section_size()
-        h_sorted_status = self.horizontal_header.state_column_sorted()
-
-        for i, (size, state) in enumerate(zip(h_size, h_sorted_status)):
-            style.append(DATACLASSES.SECTION_STYLE(row=-1, column=i, size=size, state=state))
-
-        for i, size in enumerate(self.vertical_header.get_section_size()):
-            style.append(DATACLASSES.SECTION_STYLE(row=i, column=-1, size=size))
-
-        self.table_model.item_data.data_style_section = style
-
-    def set_zoom(self, step) -> None:
-        self.horizontal_header.set_zoom(step)
-        self.vertical_header.set_zoom(step)
-        self.table_model.set_zoom(step)
-        self.table_view.resize_rect()
-        self.zoom_table.set_value(step)
 
     def set_item(self, item_tree: TableBrowserItem) -> None:
         """
@@ -102,28 +68,35 @@ class TableWidget(QtWidgets.QWidget):
         :param item_tree: элемент дерева браузера
         :type item_tree: TableBrowserItem
         """
+        self.current_item = item_tree
+        state_init, state_save = item_tree.is_init, item_tree.is_save
+
         self.table_view.hide_selection()
+
         self.table_model = item_tree.table_data
-        self.table_model.set_range_step_zoom(self.range_zoom)
+        self.zoom_table.set_table_model(self.table_model)
         self.table_view.setModel(self.table_model)
+        self.horizontal_header.set_table_model(self.table_model)
+        self.vertical_header.set_table_model(self.table_model)
         
-        self.zoom_table.signal_current_zoom.connect(self.table_model.set_zoom)
-        
+        self.table_model.set_range_step_zoom(self.range_zoom)
+
         if isinstance(item_tree.item_data, InventorSpecificationDataItem):
             self._set_item_invetor()
 
-        self.set_zoom(self.table_model.item_data.current_zoom)
-        self.set_style_section(self.table_model.item_data.data_style_section)
+        self._set_parameters_table()
+        
+        item_tree.set_is_init(state_init)
+        item_tree.set_is_save(state_save)
 
     def _set_item_invetor(self) -> None:
         """
         Настройка отображения таблицы Inventor
         """
+        self.current_item: TableInventorItem
+
         self.horizontal_header.set_widget()
-        self.horizontal_header.signal_sorted.connect(self.table_model.sorted_column)
-        
         self.vertical_header.set_widget()
-        self.vertical_header.signal_select_row.connect(self.table_model.select_row)
 
         self.control_panel.set_table_model(self.table_model)
         self.control_panel.view_all_block(False)
@@ -131,18 +104,43 @@ class TableWidget(QtWidgets.QWidget):
         self.control_panel.view_align_block(True)
         
         self.table_view.signale_change_selection.connect(self.control_panel.view_property)
-        
-    def set_style_section(self, style_section: list[DATACLASSES.SECTION_STYLE]) -> None:
-        if style_section:
-            for cell_style in style_section:
-                if cell_style.row == -1:
-                    self.horizontal_header.resizeSection(cell_style.column, cell_style.size)
-                    # TODO привязать к соботию сортировки
-                    self.horizontal_header.widgets[cell_style.column].set_sorted_state(cell_style.state)
-                else:
-                    self.vertical_header.resizeSection(cell_style.row, cell_style.size)
-        
 
+    def _set_zoom(self, step: int) -> None:
+        """
+        Применить заданное масштабирование
+        
+        :param step: масштаб в int (20, 30, ...100, 120...)
+        :type step: int
+        """
+        self.horizontal_header.set_zoom(step)
+        self.vertical_header.set_zoom(step)
+        self.table_view.resize_rect()
+        self.zoom_table.set_value(step)
+
+    def _change_zoom(self, derection: int) -> None:
+        """
+        TableView посылает сигнал от колеса мыши, что нужно поменять зум
+
+        далее zoom_table поерделяет текущий зум и посылает сигнал в self, чтобы уже он отправил всем команду, что происходит масштабирование и с каким значением
+        
+        :param derection: derection > 0 - увеличение, derection < 0 уменьшение
+        :type derection: int
+        """
+        if derection > 0:
+            self.zoom_table.zoom_in()
+        else:
+            self.zoom_table.zoom_out()
+                
+    def _set_parameters_table(self) -> None:
+        """
+        Применить параметры к таблице из item_data
+        """
+        if self.table_model.item_data.table_data is None:
+            self.table_model.item_data.table_data = DATACLASSES.PARAMETER_TABLE(current_zoom=100, active_range=[0, 0, 0, 0])
+        else:
+            self._set_zoom(self.table_model.item_data.table_data.current_zoom)
+      
+    
 class __Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()

@@ -15,6 +15,7 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
     def __init__(self, tree: QtWidgets.QTreeWidget, parent_item=None):
         super().__init__()
         self.tree = tree
+        self._is_active: bool = False
         
         self.type_item: ENUMS.TYPE_TREE_ITEM = None
         self.parent_item: BrowserItem = parent_item
@@ -75,6 +76,13 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
             self.item_data.set_is_save(value)
         # self.tree.update()
         self.tree.viewport().update()
+
+    @property
+    def is_active(self) -> bool:
+        return self._is_active
+
+    def set_is_active(self, value: bool) -> None:
+        self._is_active = value
 
     def save(self, *args) -> None:
         """

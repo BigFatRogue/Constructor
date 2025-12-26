@@ -25,7 +25,7 @@ class TableBrowserItem(BrowserItem):
         self.item_data = item_data
         self.type_item = type_item
         self.setText(name)
-    
+
     def save(self):
         """
         Сохранение данных в БД из item_data и установка визуального статуса элемента 
@@ -36,3 +36,4 @@ class TableBrowserItem(BrowserItem):
         self.set_is_init(True)
         self.set_is_save(True)
         SIGNAL_BUS.satus_bar.emit(f'Таблица {self.text()} сохранена')
+    
