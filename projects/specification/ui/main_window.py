@@ -28,7 +28,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
         self.init_widgets()
         self.init_status_bar()
 
-        self.browser_widget.open_project(r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\asd.scdata')
+        self.browser_widget.open_project(r'D:\Python\AlfaServis\Constructor\Proekt 1.scdata')
 
     
     def init_widnow(self) -> None:
@@ -41,7 +41,7 @@ class WindowSpecification(QtWidgets.QMainWindow):
             text_style = text_style.replace('{{ICO_FOLDER}}', SETTING.ICO_FOLDER.replace('\\', '/')) 
             self.setStyleSheet(text_style)
 
-        self.resize(1000, 400)
+        self.resize(1000, 900)
         self.setWindowTitle('КО спецификация')
 
         self.central_widget = QtWidgets.QWidget(self)

@@ -256,7 +256,7 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
             widget.show()
 
         if count_section > count_widgets:
-            for i in range(count_section - count_widgets):
+            for i in range(count_widgets, count_section):
                 btn_order = ButtonHorizontalHeader(self.table_view)
                 btn_order.setVisible(True)
                 btn_order.raise_()
@@ -279,17 +279,22 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
         
         :param self: Описание
         """
-
-        if self._table_model.item_data.horizontal_header_data:
-            is_multi_sort = 0
-            for data in self._table_model.item_data.horizontal_header_data:
+        horizontal_header_data = self._table_model.item_data.horizontal_header_data
+        if horizontal_header_data:
+            column_sorted: dict[int, int] = {}
+            for i, data in enumerate(horizontal_header_data):
                 self.widgets[data.column].reset_view_sorted()
                 state_sorted = data.parameters.get(ENUMS.PARAMETERS_HEADER.STATE_SORTED.name)
                 if state_sorted is not None:
-                    is_multi_sort += 1 if state_sorted != 0 else 0
-                    self.widgets[data.column].set_sorted_state(state_sorted)
+                    if state_sorted != 0:
+                        column_sorted[i] = state_sorted
             
-            self.popup_order.set_is_multi_sort(is_multi_sort > 0)
+            is_multi_sort = len(column_sorted) > 1
+            if is_multi_sort:
+                for i, state in column_sorted.items():
+                    self.widgets[i].set_sorted_state(state)
+
+            self.popup_order.set_is_multi_sort(is_multi_sort)
 
     def _show_popup(self) -> None:
         """

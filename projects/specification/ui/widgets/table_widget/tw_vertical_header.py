@@ -7,7 +7,6 @@ from projects.specification.ui.widgets.table_widget.tw_data_table import DataTab
 from projects.specification.ui.widgets.table_widget.tw_header import HeaderWithOverlayWidgets
 
 
-
 class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
     signal_signle_choose = QtCore.pyqtSignal(tuple)
     signal_multi_choose = QtCore.pyqtSignal(tuple)
@@ -15,6 +14,7 @@ class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
     def __init__(self, parent):
         super().__init__(parent)
         self.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.setMouseTracking(True)
         self.index_section: int = 0
         self.is_shift = False
         self.clicked.connect(self.choose_row)
@@ -37,16 +37,46 @@ class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
     
 
 class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
-    signal_select_row = QtCore.pyqtSignal(tuple)
     signal_change = QtCore.pyqtSignal()
 
     def __init__(self, table_view: QtWidgets.QTableWidget, range_zoom):
         super().__init__(QtCore.Qt.Orientation.Vertical, table_view, range_zoom)
         table_view.verticalScrollBar().valueChanged.connect(self._update_widgets)
-        self.widgets: list[CheckBoxVerticalHeader
-                           ]
+        self.widgets: list[CheckBoxVerticalHeader]
+
         self._start_row: int = None
         self._end_row: int = None
+
+        self._is_left_press = False
+        self._is_shift_press = False
+        self._is_ctrl_press = False
+        self._multi_select_state = False
+        self._active_select_row: int = None
+
+        self.init_contex_menu()
+
+    def init_contex_menu(self) -> None:
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+
+        self.context_menu = QtWidgets.QMenu(self)
+
+        self.insert_row_up = QtWidgets.QAction(self.context_menu)
+        self.insert_row_up.setText('Вставить строчку выше')
+        self.context_menu.addAction(self.insert_row_up)
+
+        self.insert_row_down = QtWidgets.QAction(self.context_menu)
+        self.insert_row_down.setText('Вставить строчку ниже')
+        self.context_menu.addAction(self.insert_row_down)
+
+        self.delete_row = QtWidgets.QAction(self.context_menu)
+        self.delete_row.setText('Удалить строчку')
+        self.context_menu.addAction(self.delete_row)
+
+    def show_context_menu(self, position: QtCore.QPoint) -> None:
+        self._active_select_row = self.logicalIndexAt(position)
+        if self._active_select_row != -1:
+            self.context_menu.exec_(self.viewport().mapToGlobal(position))
 
     def set_table_model(self, table_model):
         super().set_table_model(table_model)
@@ -72,19 +102,31 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
 
     def set_widget(self, align: int=2):
         self._align_widget = align
-        for i in range(self.count()):
-            check_box = CheckBoxVerticalHeader(self.table_view)
-            check_box.setVisible(True)
-            check_box.raise_()
-            check_box.index_section = i
-            check_box.signal_signle_choose.connect(self.signle_choose)
-            check_box.signal_multi_choose.connect(self.signal_multi_choose)
-            self.widgets.append(check_box)
 
-            fm = self.fontMetrics()
-            text_w = fm.horizontalAdvance(str(i))
-            width = check_box.width()
-            self.setMinimumWidth(self.sectionSize(i) + text_w + width)
+        count_widgets = len(self.widgets)
+        count_section = self.count()
+
+        for widget in self.widgets:
+            widget.show()
+
+        if count_section > count_widgets:
+            for i in range(count_widgets, count_section):
+                check_box = CheckBoxVerticalHeader(self.table_view)
+                check_box.setVisible(True)
+                check_box.raise_()
+                check_box.index_section = i
+                check_box.signal_signle_choose.connect(self.signle_choose)
+                check_box.signal_multi_choose.connect(self.signal_multi_choose)
+                self.widgets.append(check_box)
+
+                fm = self.fontMetrics()
+                text_w = fm.horizontalAdvance(str(i))
+                width = check_box.width()
+                self.setMinimumWidth(self.sectionSize(i) + text_w + width)
+        
+        elif count_widgets > count_section:
+            for widget in self.widgets[count_widgets - count_section:]:
+                widget.hide()
         
         self._set_parameters_widget()
         self._update_widgets()
@@ -107,7 +149,6 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
                     self.widgets[i].setCheckState(QtCore.Qt.CheckState.Unchecked)
                     data.parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = False
 
-
     def fill_row(self, row: int, state: bool) -> None:
         if self._table_model:
             self._table_model.select_row(row, state)   
@@ -120,6 +161,7 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         if not state:
             self._start_row = None 
             self._end_row = None
+        self.signal_change.emit()
         
     def signal_multi_choose(self, value: tuple[int, bool]) -> None:
         row, state = value
@@ -138,8 +180,59 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
                 if not check_box.checkState() or i == self._end_row or i == self._start_row:
                     check_box.setChecked(True)
                     self.fill_row(i, True)
+        self.signal_change.emit()
 
- 
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        if event.button() & QtCore.Qt.MouseButton.LeftButton:
+            if event.modifiers() & QtCore.Qt.Modifier.SHIFT and event.modifiers() & ~QtCore.Qt.Modifier.CTRL:
+                self._is_left_press = True
+                self._is_shift_press = True
+                self._is_ctrl_press = False
+                self._multi_select_state = True
+            if event.modifiers() & ~QtCore.Qt.Modifier.SHIFT and event.modifiers() & QtCore.Qt.Modifier.CTRL:
+                self._is_left_press = True
+                self._is_shift_press = False
+                self._is_ctrl_press = True
+                self._multi_select_state = False
+
+        return super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        if event.button() & QtCore.Qt.MouseButton.LeftButton:
+            self._is_left_press = False
+            self._is_shift_press = False
+            self._is_ctrl_press = False
+            self._multi_select_state = False
+
+        return super().mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        if self._is_left_press:
+            if self.widgets:
+                row = self.logicalIndexAt(event.pos())
+
+                if self._active_select_row is None:
+                    self.select_row_press_mouse(row)
+                if self._active_select_row != row:
+                    self.select_row_press_mouse(row)
+
+        return super().mouseMoveEvent(event)
+    
+    def select_row_press_mouse(self, row: int) -> None:
+        """
+        Выбор ячеек введение зажатой ЛКМ по секциям (не по чек боксам)
+        
+        :param self: Описание
+        :param pos: Описание
+        :type pos: QtCore.QPoint
+        """
+        self._active_select_row = row
+        check_box = self.widgets[row]
+        state = QtCore.Qt.CheckState.Checked if self._multi_select_state else QtCore.Qt.CheckState.Unchecked
+        check_box.setCheckState(state)
+        self._table_model.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = self._multi_select_state
+        self.fill_row(row, self._multi_select_state)
+        self.signal_change.emit()
 
 
 

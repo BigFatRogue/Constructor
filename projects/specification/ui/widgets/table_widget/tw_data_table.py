@@ -282,12 +282,11 @@ class DataTable(QtCore.QAbstractTableModel):
         :param state: True - выбрана, False - не выбрана
         :type state: bool
         """
-
         role = QtCore.Qt.ItemDataRole.BackgroundRole
 
         column = self.item_data.get_index_from_name_filed('is_select')
         if column >= 0:
-            self._data[row][column].value = state
+            # self._data[row][column].value = state
             self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = state
 
             color = (200, 60, 60, 200) if state else (255, 255, 255)
@@ -371,6 +370,7 @@ class DataTable(QtCore.QAbstractTableModel):
         :param state_sorted: Описание
         :type state_sorted: list[ENUMS.STATE_SORTED_COLUMN]
         """
+        
         index_column = [*range(len(state_sorted))]
 
         for column, state in zip(index_column[::-1], state_sorted[::-1]):
@@ -378,23 +378,26 @@ class DataTable(QtCore.QAbstractTableModel):
                 self._data.sort(key=lambda x: x[self._index_column_view[column]].value, reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE)
 
             self.item_data.horizontal_header_data[column].parameters[ENUMS.PARAMETERS_HEADER.STATE_SORTED.name] = state.value 
+        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])
 
+        self._update_number_row()
+    
+    def _update_number_row(self) -> None:
         number_row = self.item_data.get_index_from_name_filed('number_row')
         if number_row != -1:
             state_select_row = {}
+
             for row in range(self.rowCount()):
                 data = self._data[row][number_row]
                 
-                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.vertical_header_data[column].parameters:
+                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.vertical_header_data[row].parameters:
                     state_select_row[row] = self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
                     
                     if data.value in state_select_row:
-                        state = state_select_row[data.value ]
+                        state = state_select_row[data.value]
                     else:
                         state = self.item_data.vertical_header_data[data.value].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
                     
                     self.select_row(row, state)                
                 
                 data.value = row
-
-        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])

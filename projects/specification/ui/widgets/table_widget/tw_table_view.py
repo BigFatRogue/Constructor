@@ -12,14 +12,14 @@ class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
         self.selection_color = QtGui.QColor(128, 128, 128, 35)
         
     def paint(self, painter, option, index):
-        alignment = index.data(QtCore.Qt.TextAlignmentRole)
+        alignment = index.data(QtCore.Qt.ItemDataRole.TextAlignmentRole)
         
         option_copy = QtWidgets.QStyleOptionViewItem(option)
         self.initStyleOption(option_copy, index)
         
-        option_copy.state &= ~(QtWidgets.QStyle.State_Selected | 
-                              QtWidgets.QStyle.State_HasFocus | 
-                              QtWidgets.QStyle.State_MouseOver)
+        option_copy.state &= ~(QtWidgets.QStyle.StateFlag.State_Selected | 
+                              QtWidgets.QStyle.StateFlag.State_HasFocus | 
+                              QtWidgets.QStyle.StateFlag.State_MouseOver)
         
         if alignment is not None:
             if isinstance(alignment, int):
@@ -28,7 +28,7 @@ class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
         
         super().paint(painter, option_copy, index)
         
-        if option.state & QtWidgets.QStyle.State_Selected:
+        if option.state & QtWidgets.QStyle.StateFlag.State_Selected:
             painter.save()
             painter.fillRect(option.rect, QtGui.QBrush(self.selection_color))
             painter.restore()

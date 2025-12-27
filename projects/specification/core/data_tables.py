@@ -405,6 +405,7 @@ class SpecificationDataItem(GeneralDataItem):
         for config in (self.specification_config, 
                        self.general_config, 
                        self.unique_config, 
+                       self.fields_config,
                        self.parameter_cell_config, 
                        self.parameter_cell_link_config, 
                        self.parameter_header_config, 
@@ -439,24 +440,27 @@ class SpecificationDataItem(GeneralDataItem):
         self.database.create(self.fields_config.name, columns_sql)
         
         fields = tuple(col.field for col in self.fields_config.columns if not col.is_id)
+        str_fields = ", ".join(fields)
 
         for config in (self.general_config, self.unique_config):
             for column in config.columns:
                 if not column.is_id:
                     values = tuple(getattr(column,  field) for field in fields if hasattr(column, field))
-                    self.database.insert(self.fields_config.name, fields, values)
+                    add_query = f' ON CONFLICT({str_fields}) DO NOTHING'
+                    self.database.insert(self.fields_config.name, fields, values, add_query)
         self.database.commit()
     
     def _insert_or_update_sql(self) -> None:
-        for y, row in enumerate(self.data):
-            if row[0].value is None:
-                self._insert_row_sql(y, row)
+        for y, row_data in enumerate(self.data):
+            if row_data[0].value is None:
+                id_row = self._insert_row_sql(y, row_data)
+                row_data[0].value = id_row
             else:
-                self._update_row_sql(y, row)
+                self._update_row_sql(y, row_data)
     
-    def _insert_row_sql(self, y: int, row: list[DATACLASSES.DATA_CELL]) -> None:
-        id_general, *value_general = [cell.value for cell in row[:len(self.general_config.columns)]]
-        id_unique, *value_unique = [cell.value for cell in row[len(self.general_config.columns): ]]
+    def _insert_row_sql(self, y: int, row_data: list[DATACLASSES.DATA_CELL]) -> int:
+        id_general, *value_general = [cell.value for cell in row_data[:len(self.general_config.columns)]]
+        id_unique, *value_unique = [cell.value for cell in row_data[len(self.general_config.columns): ]]
 
         self.database.insert(self.general_config.name, self.fields_general[1:], value_general)
         id_general = self.database.get_last_id()
@@ -466,11 +470,13 @@ class SpecificationDataItem(GeneralDataItem):
         id_unique = self.database.get_last_id()
         self._set_foreign_key(self.unique_config, last_id=id_unique, parent_id=id_unique)
 
-        for x, (cell, col) in enumerate(zip(row, self.total_columns)):
+        for x, (cell, col) in enumerate(zip(row_data, self.total_columns)):
             if not col.is_id and col.is_view:
                 value_style_cell: str = json.dumps(cell.get_dict_style())
                 self._insert_sytle_sql(value_style_cell)
                 self._insert_cell_style_sql(id_general, x, value_style_cell)
+        
+        return id_general
 
     def _update_row_sql(self, y: int, row: list[DATACLASSES.DATA_CELL]) -> None:
         id_general, *value_general = [cell.value for cell in row[:len(self.general_config.columns)]]
@@ -489,7 +495,7 @@ class SpecificationDataItem(GeneralDataItem):
         """
         Добавление уникальных стилей в таблицу стилей
         """
-        add_query = f'ON CONFLICT({", ".join(self.fields_style[1:])}) DO NOTHING'
+        add_query = f' ON CONFLICT({", ".join(self.fields_style[1:])}) DO NOTHING'
         self.database.insert(self.parameter_cell_config.name, self.fields_style[1:], [value], add_query)
 
     def _insert_cell_style_sql(self, id_general: int, column: int, value: str) -> None:
