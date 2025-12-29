@@ -1,5 +1,6 @@
 from __future__ import annotations
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
+from typing import Callable
 
 from projects.specification.config.app_context import ENUMS
 
@@ -27,6 +28,9 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
 
         # Для делегата
         self.setData(0, ENUMS.CONSTANTS.QROLE_LINK_ITEM_WIDGET_TREE.value, self)
+        
+        self.init_context_menu()
+        self.add_action()
 
     def setText(self, atext: str, column=0):
         return super().setText(column, atext)
@@ -74,7 +78,6 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
         self.__is_save = value
         if self.item_data:
             self.item_data.set_is_save(value)
-        # self.tree.update()
         self.tree.viewport().update()
 
     @property
@@ -91,7 +94,19 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
         ...
     
     def init_context_menu(self) -> None:
-        ...
+        """
+        Создание контекстного меню и добавления
+        
+        :param self: Описание
+        """
+        self.context_menu = QtWidgets.QMenu(self.tree)
 
     def show_context_menu(self, position: QtCore.QPoint) -> None:
-        ...
+        self.context_menu.exec_(position)
+    
+    def add_action(self) -> None:
+        """
+        Уникальные пункты для меню
+        
+        :param self: Описание
+        """

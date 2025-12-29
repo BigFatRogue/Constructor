@@ -13,8 +13,8 @@ class AppContext:
         self.dataclasses = AppContextDataClasses
 
 
-app_context = AppContext()
-SETTING = app_context.context_setting
-SIGNAL_BUS = app_context.single_bus
-ENUMS = app_context.context_enums
-DATACLASSES = app_context.dataclasses
+__app_context = AppContext()
+SETTING = __app_context.context_setting
+SIGNAL_BUS = __app_context.single_bus
+ENUMS = __app_context.context_enums
+DATACLASSES = __app_context.dataclasses

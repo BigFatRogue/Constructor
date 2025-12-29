@@ -170,6 +170,7 @@ INVENTOR_ITEM_CONFIG = TableConfig(
 BUY_ITEM_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.BUY.value,
     columns=[
+        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('diametr', 'TEXT', 'Номинальный диаметр'),
         ColumnConfig('manufactureretr', 'TEXT', 'Производитель'),
         ColumnConfig('note', 'TEXT', 'Примечание'),

@@ -96,16 +96,16 @@ class DataBase:
         return self.execute(f'SELECT {self._list_fields_to_str(fields)} FROM {table_table}' + add_qurey)
     
     def delete(self, table_name: str, id_row: int = None, add_query: str = '') -> None:
+        self.execute("PRAGMA foreign_keys = ON;")
         id_where = f' WHERE id={id_row}' if id_row is not None else ''
-        
         self.execute(f'DELETE FROM {table_name}' + id_where + add_query)
 
 if __name__ == '__main__':
     import os
-    p_db = os.path.join(os.path.dirname(__file__), 'DEBUG\\ALS.1642.4.2.01.00.00.000 СБ.spec')
+    p_db = r"D:\Python\AlfaServis\Constructor\Proekt 1.scdata"
 
-    db = DataBase()
-    db.set_path(p_db)
-    db.connect()
-
-    print(db.get_exist_tables())
+    db = DataBase(p_db)
+    db.execute("DELETE FROM specification WHERE id=1")
+    db.commit()
+    db.close()
+    # print(db.get_exist_tables())

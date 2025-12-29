@@ -6,6 +6,8 @@ from projects.specification.config.app_context import SETTING, ENUMS, DATACLASSE
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 from projects.specification.ui.widgets.table_widget.tw_header import HeaderWithOverlayWidgets
 
+from projects.tools.functions.create_action_menu import create_action
+
 
 class CheckBoxVerticalHeader(QtWidgets.QCheckBox):
     signal_signle_choose = QtCore.pyqtSignal(tuple)
@@ -51,7 +53,9 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         self._is_shift_press = False
         self._is_ctrl_press = False
         self._multi_select_state = False
-        self._active_select_row: int = None
+        self._active_select_row: int = -1
+
+        self._is_edited = False
 
         self.init_contex_menu()
 
@@ -61,22 +65,41 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
 
         self.context_menu = QtWidgets.QMenu(self)
 
-        self.insert_row_up = QtWidgets.QAction(self.context_menu)
-        self.insert_row_up.setText('Вставить строчку выше')
-        self.context_menu.addAction(self.insert_row_up)
+        create_action(menu=self.context_menu ,
+            title='Вставить строчку выше',
+            filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'insert_row_up.png'),
+            triggerd=self.insert_row_up)
+        
+        create_action(menu=self.context_menu ,
+            title='Вставить строчку ниже',
+            filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'insert_row_down.png'),
+            triggerd=self.insert_row_down)
 
-        self.insert_row_down = QtWidgets.QAction(self.context_menu)
-        self.insert_row_down.setText('Вставить строчку ниже')
-        self.context_menu.addAction(self.insert_row_down)
-
-        self.delete_row = QtWidgets.QAction(self.context_menu)
-        self.delete_row.setText('Удалить строчку')
-        self.context_menu.addAction(self.delete_row)
+        create_action(menu=self.context_menu ,
+            title='Удалить строчку',
+            filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'delete_row.png'),
+            triggerd=self.delete_row)
 
     def show_context_menu(self, position: QtCore.QPoint) -> None:
-        self._active_select_row = self.logicalIndexAt(position)
-        if self._active_select_row != -1:
-            self.context_menu.exec_(self.viewport().mapToGlobal(position))
+        if self._is_edited:
+            self._active_select_row = self.logicalIndexAt(position)
+            if self._active_select_row != -1:
+                self.context_menu.exec_(self.viewport().mapToGlobal(position))
+
+    def set_table_edited(self, value: bool) -> None:
+        self._is_edited = value
+
+    def insert_row_up(self) -> None:
+        if self._active_select_row == 0:
+            self.table_model.insert_row(0)
+        else:
+            self.table_model.insert_row(self._active_select_row - 1)
+
+    def insert_row_down(self) -> None:
+        self.table_model.insert_row(self._active_select_row + 1)
+
+    def delete_row(self) -> None:
+        self.table_model.delete_row(self._active_select_row)
 
     def set_table_model(self, table_model):
         super().set_table_model(table_model)
@@ -194,6 +217,9 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
                 self._is_shift_press = False
                 self._is_ctrl_press = True
                 self._multi_select_state = False
+        
+        if event.button() & QtCore.Qt.MouseButton.RightButton:
+            self._active_select_row = self.logicalIndexAt(self.pos())
 
         return super().mousePressEvent(event)
 

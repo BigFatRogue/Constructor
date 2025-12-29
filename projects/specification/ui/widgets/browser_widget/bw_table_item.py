@@ -1,11 +1,14 @@
 from PyQt5 import QtWidgets
+import os
 
-from projects.specification.config.app_context import SIGNAL_BUS, ENUMS
+from projects.specification.config.app_context import SIGNAL_BUS, ENUMS, SETTING
 
 from projects.specification.ui.widgets.browser_widget.bw_item import BrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
 
+from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
+from projects.tools.functions.create_action_menu import create_action
 
 
 class TableBrowserItem(BrowserItem):
@@ -26,6 +29,24 @@ class TableBrowserItem(BrowserItem):
         self.type_item = type_item
         self.setText(name)
 
+    def add_action(self) -> None:
+        create_action(menu=self.context_menu ,
+            title='Открыть в новом окне',
+            filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'open_new_window.png'),
+            triggerd=self.open_new_window)
+        
+        create_action(menu=self.context_menu ,
+            title='Сохранить',
+            filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'save.png'),
+            triggerd=self.save)
+
+        create_action(menu=self.context_menu ,
+            title='Удалить',
+            filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'delete.png'),
+            triggerd=self.delete_table)
+        
+        self.context_menu.addSeparator()
+
     def save(self):
         """
         Сохранение данных в БД из item_data и установка визуального статуса элемента 
@@ -37,3 +58,12 @@ class TableBrowserItem(BrowserItem):
         self.set_is_save(True)
         SIGNAL_BUS.satus_bar.emit(f'Таблица {self.text()} сохранена')
     
+    def open_new_window(self) -> None:
+        ...
+
+    def delete_table(self) -> None:
+        msg = MessegeBoxQuestion(self.tree, question='Удалить таблицу?', title='Удаление')
+        if msg.exec():
+            self.table_data.item_data.delete()
+            self.parent_item.removeChild(self)
+            SIGNAL_BUS.delele_item.emit()

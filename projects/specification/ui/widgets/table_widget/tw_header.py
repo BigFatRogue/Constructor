@@ -22,7 +22,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
 
         self.widgets: list[QtWidgets.QWidget] = [] 
         self.table_view = table_view
-        self._table_model = None
+        self._table_model: DataTable = None
         self.min_zoom, self.max_zoom, self.step_zoom = range_zoom
         self._align_widget = self.ALIGN_RIGHT
 
@@ -71,17 +71,19 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         Переопределяемый метод
         """ 
 
-    def _hide_widget(self):
+    def hide_widget(self) -> None:
         for widget in self.widgets:
             widget.hide()
 
-    def _update_widgets(self):
+    def _update_widgets(self) -> None:
         for i in range(len(self.widgets)):
             self._update_widget(i)
         self.viewport().update()
 
-    def _update_widget(self, section_index: int):
+    def _update_widget(self, section_index: int) -> None:
         widget = self.widgets[section_index]
+        if not widget.isVisible():
+            return
 
         horizontal = (self.orientation() == QtCore.Qt.Horizontal)
 

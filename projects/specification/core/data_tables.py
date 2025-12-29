@@ -306,7 +306,7 @@ class PropertyProjectData(GeneralDataItem):
         LEFT JOIN {PARAMETER_CELL_CONFIG.name} ON {PARAMETER_CELL_CONFIG.name}.id = {PARAMETER_CELL_LINK_CONFIG.name}.style_id
         WHERE sid = {sid}
         ORDER BY number_row
-        """)
+        """).fetchall()
 
         dct = {}
         for data in res:
@@ -330,6 +330,7 @@ class SpecificationDataItem(GeneralDataItem):
     def __init__(self, database, unique_config: TableConfig):
         super().__init__()
         self.database: DataBase = database
+        self.table_name: str = 'Спецификация'
 
         self.specification_config: TableConfig = SPECIFICATION_CONFIG
         self.general_config: TableConfig = GENERAL_ITEM_CONFIG
@@ -383,7 +384,7 @@ class SpecificationDataItem(GeneralDataItem):
     def save(self) -> None:
         if not self.is_init:
             self._create_sql()
-            self._insert_specification_sql(self.type_spec)
+            self._insert_specification_sql()
             self._insert_in_sql_filed()
 
         self._insert_or_update_sql()
@@ -416,7 +417,7 @@ class SpecificationDataItem(GeneralDataItem):
 
         self.database.commit()
 
-    def _insert_specification_sql(self, type_spec: ENUMS.NAME_TABLE_SQL) -> None:
+    def _insert_specification_sql(self) -> None:
         """
         Вставка записи в таблицу спецификаций о новой таблице
         
@@ -427,7 +428,7 @@ class SpecificationDataItem(GeneralDataItem):
         field_sql = tuple(col.field for col in self.specification_config.columns if not col.is_id)
         now_str = get_now_time()
 
-        self.database.insert(self.specification_config.name, field_sql, (type_spec.value, now_str, now_str))
+        self.database.insert(self.specification_config.name, field_sql, (self.type_spec.value, self.table_name, now_str))
         self._sid = self.database.get_last_id()
 
         self.database.commit()
@@ -453,22 +454,25 @@ class SpecificationDataItem(GeneralDataItem):
     def _insert_or_update_sql(self) -> None:
         for y, row_data in enumerate(self.data):
             if row_data[0].value is None:
-                id_row = self._insert_row_sql(y, row_data)
-                row_data[0].value = id_row
+                self._insert_row_sql(y, row_data)
             else:
                 self._update_row_sql(y, row_data)
     
-    def _insert_row_sql(self, y: int, row_data: list[DATACLASSES.DATA_CELL]) -> int:
+    def _insert_row_sql(self, y: int, row_data: list[DATACLASSES.DATA_CELL]) -> None:
         id_general, *value_general = [cell.value for cell in row_data[:len(self.general_config.columns)]]
         id_unique, *value_unique = [cell.value for cell in row_data[len(self.general_config.columns): ]]
 
         self.database.insert(self.general_config.name, self.fields_general[1:], value_general)
         id_general = self.database.get_last_id()
+        row_data[0].value = id_general
+        row_data[len(self.general_config.columns) -1].value = self._sid
         self._set_foreign_key(self.general_config, last_id=id_general, parent_id=self._sid)
 
         self.database.insert(self.unique_config.name, self.fields_unique[1:], value_unique)
         id_unique = self.database.get_last_id()
-        self._set_foreign_key(self.unique_config, last_id=id_unique, parent_id=id_unique)
+        row_data[len(self.general_config.columns)].value = id_unique
+        row_data[len(self.total_columns) - 1].value = id_general
+        self._set_foreign_key(self.unique_config, last_id=id_unique, parent_id=id_general)
 
         for x, (cell, col) in enumerate(zip(row_data, self.total_columns)):
             if not col.is_id and col.is_view:
@@ -476,7 +480,6 @@ class SpecificationDataItem(GeneralDataItem):
                 self._insert_sytle_sql(value_style_cell)
                 self._insert_cell_style_sql(id_general, x, value_style_cell)
         
-        return id_general
 
     def _update_row_sql(self, y: int, row: list[DATACLASSES.DATA_CELL]) -> None:
         id_general, *value_general = [cell.value for cell in row[:len(self.general_config.columns)]]
@@ -505,7 +508,6 @@ class SpecificationDataItem(GeneralDataItem):
         style_id = self._get_id_style(value)
         self.database.insert(self.parameter_cell_link_config.name, self.fields_style_link[1:], [id_general, column, self._sid, style_id])
 
-        #TODO реализовать вставка размеров заголовков таблицы
     
     def _updata_cell_style_sql(self, id_general: int, x: int, value: str) -> None:
         """
@@ -570,23 +572,54 @@ class SpecificationDataItem(GeneralDataItem):
     def _delete_sql(self) -> None:
         self.database.delete(self.specification_config.name, id_row=self._sid)
 
+    def insert_row(self, row: int) -> None:
+        self.data.insert(row, [DATACLASSES.DATA_CELL() for i in range(len(self.data[0]))])
+        self.vertical_header_data.insert(row, DATACLASSES.DATA_HEADERS(row=row, column=-1, size=30))
+        for i, header_data in enumerate(self.vertical_header_data):
+            header_data.row = i
+
+    def delete_row(self, row: int) -> None:
+        del self.data[row]
+        del self.vertical_header_data[row]
 
 class InventorSpecificationDataItem(SpecificationDataItem):
-    def __init__(self, database):
+    def __init__(self, database: DataBase, table_name: str):
         super().__init__(database, INVENTOR_ITEM_CONFIG)
         self.type_spec = ENUMS.NAME_TABLE_SQL.INVENTOR
+        self.table_name = table_name
+    
+    def data_to_by(self) -> list[list[DATACLASSES.DATA_CELL]]:
+        """
+        Формирование спецификации на закупуку 
+        
+        :return: data Для BuySpecificationDataItem
+        :rtype: list[list[DATA_CELL]]
+        """
+        
+        by_data = []
+        for header_cell, row in zip(self.vertical_header_data, self.data):
+            by_row = []
+            if not header_cell.parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]:
+                for cell, col in zip(row, self.general_config.columns):
+                    by_cell = DATACLASSES.DATA_CELL() if col.is_id else DATACLASSES.DATA_CELL(value=cell.value)
+                    by_row.append(by_cell)
+                by_data.append(by_row + [DATACLASSES.DATA_CELL() for _ in BUY_ITEM_CONFIG.columns] )
+
+        return by_data
         
         
 class BuySpecificationDataItem(SpecificationDataItem):
-    def __init__(self, database):
+    def __init__(self, database: DataBase, table_name: str):
         super().__init__(database, BUY_ITEM_CONFIG)
         self.type_spec = ENUMS.NAME_TABLE_SQL.BUY
+        self.table_name = table_name
 
 
 class ProdSpecificationDataItem(SpecificationDataItem):
-    def __init__(self, database):
+    def __init__(self, database: DataBase, table_name: str):
         super().__init__(database, PROD_ITEM_CONFG)
         self.type_spec = ENUMS.NAME_TABLE_SQL.PROD
+        self.table_name = table_name
 
 
 if __name__ == '__main__':
