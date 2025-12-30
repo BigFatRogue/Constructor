@@ -19,6 +19,7 @@ class SignalBus(QObject):
     load_specification_from_xlsx = pyqtSignal(str)
     select_item_browser = pyqtSignal(object)
     change_item = pyqtSignal(object)
+    data_by_from_invetor = pyqtSignal(tuple)
 
     _instance = None
     

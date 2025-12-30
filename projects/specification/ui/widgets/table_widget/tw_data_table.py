@@ -1,11 +1,116 @@
 from dataclasses import fields
 from copy import deepcopy
+from enum import Enum ,auto
+from typing import Any
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from projects.specification.config.app_context import DATACLASSES, ENUMS
 
 from projects.specification.core.config_table import ColumnConfig, SPECIFICATION_CONFIG
 from projects.specification.core.data_tables import SpecificationDataItem
+
+
+class UndoRedoItem:
+    def __init__(self, old_value: Any, new_value: Any):
+        self.old_value = old_value
+        self.new_value = new_value
+    
+    def undo(self) -> None:
+        ...
+    
+    def redo(self) -> None:
+        ...
+        
+
+class UndoRedoItemCell(UndoRedoItem):
+    def __init__(self, cell: DATACLASSES.DATA_CELL, row: int, column: int, old_value: Any, new_value:Any, role: QtCore.Qt.ItemDataRole, font_param: int = None):
+        super().__init__(old_value, new_value)
+        self.cell = cell
+        self.row = row
+        self.column = column
+        self.role = role
+        self.font_param = font_param
+    
+    def undo(self, table_data) -> None:
+        table_data: DataTable
+        table_data._change_cell(self.row, self.column, self.role, self.old_value, self.font_param)
+
+    def redo(self, table_data) -> None:
+        table_data: DataTable
+        table_data._change_cell(self.row, self.column, self.role, self.old_value, self.font_param)
+        
+
+class UndoRedoTable:
+    def __init__(self, table_data):
+        self.table_data: DataTable = table_data
+
+        self.list_undo: list[list[UndoRedoItem]] = []
+        self.list_redo: list[list[UndoRedoItem]] = []
+        self.list_change: list[UndoRedoItem] = []
+        self.is_start_transaction = False
+        self.has_add_change = True
+
+    def start_transaction(self) -> None:
+        self.is_start_transaction = True
+
+    def end_transaction(self) -> None:
+        self.is_start_transaction = False
+        self.list_undo.append(self.list_change)
+        self.list_change = []
+
+    def add_cell(self, cell: DATACLASSES.DATA_CELL, row: int, column: int, old_value: Any, new_value:Any, role: QtCore.Qt.ItemDataRole, font_param: int = None) -> None:
+        """
+        Добавления в лист undo информации об изменение ячейки
+        
+        :param self: Описание
+        :param row: Описание
+        :type row: int
+        :param column: Описание
+        :type column: int
+        :param old_value: Описание
+        :type old_value: Any
+        :param new_value: Описание
+        :type new_value: Any
+        :param role: Описание
+        :type role: QtCore.Qt.ItemDataRole
+        :param font_param: Описание
+        :type font_param: int
+        """
+        if self.has_add_change:
+            if self.list_redo:
+                # если добавляется новое значение, то лист возврата изменений вперёд очищается
+                self.list_redo.clear()
+            
+            item = UndoRedoItemCell(self, cell, row, column, old_value, new_value, role, font_param)
+            if self.is_start_transaction:
+                self.list_change.append(item)
+            else:
+                self.list_undo.append([item])
+    
+    def undo(self) -> None:
+        self.has_add_change = False
+        if self.list_undo:
+            last_item = self.list_undo.pop()
+            self.list_redo.append(last_item)
+            try:
+                for item in last_item:
+                    item.undo()
+            except Exception:
+                self.list_redo.append(last_item)
+        self.has_add_change = True
+            
+    def redo(self) -> None:
+        self.has_add_change = False
+        if self.list_redo:
+            last_item = self.list_redo.pop()
+            self.list_undo.append(last_item)
+            try:
+                for item in last_item:
+                    item.redo()
+            except Exception:
+                self.list_redo.append(last_item)
+        self.has_add_change = True
 
 
 class DataTable(QtCore.QAbstractTableModel):
@@ -55,6 +160,8 @@ class DataTable(QtCore.QAbstractTableModel):
         self._default_bg_color = QtGui.QColor(255, 255, 255)
         self._default_fg_color = QtGui.QColor(QtCore.Qt.GlobalColor.black)
         self._set_styles()
+
+        self.undo_redo = UndoRedoTable(table_data=self)
         
     def _set_index_column_view(self) -> dict[int, int]:
         """
@@ -95,6 +202,8 @@ class DataTable(QtCore.QAbstractTableModel):
                 font.setItalic(cell.italic if cell.italic is not None else self._default_italic)
                 font.setUnderline(cell.underline if cell.underline is not None else self._default_underline)
                 self._styles[(y, x, QtCore.Qt.ItemDataRole.FontRole)] = font
+
+                self._styles[(y, x, QtCore.Qt.ItemDataRole.TextAlignmentRole)] = cell.align_h | cell.align_v
 
         role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
         self.dataChanged.emit(self.index(0, 0), self.index(len(self._data), len(self._data[0])), role)
@@ -180,46 +289,50 @@ class DataTable(QtCore.QAbstractTableModel):
         for rng in ranges:
             for row in range(rng.top(), rng.bottom() + 1):
                 for column in range(rng.left(), rng.right() + 1):
-                    cell = self._data[row][self._index_column_view[column]]
-                    
-                    if role == QtCore.Qt.ItemDataRole.FontRole and font_param:
-                        font = self._styles[(row, self._index_column_view[column], role)]
-                        self._set_cell_font_style(cell=cell, font=font, value=value, font_param=font_param)
-                    elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
-                        cell.align_h = value & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
-                        cell.align_v = value & QtCore.Qt.AlignmentFlag.AlignVertical_Mask
-                        self._styles[(row, self._index_column_view[column], role)] = value
-
+                    self.change_cell(row=row, column=column, value=value, role=role, font_param=font_param)
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), [role])
         self.signal_change.emit()
 
-    def _set_cell_font_style(self, cell: DATACLASSES.DATA_CELL, font, value: int, font_param: int) -> None:
+    def change_cell(self, row: int, column: int, role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param=None) -> None:
         """
-        Установка стиля текста ячейки
+        Изменение свойств одной ячейки DATACLASS.CELL_DATA
         
-        :param cell: ячейка
-        :type cell: DATACLASSES.DATA_CELL
-        :param font: шрифт
-        :param value: значнеие
-        :type value: int
+        :param row: номер строки
+        :type row: int
+        :param column: номер столбца
+        :type column: int
+        :param role: роль
+        :type role: QtCore.Qt.ItemDataRole
+        :param value: значение
+        :type value: int | str | QtGui.QColor
         :param font_param: какой параметр текста (размер, шрифт и др.)
-        :type font_param: int
         """
-        if font_param == self.FONT_PARAM_SIZE:
-            cell.font_size = value
-            font.setPointSize(self.get_view_font_size(int(value)))
-        elif font_param == self.FONT_PARAM_FAMILY:
-            cell.font_family = value
-            font.setFamily(value)
-        elif font_param == self.FONT_PARAM_BOLD:
-            cell.bold = value
-            font.setBold(value)
-        elif font_param == self.FONT_PARAM_ITALIC:
-            cell.italic = value
-            font.setItalic(value)
-        elif font_param == self.FONT_PARAM_UNDERLINE:
-            cell.underline = value
-            font.setUnderline(value)
+        cell = self._data[row][self._index_column_view[column]]
+        # self.undo_redo.add_cell()
+
+        if role == QtCore.Qt.ItemDataRole.FontRole and font_param:
+            font = self._styles[(row, self._index_column_view[column], role)]
+            
+            if font_param == self.FONT_PARAM_SIZE:
+                cell.font_size = value
+                font.setPointSize(self.get_view_font_size(int(value)))
+            elif font_param == self.FONT_PARAM_FAMILY:
+                cell.font_family = value
+                font.setFamily(value)
+            elif font_param == self.FONT_PARAM_BOLD:
+                cell.bold = value
+                font.setBold(value)
+            elif font_param == self.FONT_PARAM_ITALIC:
+                cell.italic = value
+                font.setItalic(value)
+            elif font_param == self.FONT_PARAM_UNDERLINE:
+                cell.underline = value
+                font.setUnderline(value)
+        
+        elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
+            cell.align_h = value & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
+            cell.align_v = value & QtCore.Qt.AlignmentFlag.AlignVertical_Mask
+            self._styles[(row, self._index_column_view[column], role)] = value
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
@@ -282,12 +395,11 @@ class DataTable(QtCore.QAbstractTableModel):
         :param state: True - выбрана, False - не выбрана
         :type state: bool
         """
-
         role = QtCore.Qt.ItemDataRole.BackgroundRole
 
         column = self.item_data.get_index_from_name_filed('is_select')
         if column >= 0:
-            self._data[row][column].value = state
+            # self._data[row][column].value = state
             self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = state
 
             color = (200, 60, 60, 200) if state else (255, 255, 255)
@@ -338,24 +450,14 @@ class DataTable(QtCore.QAbstractTableModel):
         for rng in ranges:
             for row in range(rng.top(), rng.bottom() + 1):
                 for column in range(rng.left(), rng.right() + 1):
-                    cell = self._data[row][self._index_column_view[column]]
                     
-                    font = self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.FontRole)]
-                    self._set_cell_font_style(cell=cell, font=font, value=self._default_family, font_param=self.FONT_PARAM_FAMILY)
-                    self._set_cell_font_style(cell=cell, font=font, value=self._default_font_size, font_param=self.FONT_PARAM_SIZE)
-                    self._set_cell_font_style(cell=cell, font=font, value=self._default_bold, font_param=self.FONT_PARAM_BOLD)
-                    self._set_cell_font_style(cell=cell, font=font, value=self._default_italic, font_param=self.FONT_PARAM_ITALIC)
-                    self._set_cell_font_style(cell=cell, font=font, value=self._default_underline, font_param=self.FONT_PARAM_UNDERLINE)
-
-                    cell.align_h = self._default_align & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
-                    cell.align_v = self._default_align & QtCore.Qt.AlignmentFlag.AlignVertical_Mask
-                    self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.TextAlignmentRole)] = self._default_align
+                    for font_param, value in zip((self.FONT_PARAM_FAMILY, self.FONT_PARAM_SIZE, self.FONT_PARAM_BOLD, self.FONT_PARAM_ITALIC, self.FONT_PARAM_UNDERLINE),
+                                          (self._default_family, self._default_font_size,self._default_bold, self._default_italic, self._default_underline)):
+                        self.change_cell(row=row, column=column, role=QtCore.Qt.ItemDataRole.FontRole, value=value, font_param=font_param)
                     
-                    cell.background = self._default_bg_color
-                    self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.BackgroundColorRole)] = self._default_bg_color
-                    
-                    cell.color = self._default_fg_color
-                    self._styles[(row, self._index_column_view[column], QtCore.Qt.ItemDataRole.ForegroundRole)] = self._default_fg_color
+                    self.change_cell(row=row, column=column, value=self._default_align, role=QtCore.Qt.ItemDataRole.TextAlignmentRole)
+                    self.change_cell(row=row, column=column, value=self._default_bg_color, role=QtCore.Qt.ItemDataRole.BackgroundColorRole)
+                    self.change_cell(row=row, column=column, value=self._default_fg_color, role=QtCore.Qt.ItemDataRole.ForegroundRole)
                         
             role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), role)
@@ -371,6 +473,7 @@ class DataTable(QtCore.QAbstractTableModel):
         :param state_sorted: Описание
         :type state_sorted: list[ENUMS.STATE_SORTED_COLUMN]
         """
+        
         index_column = [*range(len(state_sorted))]
 
         for column, state in zip(index_column[::-1], state_sorted[::-1]):
@@ -378,23 +481,39 @@ class DataTable(QtCore.QAbstractTableModel):
                 self._data.sort(key=lambda x: x[self._index_column_view[column]].value, reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE)
 
             self.item_data.horizontal_header_data[column].parameters[ENUMS.PARAMETERS_HEADER.STATE_SORTED.name] = state.value 
+        self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])
 
+        self._update_number_row()
+    
+    def _update_number_row(self) -> None:
         number_row = self.item_data.get_index_from_name_filed('number_row')
         if number_row != -1:
             state_select_row = {}
+
             for row in range(self.rowCount()):
                 data = self._data[row][number_row]
                 
-                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.vertical_header_data[column].parameters:
+                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.vertical_header_data[row].parameters:
                     state_select_row[row] = self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
                     
                     if data.value in state_select_row:
-                        state = state_select_row[data.value ]
+                        state = state_select_row[data.value]
                     else:
                         state = self.item_data.vertical_header_data[data.value].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
                     
                     self.select_row(row, state)                
                 
                 data.value = row
-
+    
+    def insert_row(self, row: int) -> None:
+        self.item_data.insert_row(row)
+        self._set_styles()
+        self._update_number_row()
+        self.layoutChanged.emit()
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])
+        self.signal_change.emit()
+    
+    def delete_row(self, row: int) -> None:
+        self.item_data.delete_row(row) 
+        self.layoutChanged.emit()
+        self.signal_change.emit()

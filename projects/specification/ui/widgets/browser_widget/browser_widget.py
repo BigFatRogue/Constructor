@@ -4,7 +4,7 @@ from typing import Union, Iterable
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 
-from projects.specification.config.app_context import SETTING, SIGNAL_BUS, ENUMS
+from projects.specification.config.app_context import SETTING, SIGNAL_BUS, ENUMS, DATACLASSES
 
 from projects.specification.core.data_tables import  GeneralDataItem, PropertyProjectData, InventorSpecificationDataItem, BuySpecificationDataItem, ProdSpecificationDataItem
 from projects.specification.core.functions import get_now_time
@@ -12,12 +12,13 @@ from projects.specification.core.data_loader import get_specifitaction_inventor_
 
 from projects.specification.ui.widgets.browser_widget.bw_item import BrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_project_item import ProjectItem
-from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
-from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
+from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem, SpecificationInventorItem
 from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
+from projects.specification.ui.widgets.browser_widget.bw_table_by_item import TableByItem
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
+from projects.tools.functions.create_action_menu import create_action
 
 
 class RightDrawDelegate(QtWidgets.QStyledItemDelegate):
@@ -73,6 +74,7 @@ class Tree(QtWidgets.QTreeWidget):
             event.accept()
             return super().mousePressEvent(event)
 
+
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class BrowserWidget(QtWidgets.QWidget):
     """
@@ -84,6 +86,7 @@ class BrowserWidget(QtWidgets.QWidget):
         self._prev_item: BrowserItem = None
 
         SIGNAL_BUS.load_specification_from_xlsx.connect(self.load_specification_from_xlsx)
+        SIGNAL_BUS.data_by_from_invetor.connect(self.inventor_table_to_by)
 
         self.init_widgets()
         self.init_context_menu()
@@ -134,10 +137,17 @@ class BrowserWidget(QtWidgets.QWidget):
         self.tree.customContextMenuRequested.connect(self.show_context_menu)
 
         self.context_menu = QtWidgets.QMenu(self.tree)
+        
+        create_action(menu=self.context_menu, 
+            title='Открыть проект', 
+            filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'open_folder.png'),
+            triggerd=SIGNAL_BUS.open_project.emit)
+        
+        create_action(menu=self.context_menu, 
+                title='Создать новый проект', 
+                filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'green_plus.png'),
+                triggerd=self.create_project)
 
-        self.action_open_project = QtWidgets.QAction(self.context_menu)
-        self.action_open_project.setText('Открыть проект')
-        self.context_menu.addAction(self.action_open_project)
 
     def show_context_menu(self, position: QtCore.QPoint) -> None:
         item: BrowserItem = self.tree.itemAt(position)
@@ -175,7 +185,7 @@ class BrowserWidget(QtWidgets.QWidget):
         :type project_item: ProjectItem
         """
 
-        spec_inv_item = SpecificationItem(self.tree, project_item, 'Спецификация из Inventor', os.path.join(SETTING.ICO_FOLDER, 'inventor.png'))
+        spec_inv_item = SpecificationInventorItem(self.tree, project_item, 'Спецификация из Inventor', os.path.join(SETTING.ICO_FOLDER, 'iam_image.png'))
         spec_inv_item.parent_item = project_item
         spec_inv_item.type_item = ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV
         spec_inv_item.filepath = project_item.filepath
@@ -271,22 +281,22 @@ class BrowserWidget(QtWidgets.QWidget):
             header_data = table['header_data']
             sid = table['id']
             
-            item = None
             if tp == ENUMS.NAME_TABLE_SQL.INVENTOR.value:
                 parent_item = dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV]
-                item = TableInventorItem(tree=self.tree, parent_item=dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV], name=name, data=data)
+                item = self.create_intentor_table(parent_item=parent_item, name=name, data=data)
                 item.item_data.set_header_data(header_data)
                 item.item_data.set_sid(sid)
                 item.set_is_init(True)
                 item.set_is_save(True)
             elif tp == ENUMS.NAME_TABLE_SQL.BUY.value:
-                ...
+                parent_item = dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_BUY]
+                item = self.create_by_table(parent_item=parent_item, name=name, data=data)
+                item.item_data.set_header_data(header_data)
+                item.item_data.set_sid(sid)
+                item.set_is_init(True)
+                item.set_is_save(True)
             elif tp == ENUMS.NAME_TABLE_SQL.PROD.value:
                 ...
-            if item:
-                item.set_is_init(True)
-                parent_item.addChild(item)
-                parent_item.setExpanded(True)
 
     def load_specification_from_xlsx(self, filepath) -> None:
         """
@@ -296,14 +306,23 @@ class BrowserWidget(QtWidgets.QWidget):
         :param filepath: Описание
         """
         data = get_specifitaction_inventor_from_xlsx(filepath)
-        
         parent_item: SpecificationItem = self.tree.currentItem()
-        intentor_item = TableInventorItem(tree=self.tree, parent_item=parent_item, name=get_now_time(), data=data)        
-        parent_item.addChild(intentor_item)
-        parent_item.setExpanded(True)
+        self.create_intentor_table(parent_item=parent_item, name=get_now_time(), data=data)
+    
+    def inventor_table_to_by(self, value: tuple[TableInventorItem, list[list[DATACLASSES.DATA_CELL]]]) -> None:
+        inv_item , data = value
+        project_item: ProjectItem = inv_item.parent_item.parent_item
         
-        SIGNAL_BUS.satus_bar.emit(f'Таблица {intentor_item.text()} загружена')
+        parent_item: SpecificationItem = None
+        for i in range(project_item.childCount()):
+            child_item: SpecificationItem = project_item.child(i)
+            if child_item.type_item == ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_BUY:
+                parent_item = child_item
+                break
         
+        if parent_item:
+            self.create_by_table(parent_item=parent_item, name=f'Закупочная спецификация № {parent_item.childCount() + 1}', data=data)
+            
     def select_tree_item(self, item: BrowserItem) -> None:
         """
         Выбор элемента в браузере и оправка сигнала. Приниматель сигнала ContentWidget
@@ -338,3 +357,16 @@ class BrowserWidget(QtWidgets.QWidget):
             
             item.save()
 
+    def create_intentor_table(self, parent_item: SpecificationItem, name: str, data: list[list[DATACLASSES]]) -> TableInventorItem:
+        intentor_item = TableInventorItem(tree=self.tree, parent_item=parent_item, name=name, data=data)        
+        parent_item.addChild(intentor_item)
+        parent_item.setExpanded(True)
+        SIGNAL_BUS.satus_bar.emit(f'Таблица {intentor_item.text()} загружена')
+        return intentor_item
+
+    def create_by_table(self, parent_item: SpecificationItem, name: str, data: list[list[DATACLASSES]]) -> TableInventorItem:
+        by_item = TableByItem(tree=self.tree, parent_item=parent_item, name=name, data=data)        
+        parent_item.addChild(by_item)
+        parent_item.setExpanded(True)
+        SIGNAL_BUS.satus_bar.emit(f'Таблица {by_item.text()} загружена')
+        return by_item

@@ -24,12 +24,7 @@ class PageTable(PageContent):
 
     def populate(self, item: SpecificationItem):
         super().populate(item)
-        if item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_INV:
-            self.widget_table.set_item(item)
-        elif item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_BUY:
-            ...
-        elif item.type_item == ENUMS.TYPE_TREE_ITEM.TABLE_PROD:
-            ...
+        self.widget_table.set_item(item)
 
     def change_table(self) -> None:
         if self.current_item.is_init:

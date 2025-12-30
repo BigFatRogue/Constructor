@@ -97,10 +97,10 @@ FIELDS_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.NAME_FIELDS.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
-        ColumnConfig('field', 'TEXT'),
-        ColumnConfig('column_name', 'TEXT'),
-        ColumnConfig('internal_name', 'TEXT'),
-        ColumnConfig('is_key', 'BOOLEAN')
+        ColumnConfig('field', 'TEXT', is_unique=True),
+        ColumnConfig('column_name', 'TEXT', is_unique=True),
+        ColumnConfig('internal_name', 'TEXT', is_unique=True),
+        ColumnConfig('is_key', 'BOOLEAN', is_unique=True)
     ]
 )
 
@@ -170,6 +170,7 @@ INVENTOR_ITEM_CONFIG = TableConfig(
 BUY_ITEM_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.BUY.value,
     columns=[
+        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('diametr', 'TEXT', 'Номинальный диаметр'),
         ColumnConfig('manufactureretr', 'TEXT', 'Производитель'),
         ColumnConfig('note', 'TEXT', 'Примечание'),
