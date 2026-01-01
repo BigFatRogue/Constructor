@@ -62,19 +62,20 @@ class PopupOrder(QtWidgets.QWidget):
         self.v_layout_frame.addWidget(self.check_box_multi_sorted)
 
     def set_pos(self) -> None:
-        button_global_pos = self.current_button_header.mapToGlobal(QtCore.QPoint(0, 0))
+        current_button_global_pos = self.current_button_header.mapToGlobal(QtCore.QPoint(0, 0))
         geom = self.current_button_header.geometry()
         
-        h = geom.height()
-        x = button_global_pos.x()
-        y = button_global_pos.y() + h
+        w_current_button, h_current_button = geom.height(), geom.width()
+        x = current_button_global_pos.x() - w_current_button // 2
+        y = current_button_global_pos.y() + h_current_button // 2
+        
+        window = self.current_button_header.window()
 
-        if not self.is_left_click:
-            y += h
-            if x + self.width() > self.parent().width():
-                x = self.parent().width() - self.width() - 10
-            if y + self.height()  > self.parent().height():
-                y = self.parent().height() - self.height() - 10
+        if x + self.btn_sorted.width() > window.x() + window.width():
+            x -= self.btn_sorted.width() - w_current_button 
+        if y + self.height()  > window.y() + window.height():
+            y -= window.height()
+
         self.setGeometry(x, y, self.width(), self.height())
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
@@ -168,6 +169,7 @@ class PopupOrder(QtWidgets.QWidget):
         self.is_multi_sorted = value
         self.check_box_multi_sorted.setCheckState(QtCore.Qt.CheckState.Checked if value else QtCore.Qt.CheckState.Unchecked)
 
+
 class ButtonHorizontalHeader(QtWidgets.QPushButton):
     def __init__(self, parent):
         super().__init__(parent)
@@ -252,8 +254,13 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
         count_widgets = len(self.widgets)
         count_section = self.count()
 
-        for widget in self.widgets:
-            widget.show()
+        for i, widget in enumerate(self.widgets):
+            if i < count_section:
+                if not widget.isVisible():
+                    widget.show()
+            elif i > count_section:
+                if widget.isVisible():
+                    widget.hide()
 
         if count_section > count_widgets:
             for i in range(count_widgets, count_section):
@@ -263,13 +270,10 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
                 btn_order.index_section = i
                 btn_order.clicked.connect(self._show_popup)
                 self.widgets.append(btn_order)
-        
-        elif count_widgets > count_section:
-            for widget in self.widgets[count_widgets - count_section:]:
-                widget.hide()
-        
+                
         self._set_parameters_widget()
-        self._update_widgets()
+        # Для того чтобы таблица успела расчитать свои размеры и правильно установить при инициализации виджеты
+        QtCore.QTimer.singleShot(0, self._update_widgets)
 
     def _set_parameters_widget(self) -> None:
         """
@@ -301,6 +305,7 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
         Показ окна настройки сортировки
         """
         self.popup_order.show(self.sender())
+
     
     def _set_state_column_sorted(self, state: ENUMS.STATE_SORTED_COLUMN) -> None:
         if self._table_model:

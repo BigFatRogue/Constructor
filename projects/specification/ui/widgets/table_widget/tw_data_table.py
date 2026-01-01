@@ -333,6 +333,28 @@ class DataTable(QtCore.QAbstractTableModel):
             cell.align_h = value & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
             cell.align_v = value & QtCore.Qt.AlignmentFlag.AlignVertical_Mask
             self._styles[(row, self._index_column_view[column], role)] = value
+        
+        elif role  == QtCore.Qt.ItemDataRole.BackgroundColorRole:
+            if isinstance(value, (tuple, list)):
+                self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(*value)
+                cell.background = tuple(*value)
+            if isinstance(value, QtGui.QColor):
+                self._styles[(row, self._index_column_view[column], role)] = value
+                cell.background = value.getRgb()
+            if value is None:
+                cell.background = (255, 255, 255, 255) 
+                self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(255, 255, 255, 255)
+        
+        elif role  == QtCore.Qt.ItemDataRole.ForegroundRole:
+            if isinstance(value, (tuple, list)):
+                self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(*value)
+                cell.color = tuple(*value)
+            if isinstance(value, QtGui.QColor):
+                self._styles[(row, self._index_column_view[column], role)] = value
+                cell.color = value.getRgb()
+            if value is None:
+                self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(0, 0, 0, 255)
+                cell.color = (0, 0, 0, 0) 
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
         if role == QtCore.Qt.ItemDataRole.DisplayRole:

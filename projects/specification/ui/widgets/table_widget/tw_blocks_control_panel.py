@@ -4,6 +4,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.app_context import SETTING, DATACLASSES, ENUMS
 from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.ui.widgets.table_widget.tw_color_tool_button import ColorToolButton
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 
@@ -53,6 +54,7 @@ class FontStyleBlock(BlockControlPanel):
 
         self.type_block = ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT
 
+        # Нужен для разделения задания свойств или отоброжения свойств диапазона
         self._is_view = True
 
         self.h_layout_row_1 = QtWidgets.QHBoxLayout()
@@ -75,7 +77,7 @@ class FontStyleBlock(BlockControlPanel):
         self.grid.addLayout(self.h_layout_row_2, 1, 0, 1, 1, alignment=QtCore.Qt.AlignmentFlag.AlignLeft)
 
         self.btn_bold =  QtWidgets.QPushButton(self)
-        self.btn_bold.setFixedSize(20, 20)
+        self.btn_bold.setFixedSize(25, 25)
         self.btn_bold.setText('Ж')
         font = self.btn_bold.font()
         font.setBold(True)
@@ -85,7 +87,7 @@ class FontStyleBlock(BlockControlPanel):
         self.h_layout_row_2.addWidget(self.btn_bold)
 
         self.btn_italic =  QtWidgets.QPushButton(self)
-        self.btn_italic.setFixedSize(20, 20)
+        self.btn_italic.setFixedSize(25, 25)
         self.btn_italic.setText('К')
         font = self.btn_italic.font()
         font.setBold(True)
@@ -96,7 +98,7 @@ class FontStyleBlock(BlockControlPanel):
         self.h_layout_row_2.addWidget(self.btn_italic)
 
         self.btn_underline =  QtWidgets.QPushButton(self)
-        self.btn_underline.setFixedSize(20, 20)
+        self.btn_underline.setFixedSize(25, 25)
         self.btn_underline.setText('Ч')
         font = self.btn_underline.font()
         font.setBold(True)
@@ -106,22 +108,20 @@ class FontStyleBlock(BlockControlPanel):
         self.btn_underline.clicked.connect(self.set_underline_range)
         self.h_layout_row_2.addWidget(self.btn_underline)
 
-        self.color_dialog = QtWidgets.QColorDialog(self)
-
-        self.btn_background_color = QtWidgets.QPushButton(self)
-        self.btn_background_color.setFixedSize(20, 20)
-        self.btn_background_color.setText('BG')
-        self.btn_background_color.clicked.connect(lambda: self.color_dialog.getColor())
+        self.btn_background_color = ColorToolButton(self)
+        self.btn_background_color.set_icon(os.path.join(SETTING.ICO_FOLDER, 'fill_color.png'))
+        self.btn_background_color.setFixedSize(35, 25)
+        self.btn_background_color.signal_get_color.connect(self.set_background_color)
         self.h_layout_row_2.addWidget(self.btn_background_color)
 
-        self.btn_foreground_clor = QtWidgets.QPushButton(self)
-        self.btn_foreground_clor.setFixedSize(20, 20)
-        self.btn_foreground_clor.setText('FG')
-        self.btn_foreground_clor.clicked.connect(lambda: self.color_dialog.getColor())
-        self.h_layout_row_2.addWidget(self.btn_foreground_clor)
+        self.btn_foreground_color = ColorToolButton(self)
+        self.btn_foreground_color.set_text('A')
+        self.btn_foreground_color.setFixedSize(35, 25)
+        self.btn_foreground_color.signal_get_color.connect(self.set_color)
+        self.h_layout_row_2.addWidget(self.btn_foreground_color)
 
         self.btn_rest_style =  QtWidgets.QPushButton(self)
-        self.btn_rest_style.setFixedSize(20, 20)
+        self.btn_rest_style.setFixedSize(25, 25)
         self.btn_rest_style.setText('R')
         self.btn_rest_style.clicked.connect(self.reset_style)
         self.h_layout_row_2.addWidget(self.btn_rest_style)
@@ -143,6 +143,10 @@ class FontStyleBlock(BlockControlPanel):
             self.btn_bold.setChecked(check_value(style.bold))
             self.btn_italic.setChecked(check_value(style.italic))
             self.btn_underline.setChecked(check_value(style.underline))
+
+            self.btn_foreground_color.set_color(style.color)
+            self.btn_background_color.set_color(style.background)
+
             self._is_view = False
     
     def set_font_family_range(self, value: QtGui.QFont) -> None:
@@ -156,11 +160,17 @@ class FontStyleBlock(BlockControlPanel):
     def set_bold_range(self, value) -> None:
         self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_BOLD)
 
-    def set_italic_range(self, value) -> None:
+    def set_italic_range(self, value: bool) -> None:
         self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_ITALIC)
 
-    def set_underline_range(self, value) -> None:
+    def set_underline_range(self, value: bool) -> None:
         self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_UNDERLINE)
+
+    def set_color(self, value: QtGui.QColor) -> None:
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.ForegroundRole, value)
+
+    def set_background_color(self, value: QtGui.QColor) -> None:
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.BackgroundColorRole, value)
 
     def reset_style(self) -> None:
         self.table_model.reset_style(self.selection)

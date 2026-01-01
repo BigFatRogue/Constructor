@@ -72,14 +72,13 @@ class TableWidget(QtWidgets.QWidget):
         self.current_item = item_tree
         state_init, state_save = item_tree.is_init, item_tree.is_save
 
-        self.table_view.hide_selection()
-
         self.table_model = item_tree.table_data
         self.zoom_table.set_table_model(self.table_model)
         self.table_view.setModel(self.table_model)
         self.horizontal_header.set_table_model(self.table_model)
         self.vertical_header.set_table_model(self.table_model)
-        
+
+        self.table_view.set_active_range(0, 0, 0, 0)
         self.table_model.set_range_step_zoom(self.range_zoom)
 
         if isinstance(item_tree, TableInventorItem):
@@ -101,9 +100,9 @@ class TableWidget(QtWidgets.QWidget):
         self.vertical_header.set_widget()
 
         self.control_panel.set_table_model(self.table_model)
-        self.control_panel.view_all_block(False)
-        self.control_panel.view_font_block(True)
-        self.control_panel.view_align_block(True)
+        self.control_panel.show_all_block(False)
+        self.control_panel.show_font_block(True)
+        self.control_panel.show_align_block(True)
         
         self.table_view.signale_change_selection.connect(self.control_panel.view_property)
 
@@ -117,9 +116,9 @@ class TableWidget(QtWidgets.QWidget):
         self.vertical_header.set_table_edited(True)
 
         self.control_panel.set_table_model(self.table_model)
-        self.control_panel.view_all_block(False)
-        self.control_panel.view_font_block(True)
-        self.control_panel.view_align_block(True)
+        self.control_panel.show_all_block(False)
+        self.control_panel.show_font_block(True)
+        self.control_panel.show_align_block(True)
         
         self.table_model.set_edited(True)
         self.table_view.signale_change_selection.connect(self.control_panel.view_property)

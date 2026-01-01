@@ -77,7 +77,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
 
     def _update_widgets(self) -> None:
         for i in range(len(self.widgets)):
-            self._update_widget(i)
+            self._update_widget(i) 
         self.viewport().update()
 
     def _update_widget(self, section_index: int) -> None:

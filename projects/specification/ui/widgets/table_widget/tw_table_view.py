@@ -48,7 +48,6 @@ class TableView(QtWidgets.QTableView):
         self._frame_selection_rect.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
         self._frame_selection_rect.setStyleSheet('QFrame {background-color: rgba(0, 0, 0, 0); border: 2px solid green}')
         self.grid = QtWidgets.QGridLayout(self._frame_selection_rect)
-        self._frame_selection_rect.hide()
                 
     def selectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection):
         self.resize_rect()
@@ -57,14 +56,14 @@ class TableView(QtWidgets.QTableView):
     def resize_rect(self) -> None:
         ranges = self.selectionModel().selection()
         if ranges and not self._is_ctrl:
-            self._draw_rect(ranges)
+            top = min(r.top() for r in ranges)
+            left = min(r.left() for r in ranges)
+            bottom = max(r.bottom() for r in ranges)
+            right = max(r.right() for r in ranges)
+            
+            self._draw_rect(top, left, bottom, right)
     
-    def _draw_rect(self, ranges: list[QtCore.QItemSelectionRange]):
-        top = min(r.top() for r in ranges)
-        left = min(r.left() for r in ranges)
-        bottom = max(r.bottom() for r in ranges)
-        right = max(r.right() for r in ranges)
-
+    def _draw_rect(self, top: int, left: int, bottom: int, right: int):
         rect_start = self.visualRect(self.model().index(top, left))
         rect_end = self.visualRect(self.model().index(bottom, right))
         
@@ -74,6 +73,9 @@ class TableView(QtWidgets.QTableView):
     def hide_selection(self) -> None:
         self._frame_selection_rect.hide()
 
+    def set_active_range(self, top: int, left: int, bottom: int, right: int) -> None:
+        self._draw_rect(top, left, bottom, right)
+    
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             if event.modifiers() & QtCore.Qt.ControlModifier:

@@ -8,7 +8,7 @@ if __name__ == '__main__':
     import sys
     # Для запуска через IDE
     from pathlib import Path
-    test_path = str(Path(__file__).parent.parent.parent.parent.parent)
+    test_path = str(Path(__file__).parent.parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
 
@@ -50,9 +50,9 @@ class ControlPanelTable(QtWidgets.QFrame):
                 line = QVLineSeparate(self)
                 line.hide()
                 self.blocks_inited[block_init.type_block] = {'block': block_init, 'line': line, 'status': False}
-        self.view_all_block(True)
+        self.show_all_block(True)
 
-    def _view_block(self, type_block: ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL, value: bool) -> None:
+    def _show_block(self, type_block: ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL, value: bool) -> None:
         """
         Включить или выключить заданный блок
         
@@ -81,15 +81,15 @@ class ControlPanelTable(QtWidgets.QFrame):
                     self.h_layout.removeWidget(line)
                     data['status'] = False
 
-    def view_all_block(self, value: bool) -> None:
+    def show_all_block(self, value: bool) -> None:
         for type_block in self.blocks_inited.keys():
-            self._view_block(type_block, value)
+            self._show_block(type_block, value)
 
-    def view_font_block(self, value: bool) -> None:
-        self._view_block(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT, value)
+    def show_font_block(self, value: bool) -> None:
+        self._show_block(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT, value)
     
-    def view_align_block(self, value) -> None:
-        self._view_block(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN, value)
+    def show_align_block(self, value) -> None:
+        self._show_block(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN, value)
     
     def set_table_model(self, table_model: DataTable) -> None:
         """
@@ -130,7 +130,9 @@ class __Window(QtWidgets.QMainWindow):
 
         self.v_layout = QtWidgets.QVBoxLayout(self.central_widget)
 
-        self.widget = ControlPanelTable(self)
+        self.widget = ControlPanelTable(self, None)
+        self.widget.set_table_model(True)
+        self.widget.show_all_block(True)
 
         self.v_layout.addWidget(self.widget)
         self.v_layout.addWidget(QHLineSeparate(self))

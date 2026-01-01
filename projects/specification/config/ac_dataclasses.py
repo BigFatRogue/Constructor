@@ -11,7 +11,7 @@ class DataCell:
     bold: bool = False
     italic: bool = False
     underline: bool = False
-    color: tuple[int, int, int, int] = None
+    color: tuple[int, int, int, int] = (0, 0, 0, 255)
     background: tuple[int, int, int, int] = None
     span: tuple[int, int] = (1, 1)
 
