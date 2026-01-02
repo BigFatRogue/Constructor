@@ -229,9 +229,7 @@ PARAMETER_TABLE_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.PARAMETER_TABLE.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
-        ColumnConfig('current_zoom', 'INTEGER'),
-        ColumnConfig('active_row', 'INTEGER'),
-        ColumnConfig('active_column', 'INTEGER'),
+        ColumnConfig('parameters', 'TEXT'),
         ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
     ]
 )

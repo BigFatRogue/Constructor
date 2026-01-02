@@ -74,6 +74,7 @@ class PagePropertyProject(PageContent):
     
     def populate(self, item: ProjectItem):
         super().populate(item)
+        
         data = self.current_item.item_data.get_data()
         self.clear()
 

@@ -29,6 +29,40 @@ class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
             painter.restore()
             
 
+class DepthDelegate(QtWidgets.QStyledItemDelegate):
+    def __init__(self, sunken_rows=None, parent=None):
+        super().__init__(parent)
+        self.sunken_rows = sunken_rows or set()
+
+    def paint(self, painter, option, index):
+        row = index.row()
+
+        if row in self.sunken_rows:
+            # Фон
+            painter.fillRect(option.rect, QtGui.QColor(235, 235, 235))
+
+            # Внутренняя рамка (эффект вдавленности)
+            dark = QtGui.QPen(QtGui.QColor(160, 160, 160))
+            light =QtGui. QPen(QtGui.QColor(255, 255, 255))
+
+            painter.setPen(dark)
+            painter.drawLine(option.rect.topLeft(), option.rect.topRight())
+            painter.drawLine(option.rect.topLeft(), option.rect.bottomLeft())
+
+            painter.setPen(light)
+            painter.drawLine(option.rect.bottomLeft(), option.rect.bottomRight())
+            painter.drawLine(option.rect.topRight(), option.rect.bottomRight())
+
+            # Текст
+            painter.setPen(QtCore.Qt.black)
+            painter.drawText(
+                option.rect.adjusted(6, 0, -6, 0),
+                QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
+                index.data()
+            )
+        else:
+            super().paint(painter, option, index)
+
 class TableView(QtWidgets.QTableView):
     signal_change_zoom = QtCore.pyqtSignal(int)
     signale_change_selection = QtCore.pyqtSignal(object)
@@ -61,20 +95,19 @@ class TableView(QtWidgets.QTableView):
             bottom = max(r.bottom() for r in ranges)
             right = max(r.right() for r in ranges)
             
-            self._draw_rect(top, left, bottom, right)
-    
-    def _draw_rect(self, top: int, left: int, bottom: int, right: int):
-        rect_start = self.visualRect(self.model().index(top, left))
-        rect_end = self.visualRect(self.model().index(bottom, right))
+            rect_start = self.visualRect(self.model().index(top, left))
+            rect_end = self.visualRect(self.model().index(bottom, right))
+            
+            rect = QtCore.QRect(self.viewport().mapTo(self, rect_start.topLeft()),self.viewport(). mapTo(self, rect_end.bottomRight()))
+            self._frame_selection_rect.setGeometry(rect)
         
-        rect = QtCore.QRect(self.viewport().mapTo(self, rect_start.topLeft()),self.viewport(). mapTo(self, rect_end.bottomRight()) )
-        self._frame_selection_rect.setGeometry(rect)
-    
     def hide_selection(self) -> None:
         self._frame_selection_rect.hide()
 
     def set_active_range(self, top: int, left: int, bottom: int, right: int) -> None:
-        self._draw_rect(top, left, bottom, right)
+        selection = QtCore.QItemSelection(self.model().index(top, left), self.model().index(bottom, right))
+        self.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
+        self.resize_rect()
     
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:

@@ -31,20 +31,22 @@ class DataCell:
 
 
 class ParameterTable:
-    def __init__(self, active_range: tuple[int, int, int, int], current_zoom: int):
+    def __init__(self, active_range: tuple[int, int, int, int], current_zoom: int, scroll_x: int, scroll_y: int):
         self.active_range = active_range
         self.current_zoom = current_zoom
+        self.scroll_x = scroll_x
+        self.scroll_y = scroll_y
 
-    def get_dict_active_range(self) -> dict[str, int]:
+    def get_dict_data(self) -> dict[str, int | tuple[int, int, int, int]]:
         return {
-            'top': self.active_range[0],
-            'left': self.active_range[1],
-            'bottom': self.active_range[2],
-            'rigth': self.active_range[3]
+            'active_range': self.active_range,
+            'current_zoom': self.current_zoom,
+            'scroll_x': self.scroll_x,
+            'scroll_y': self.scroll_y
         }
 
     def __str__(self) -> str:
-        return f'{self.active_range=}, {self.current_zoom=}'
+        return f'{self.get_dict_data()=}'
     
     def __repr__(self) -> str:
         return self.__str__()

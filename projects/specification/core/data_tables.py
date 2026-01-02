@@ -285,6 +285,7 @@ class PropertyProjectData(GeneralDataItem):
             tables.append(table)
 
             table['header_data'] = self._load_parameter_header(table['id'])
+            table['table_data'] = self._load_parameter_table(table['id'])
 
         return tables
 
@@ -325,6 +326,13 @@ class PropertyProjectData(GeneralDataItem):
             data_header.append(DATACLASSES.DATA_HEADERS(**{k: v for k, v in zip(fields, row)}))
         return data_header
 
+    def _load_parameter_table(self, sid: int) -> dict[str, int | tuple[int, int, int, int]] | None:
+        fields = [col.field for col in PARAMETER_TABLE_CONFIG.columns if not col.is_id and not col.is_foreign_id]
+        add_query = f' WHERE parent_id = {sid}'
+        res = self.database.select(PARAMETER_TABLE_CONFIG.name, fields, add_query).fetchall()
+
+        if res:
+            return DATACLASSES.PARAMETER_TABLE(**json.loads(res[0][0]))
 
 class SpecificationDataItem(GeneralDataItem):
     def __init__(self, database, unique_config: TableConfig):
@@ -342,9 +350,9 @@ class SpecificationDataItem(GeneralDataItem):
         self.parameter_table_config: TableConfig =  PARAMETER_TABLE_CONFIG
         
         self.data: list[list[DATACLASSES.DATA_CELL]] = None
-        self.table_data: DATACLASSES.PARAMETER_TABLE = None
-        self.horizontal_header_data: list [DATACLASSES.DATA_HEADERS] = None
-        self.vertical_header_data: list [DATACLASSES.DATA_HEADERS] = None
+        self.table_parameter: DATACLASSES.PARAMETER_TABLE = None
+        self.horizontal_header_parameter: list [DATACLASSES.DATA_HEADERS] = None
+        self.vertical_header_parameter: list [DATACLASSES.DATA_HEADERS] = None
         
         self.type_spec = None
         self._sid: int = None
@@ -371,15 +379,19 @@ class SpecificationDataItem(GeneralDataItem):
         return super().get_data()
 
     def set_header_data(self, header_data: list[DATACLASSES.DATA_HEADERS]) -> None:
-        self.vertical_header_data = []
-        self.horizontal_header_data = []
+        self.vertical_header_parameter = []
+        self.horizontal_header_parameter = []
         for data in header_data:
             if isinstance(data.parameters, str):
                 data.parameters = json.loads(data.parameters)
             if data.row == -1:
-                self.horizontal_header_data.append(data)
+                self.horizontal_header_parameter.append(data)
             else:
-                self.vertical_header_data.append(data)
+                self.vertical_header_parameter.append(data)
+
+    def set_table_data(self, table_data: DATACLASSES.PARAMETER_TABLE | None) -> None:
+        if table_data is not None:
+            self.table_parameter = table_data
 
     def save(self) -> None:
         if not self.is_init:
@@ -388,7 +400,8 @@ class SpecificationDataItem(GeneralDataItem):
             self._insert_in_sql_filed()
 
         self._insert_or_update_sql()
-        self._insert_or_update_header_data()
+        self._insert_or_update_header_parameter_sql()
+        self._insert_or_update_table_parameter_sql()
         
         self.database.commit()
         self.database.close()
@@ -480,7 +493,6 @@ class SpecificationDataItem(GeneralDataItem):
                 self._insert_sytle_sql(value_style_cell)
                 self._insert_cell_style_sql(id_general, x, value_style_cell)
         
-
     def _update_row_sql(self, y: int, row: list[DATACLASSES.DATA_CELL]) -> None:
         id_general, *value_general = [cell.value for cell in row[:len(self.general_config.columns)]]
         id_unique, *value_unique = [cell.value for cell in row[len(self.general_config.columns): ]]
@@ -507,7 +519,6 @@ class SpecificationDataItem(GeneralDataItem):
         """
         style_id = self._get_id_style(value)
         self.database.insert(self.parameter_cell_link_config.name, self.fields_style_link[1:], [id_general, column, self._sid, style_id])
-
     
     def _updata_cell_style_sql(self, id_general: int, x: int, value: str) -> None:
         """
@@ -537,10 +548,10 @@ class SpecificationDataItem(GeneralDataItem):
         if field_foreign_key:       
             self.database.execute(f"UPDATE {config.name} SET {field_foreign_key} = '{parent_id}' WHERE id={last_id}")
 
-    def _insert_or_update_header_data(self) -> None:
+    def _insert_or_update_header_parameter_sql(self) -> None:
         fields: list[str ]= [col.field for col in self.parameter_header_config.columns if not col.is_id]
 
-        for header_data in self.horizontal_header_data + self.vertical_header_data:
+        for header_data in self.horizontal_header_parameter + self.vertical_header_parameter:
             dict_data_header = header_data.get_dict_data()
             values = []
             for field in fields:
@@ -555,14 +566,34 @@ class SpecificationDataItem(GeneralDataItem):
             SELECT
                 EXISTS(SELECT * FROM {self.parameter_header_config.name} WHERE row = {header_data.row} AND column = {header_data.column} AND parent_id = {self._sid}) as cell
             """
-            exist = self.database.execute(query).fetchall()[0][0]
+            exists = self.database.execute(query).fetchall()[0][0]
         
-            if exist == 0:
+            if exists == 0:
                 self.database.insert(PARAMETER_HEADER_CONFIG.name, fields, values)
             else:
                 add_query = f" WHERE row = {header_data.row} AND column = {header_data.column} AND parent_id = {self._sid}"
                 self.database.update(table_name=PARAMETER_HEADER_CONFIG.name, fields=fields, value=values, add_query=add_query)
- 
+    
+    def _insert_or_update_table_parameter_sql(self) -> None:
+        """
+        Сохранение в БД данных о текущих параметрах таблицы (масштабирвоание, координаты скрола и др.)
+        """
+        print(self.table_parameter.get_dict_data())
+        value: str = json.dumps(self.table_parameter.get_dict_data())
+
+        query = f"""
+        SELECT 
+            EXISTS(SELECT * FROM {self.parameter_table_config.name} WHERE parent_id = {self._sid}) as paramaters_table
+        """
+        exists = self.database.execute(query).fetchall()[0][0]
+
+        if exists == 0:
+            fields = [col.field for col in self.parameter_table_config.columns if not col.is_id]
+            self.database.insert(self.parameter_table_config.name, fields, [value, self._sid])
+        else:
+            add_query = f' WHERE parent_id = {self._sid}'
+            self.database.update(self.parameter_table_config.name, ['parameters'], [value], add_query=add_query)
+        
     def get_index_from_name_filed(self, field: str) -> int:
         for i, col in enumerate(self.general_config.columns + self.unique_config.columns):
             if col.field == field:
@@ -574,13 +605,13 @@ class SpecificationDataItem(GeneralDataItem):
 
     def insert_row(self, row: int) -> None:
         self.data.insert(row, [DATACLASSES.DATA_CELL() for i in range(len(self.data[0]))])
-        self.vertical_header_data.insert(row, DATACLASSES.DATA_HEADERS(row=row, column=-1, size=30))
-        for i, header_data in enumerate(self.vertical_header_data):
+        self.vertical_header_parameter.insert(row, DATACLASSES.DATA_HEADERS(row=row, column=-1, size=30))
+        for i, header_data in enumerate(self.vertical_header_parameter):
             header_data.row = i
 
     def delete_row(self, row: int) -> None:
         del self.data[row]
-        del self.vertical_header_data[row]
+        del self.vertical_header_parameter[row]
 
 class InventorSpecificationDataItem(SpecificationDataItem):
     def __init__(self, database: DataBase, table_name: str):
@@ -597,7 +628,7 @@ class InventorSpecificationDataItem(SpecificationDataItem):
         """
         
         by_data = []
-        for header_cell, row in zip(self.vertical_header_data, self.data):
+        for header_cell, row in zip(self.vertical_header_parameter, self.data):
             by_row = []
             if not header_cell.parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]:
                 for cell, col in zip(row, self.general_config.columns):

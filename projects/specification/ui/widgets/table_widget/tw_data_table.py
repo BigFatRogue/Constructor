@@ -134,6 +134,7 @@ class DataTable(QtCore.QAbstractTableModel):
         """
         super().__init__(None)
         self.item_data: SpecificationDataItem = item_data
+
         self._range_zoom = range_zoom
         self._current_zoom = 100
         self._min_font_size = 2
@@ -230,7 +231,7 @@ class DataTable(QtCore.QAbstractTableModel):
                 dct[step] = size
             self._dict_zoom_steps[value] = dct
 
-        return self._dict_zoom_steps[value][self._current_zoom]
+        return self._dict_zoom_steps[value][self.item_data.table_parameter.current_zoom]
     
     def set_range_step_zoom(self, range_zoom: tuple[int, int, int]) -> None:
         """
@@ -385,7 +386,7 @@ class DataTable(QtCore.QAbstractTableModel):
         if value:
             self.set_flags(self.get_flags() | QtCore.Qt.ItemFlag.ItemIsEditable)
 
-    def set_zoom(self, step: int) -> None:
+    def set_zoom(self, step) -> None:
         """
         Установка текущего шага масштабирования
         
@@ -396,6 +397,7 @@ class DataTable(QtCore.QAbstractTableModel):
             return
         
         self._current_zoom = step
+        self.item_data.table_parameter.current_zoom = step
         role = QtCore.Qt.ItemDataRole.FontRole
         
         for row in range(self.rowCount()):
@@ -422,7 +424,7 @@ class DataTable(QtCore.QAbstractTableModel):
         column = self.item_data.get_index_from_name_filed('is_select')
         if column >= 0:
             # self._data[row][column].value = state
-            self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = state
+            self.item_data.vertical_header_parameter[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = state
 
             color = (200, 60, 60, 200) if state else (255, 255, 255)
             
@@ -502,7 +504,7 @@ class DataTable(QtCore.QAbstractTableModel):
             if state != ENUMS.STATE_SORTED_COLUMN.EMPTY:
                 self._data.sort(key=lambda x: x[self._index_column_view[column]].value, reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE)
 
-            self.item_data.horizontal_header_data[column].parameters[ENUMS.PARAMETERS_HEADER.STATE_SORTED.name] = state.value 
+            self.item_data.horizontal_header_parameter[column].parameters[ENUMS.PARAMETERS_HEADER.STATE_SORTED.name] = state.value 
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])
 
         self._update_number_row()
@@ -515,13 +517,13 @@ class DataTable(QtCore.QAbstractTableModel):
             for row in range(self.rowCount()):
                 data = self._data[row][number_row]
                 
-                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.vertical_header_data[row].parameters:
-                    state_select_row[row] = self.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
+                if ENUMS.PARAMETERS_HEADER.SELECT_ROW.name in self.item_data.vertical_header_parameter[row].parameters:
+                    state_select_row[row] = self.item_data.vertical_header_parameter[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
                     
                     if data.value in state_select_row:
                         state = state_select_row[data.value]
                     else:
-                        state = self.item_data.vertical_header_data[data.value].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
+                        state = self.item_data.vertical_header_parameter[data.value].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]
                     
                     self.select_row(row, state)                
                 

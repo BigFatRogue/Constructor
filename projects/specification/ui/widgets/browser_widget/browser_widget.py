@@ -279,18 +279,21 @@ class BrowserWidget(QtWidgets.QWidget):
             create_date = table['datetime']
             data = table['data']
             header_data = table['header_data']
+            table_data = table['table_data']
             sid = table['id']
             
             if tp == ENUMS.NAME_TABLE_SQL.INVENTOR.value:
                 parent_item = dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_INV]
                 item = self.create_intentor_table(parent_item=parent_item, name=name, data=data)
                 item.item_data.set_header_data(header_data)
+                item.item_data.set_table_data(table_data)
                 item.item_data.set_sid(sid)
                 item.set_is_init(True)
                 item.set_is_save(True)
             elif tp == ENUMS.NAME_TABLE_SQL.BUY.value:
                 parent_item = dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_BUY]
                 item = self.create_by_table(parent_item=parent_item, name=name, data=data)
+                item.item_data.set_table_data(table_data)
                 item.item_data.set_header_data(header_data)
                 item.item_data.set_sid(sid)
                 item.set_is_init(True)
@@ -364,7 +367,7 @@ class BrowserWidget(QtWidgets.QWidget):
         SIGNAL_BUS.satus_bar.emit(f'Таблица {intentor_item.text()} загружена')
         return intentor_item
 
-    def create_by_table(self, parent_item: SpecificationItem, name: str, data: list[list[DATACLASSES]]) -> TableInventorItem:
+    def create_by_table(self, parent_item: SpecificationItem, name: str, data: list[list[DATACLASSES]]) -> TableByItem:
         by_item = TableByItem(tree=self.tree, parent_item=parent_item, name=name, data=data)        
         parent_item.addChild(by_item)
         parent_item.setExpanded(True)

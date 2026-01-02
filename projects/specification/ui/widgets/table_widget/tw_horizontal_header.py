@@ -229,7 +229,16 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
     def set_table_model(self, table_model):
         super().set_table_model(table_model)
         self._set_size_section()
-        
+        self._set_scroll_x()
+    
+    def _set_scroll_x(self) -> None:
+        if self.table_model.item_data.table_parameter:
+            self.table_view.horizontalScrollBar().setValue(self.table_model.item_data.table_parameter.scroll_x)
+
+    def update_scroll_x(self) -> None:
+        if self.table_model and self.table_model.item_data.table_parameter:
+            self.table_model.item_data.table_parameter.scroll_x = self.table_view.horizontalScrollBar().value()
+
     def _set_size_section(self) -> None:
         """
         Установка параметров заголовка из item_data
@@ -238,15 +247,15 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
         
         :param self: Описание
         """
-        if self._table_model.item_data.horizontal_header_data:
-            for data in self._table_model.item_data.horizontal_header_data:
+        if self._table_model.item_data.horizontal_header_parameter:
+            for data in self._table_model.item_data.horizontal_header_parameter:
                 self.resizeSection(data.column, data.size)
         else:
             headers: list[DATACLASSES.DATA_HEADERS] = []
             for i in range(self.count()):
                 header_data = DATACLASSES.DATA_HEADERS(-1, i, self.sectionSize(i), self.isVisible())
                 headers.append(header_data)
-            self._table_model.item_data.horizontal_header_data = headers
+            self._table_model.item_data.horizontal_header_parameter = headers
 
     def set_widget(self, align: int=2) -> None:
         self._align_widget = align
@@ -283,7 +292,7 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
         
         :param self: Описание
         """
-        horizontal_header_data = self._table_model.item_data.horizontal_header_data
+        horizontal_header_data = self._table_model.item_data.horizontal_header_parameter
         if horizontal_header_data:
             column_sorted: dict[int, int] = {}
             for i, data in enumerate(horizontal_header_data):
@@ -306,7 +315,6 @@ class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
         """
         self.popup_order.show(self.sender())
 
-    
     def _set_state_column_sorted(self, state: ENUMS.STATE_SORTED_COLUMN) -> None:
         if self._table_model:
             """

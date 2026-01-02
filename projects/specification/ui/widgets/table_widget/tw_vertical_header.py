@@ -44,6 +44,7 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
     def __init__(self, table_view: QtWidgets.QTableWidget, range_zoom):
         super().__init__(QtCore.Qt.Orientation.Vertical, table_view, range_zoom)
         table_view.verticalScrollBar().valueChanged.connect(self._update_widgets)
+
         self.widgets: list[CheckBoxVerticalHeader]
 
         self._start_row: int = None
@@ -104,7 +105,16 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
     def set_table_model(self, table_model):
         super().set_table_model(table_model)
         self._set_size_section()
-        
+        self._set_scroll_y()
+    
+    def _set_scroll_y(self) -> None:
+        if self.table_model.item_data.table_parameter:
+            self.table_view.verticalScrollBar().setValue(self.table_model.item_data.table_parameter.scroll_y)
+
+    def update_scroll_y(self) -> None:
+        if self.table_model and self.table_model.item_data.table_parameter:
+            self.table_model.item_data.table_parameter.scroll_y = self.table_view.verticalScrollBar().value()
+
     def _set_size_section(self) -> None:
         """
         Установка параметров заголовка из item_data
@@ -113,15 +123,15 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         
         :param self: Описание
         """
-        if self._table_model.item_data.vertical_header_data:
-            for data in self._table_model.item_data.vertical_header_data:
+        if self._table_model.item_data.vertical_header_parameter:
+            for data in self._table_model.item_data.vertical_header_parameter:
                 self.resizeSection(data.row, data.size)
         else:
             headers: list[DATACLASSES.DATA_HEADERS] = []
             for i in range(self.count()):
                 header_data = DATACLASSES.DATA_HEADERS(i, -1, self.sectionSize(i), self.isVisible())
                 headers.append(header_data)
-            self._table_model.item_data.vertical_header_data = headers
+            self._table_model.item_data.vertical_header_parameter = headers
 
     def set_widget(self, align: int=2):
         self._align_widget = align
@@ -163,8 +173,8 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         :param self: Описание
         """
 
-        if self._table_model.item_data.vertical_header_data:
-            for i, data in enumerate(self._table_model.item_data.vertical_header_data):
+        if self._table_model.item_data.vertical_header_parameter:
+            for i, data in enumerate(self._table_model.item_data.vertical_header_parameter):
                 state = data.parameters.get(ENUMS.PARAMETERS_HEADER.SELECT_ROW.name)
                 if state is not None:
                     self.widgets[i].setCheckState(QtCore.Qt.CheckState.Checked if state else QtCore.Qt.CheckState.Unchecked)
@@ -256,7 +266,7 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         check_box = self.widgets[row]
         state = QtCore.Qt.CheckState.Checked if self._multi_select_state else QtCore.Qt.CheckState.Unchecked
         check_box.setCheckState(state)
-        self._table_model.item_data.vertical_header_data[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = self._multi_select_state
+        self._table_model.item_data.vertical_header_parameter[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = self._multi_select_state
         self.fill_row(row, self._multi_select_state)
         self.signal_change.emit()
 

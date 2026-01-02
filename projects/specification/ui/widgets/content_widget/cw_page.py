@@ -14,16 +14,13 @@ class PageContent(QtWidgets.QWidget):
         self.current_item: ProjectItem | SpecificationItem | TableBrowserItem = None
     
     def populate(self, item: ProjectItem | SpecificationItem | TableBrowserItem) -> None:
-        if self.current_item is None or self.current_item != item:
-            self.current_item = item
-        else:
-            return
-
-    def update_data_item(self) -> None:
-        ...
-
-    def escape_tab(self) -> None:
-        ...
+        """
+        Заполнение страницу контентом
+        
+        :param item: элемент дерева (браузера)
+        :type item: ProjectItem | SpecificationItem | TableBrowserItem
+        """
+        self.current_item = item
 
     def save(self) -> None:
         ...

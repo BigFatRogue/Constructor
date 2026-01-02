@@ -1,4 +1,5 @@
 import os
+import math
 from PyQt5 import QtWidgets, QtCore
 
 if __name__ == '__main__':
@@ -69,6 +70,12 @@ class TableWidget(QtWidgets.QWidget):
         :param item_tree: элемент дерева браузера
         :type item_tree: TableBrowserItem
         """
+        self.horizontal_header.update_scroll_x()
+        self.vertical_header.update_scroll_y()
+        
+        if item_tree == self.current_item:
+            return
+
         self.current_item = item_tree
         state_init, state_save = item_tree.is_init, item_tree.is_save
 
@@ -78,7 +85,6 @@ class TableWidget(QtWidgets.QWidget):
         self.horizontal_header.set_table_model(self.table_model)
         self.vertical_header.set_table_model(self.table_model)
 
-        self.table_view.set_active_range(0, 0, 0, 0)
         self.table_model.set_range_step_zoom(self.range_zoom)
 
         if isinstance(item_tree, TableInventorItem):
@@ -123,7 +129,6 @@ class TableWidget(QtWidgets.QWidget):
         self.table_model.set_edited(True)
         self.table_view.signale_change_selection.connect(self.control_panel.view_property)
 
-
     def _set_zoom(self, step: int) -> None:
         """
         Применить заданное масштабирование
@@ -135,6 +140,7 @@ class TableWidget(QtWidgets.QWidget):
         self.vertical_header.set_zoom(step)
         self.table_view.resize_rect()
         self.zoom_table.set_value(step)
+        self.table_model.set_zoom(step)
 
     def _change_zoom(self, derection: int) -> None:
         """
@@ -154,12 +160,17 @@ class TableWidget(QtWidgets.QWidget):
         """
         Применить параметры к таблице из item_data
         """
-        if self.table_model.item_data.table_data is None:
-            self.table_model.item_data.table_data = DATACLASSES.PARAMETER_TABLE(current_zoom=100, active_range=[0, 0, 0, 0])
-        else:
-            self._set_zoom(self.table_model.item_data.table_data.current_zoom)
-      
-    
+
+        if self.table_model.item_data.table_parameter is None:
+            self.table_model.item_data.table_parameter = DATACLASSES.PARAMETER_TABLE(current_zoom=100, active_range=[0, 0, 0, 0], scroll_x=0, scroll_y=0)
+
+        self._set_zoom(self.table_model.item_data.table_parameter.current_zoom)
+
+        self.table_view.horizontalScrollBar().setValue(self.table_model.item_data.table_parameter.scroll_x)
+        self.table_view.verticalScrollBar().setValue(self.table_model.item_data.table_parameter.scroll_y)
+        self.table_view.set_active_range(*self.table_model.item_data.table_parameter.active_range)
+
+
 class __Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()

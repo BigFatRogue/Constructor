@@ -176,9 +176,9 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         Установка текущих значений в размеров заголвков в header_data 
         """
         if self.orientation() == QtCore.Qt.Orientation.Horizontal:
-            data = self._table_model.item_data.horizontal_header_data
+            data = self._table_model.item_data.horizontal_header_parameter
         else:
-            data = self._table_model.item_data.vertical_header_data
+            data = self._table_model.item_data.vertical_header_parameter
         for size, header in zip(self.get_section_size(), data):
             header.size = size
 
