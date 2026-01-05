@@ -2,7 +2,7 @@
 from PyQt5 import QtWidgets, QtCore
 from projects.specification.config.app_context import DATACLASSES
 
-from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import DataTable
 
 
 class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
@@ -56,7 +56,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         Переопределяемый метод
         """
     
-    def set_widget(self, align: int) -> None:
+    def set_widget(self, align: int = 2) -> None:
         """
         Установка виджета в секцию заголовка
 
@@ -164,7 +164,6 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
     def get_section_size(self) -> tuple[int, ...]:
         return tuple(self.sectionSize(i) for i in range(self.count()))
 
-
     def mouseReleaseEvent(self, event):
         self.steps_section_size = self.__generate_steps_for_zoom_size_section()
         self.signal_resize_section.emit()
@@ -181,4 +180,9 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
             data = self._table_model.item_data.vertical_header_parameter
         for size, header in zip(self.get_section_size(), data):
             header.size = size
+    
+    def deleteLater(self):
+        for widget in self.widgets:
+            widget.deleteLater()
+        return super().deleteLater()
 

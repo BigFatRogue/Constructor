@@ -230,7 +230,7 @@ class BrowserWidget(QtWidgets.QWidget):
         """
         top_level_item: Iterable[ProjectItem] = (self.tree.topLevelItem(i) for i in range(self.tree.topLevelItemCount()))
         return tuple(item.item_data.get_filepath() for item in top_level_item)
-
+    
     def open_project(self, filepath: str) -> None:
         """
         Загрузка свойств проекта и всех таблиц 
@@ -280,6 +280,7 @@ class BrowserWidget(QtWidgets.QWidget):
             data = table['data']
             header_data = table['header_data']
             table_data = table['table_data']
+            data_link = table['links']
             sid = table['id']
             
             if tp == ENUMS.NAME_TABLE_SQL.INVENTOR.value:
@@ -292,7 +293,7 @@ class BrowserWidget(QtWidgets.QWidget):
                 item.set_is_save(True)
             elif tp == ENUMS.NAME_TABLE_SQL.BUY.value:
                 parent_item = dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_BUY]
-                item = self.create_by_table(parent_item=parent_item, name=name, data=data)
+                item = self.create_by_table(parent_item=parent_item, name=name, data=data, data_link=data_link)
                 item.item_data.set_table_data(table_data)
                 item.item_data.set_header_data(header_data)
                 item.item_data.set_sid(sid)
@@ -367,8 +368,8 @@ class BrowserWidget(QtWidgets.QWidget):
         SIGNAL_BUS.satus_bar.emit(f'Таблица {intentor_item.text()} загружена')
         return intentor_item
 
-    def create_by_table(self, parent_item: SpecificationItem, name: str, data: list[list[DATACLASSES]]) -> TableByItem:
-        by_item = TableByItem(tree=self.tree, parent_item=parent_item, name=name, data=data)        
+    def create_by_table(self, parent_item: SpecificationItem, name: str, data: list[list[DATACLASSES]], data_link: dict[int, list[list[DATACLASSES.DATA_CELL]]] = None) -> TableByItem:
+        by_item = TableByItem(tree=self.tree, parent_item=parent_item, name=name, data=data, data_link=data_link)        
         parent_item.addChild(by_item)
         parent_item.setExpanded(True)
         SIGNAL_BUS.satus_bar.emit(f'Таблица {by_item.text()} загружена')

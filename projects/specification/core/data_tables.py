@@ -286,6 +286,7 @@ class PropertyProjectData(GeneralDataItem):
 
             table['header_data'] = self._load_parameter_header(table['id'])
             table['table_data'] = self._load_parameter_table(table['id'])
+            table['links'] = self._load_link_item(table['id'])
 
         return tables
 
@@ -334,6 +335,31 @@ class PropertyProjectData(GeneralDataItem):
         if res:
             return DATACLASSES.PARAMETER_TABLE(**json.loads(res[0][0]))
 
+    def _load_link_item(self, sid: int) -> dict[int, list[list]]:
+        fields_general = [f'{GENERAL_ITEM_CONFIG.name}.{col.field}' for col in GENERAL_ITEM_CONFIG.columns if col]
+        fields_inventor = [f'{INVENTOR_ITEM_CONFIG.name}.{col.field}' for col in INVENTOR_ITEM_CONFIG.columns]
+        str_fields = ', '.join(fields_general + fields_inventor)
+
+        res = self.database.execute(f"""
+        SELECT {LINK_ITEM_CONFIG.name}.parent_item, {str_fields}
+        FROM {LINK_ITEM_CONFIG.name}
+        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = inventor_item
+        LEFT JOIN {INVENTOR_ITEM_CONFIG.name} ON {INVENTOR_ITEM_CONFIG.name}.parent_id  = inventor_item
+        WHERE sid = {sid}
+        """)
+
+        dct: dict[int, list[list]] = {}
+        if res:
+            for row in res:
+                key, *value = row
+                value = [DATACLASSES.DATA_CELL(value=i) for i in value]
+                if key not in dct:
+                    dct[key] = [value]
+                else:
+                    dct[key].append(value)
+        return dct
+
+
 class SpecificationDataItem(GeneralDataItem):
     def __init__(self, database, unique_config: TableConfig):
         super().__init__()
@@ -348,8 +374,10 @@ class SpecificationDataItem(GeneralDataItem):
         self.parameter_cell_link_config: TableConfig = PARAMETER_CELL_LINK_CONFIG
         self.parameter_header_config: TableConfig = PARAMETER_HEADER_CONFIG
         self.parameter_table_config: TableConfig =  PARAMETER_TABLE_CONFIG
+        self.link_item_config: TableConfig = LINK_ITEM_CONFIG
         
         self.data: list[list[DATACLASSES.DATA_CELL]] = None
+        self.data_link: dict[int | str, list[list[DATACLASSES.DATA_CELL]]] = None
         self.table_parameter: DATACLASSES.PARAMETER_TABLE = None
         self.horizontal_header_parameter: list [DATACLASSES.DATA_HEADERS] = None
         self.vertical_header_parameter: list [DATACLASSES.DATA_HEADERS] = None
@@ -366,14 +394,8 @@ class SpecificationDataItem(GeneralDataItem):
     def set_sid(self, sid: int) -> None:
         self._sid = sid
 
-    def _set_data_index(self) -> tuple[int, ...]:
-        """
-        Формирование только видимых индексов таблицы
-
-        :return: [0, 1, 3, 7, ...] - индексы колонок у которы is_view = True
-        :rtype: tuple[int, ...]
-        """
-        return tuple(i for i, col in enumerate(self.general_config.columns + self.unique_config.columns) if col.is_view)
+    def set_data_link(self, data: list[list[DATACLASSES.DATA_CELL]]) -> None:
+        self.data_link = data
 
     def get_data(self) -> list[list[DATACLASSES.DATA_CELL]]:
         return super().get_data()
@@ -400,6 +422,7 @@ class SpecificationDataItem(GeneralDataItem):
             self._insert_in_sql_filed()
 
         self._insert_or_update_sql()
+        self._insert_and_update_data_link_sql()
         self._insert_or_update_header_parameter_sql()
         self._insert_or_update_table_parameter_sql()
         
@@ -423,7 +446,8 @@ class SpecificationDataItem(GeneralDataItem):
                        self.parameter_cell_config, 
                        self.parameter_cell_link_config, 
                        self.parameter_header_config, 
-                       self.parameter_table_config):
+                       self.parameter_table_config,
+                       self.link_item_config):
             if config:
                 columns_sql = tuple(col.sql_definition for col in config.columns + config.columns_property)
                 self.database.create(config.name, columns_sql)
@@ -466,21 +490,37 @@ class SpecificationDataItem(GeneralDataItem):
     
     def _insert_or_update_sql(self) -> None:
         for y, row_data in enumerate(self.data):
-            if row_data[0].value is None:
+            if row_data[0].value is None or isinstance(row_data[0].value, str):
                 self._insert_row_sql(y, row_data)
             else:
                 self._update_row_sql(y, row_data)
     
     def _insert_row_sql(self, y: int, row_data: list[DATACLASSES.DATA_CELL]) -> None:
+        """
+        Вставка в БД строки
+
+        Важно, чтобы id был вначале таблицы, а parent_id в конце таблицы
+        
+        :param self: Описание
+        :param y: Описание
+        :type y: int
+        :param row_data: Описание
+        :type row_data: list[DATACLASSES.DATA_CELL]
+        """
         id_general, *value_general = [cell.value for cell in row_data[:len(self.general_config.columns)]]
         id_unique, *value_unique = [cell.value for cell in row_data[len(self.general_config.columns): ]]
 
+        # ----------------- Работа с general_config
         self.database.insert(self.general_config.name, self.fields_general[1:], value_general)
         id_general = self.database.get_last_id()
+
+        self._update_id_link_data(old_id=row_data[0].value, new_id=id_general)
+
         row_data[0].value = id_general
         row_data[len(self.general_config.columns) -1].value = self._sid
         self._set_foreign_key(self.general_config, last_id=id_general, parent_id=self._sid)
 
+        # ----------------- Работа с unique_config
         self.database.insert(self.unique_config.name, self.fields_unique[1:], value_unique)
         id_unique = self.database.get_last_id()
         row_data[len(self.general_config.columns)].value = id_unique
@@ -498,6 +538,7 @@ class SpecificationDataItem(GeneralDataItem):
         id_unique, *value_unique = [cell.value for cell in row[len(self.general_config.columns): ]]
 
         self.database.update(self.general_config.name, self.fields_general[1:], value_general, id_general)
+        self._update_id_link_data(id_general, id_general)
         self.database.update(self.unique_config.name, self.fields_unique[1:], value_unique, id_unique)
 
         for x, (cell, col) in enumerate(zip(row, self.total_columns)):
@@ -505,6 +546,32 @@ class SpecificationDataItem(GeneralDataItem):
                 value_style_cell: str = json.dumps(cell.get_dict_style())
                 self._insert_sytle_sql(value_style_cell)
                 self._updata_cell_style_sql(id_general, x, value_style_cell)
+
+    def _update_id_link_data(self, old_id: int | str, new_id: int | str) -> None:
+        """
+        Замена временных id до сохранения спецификации на id из БД
+        
+        :param old_id: Временный ключ
+        :type old_id: int | str
+        :param new_id: Ключ из БД
+        :type new_id: int | str
+        """
+        if self.data_link is not None:
+            rows = self.data_link.get(old_id)
+            if rows is not None:
+                self.data_link[new_id] = rows
+                if new_id != old_id:
+                    del self.data_link[old_id]
+    
+    def _insert_and_update_data_link_sql(self) -> None:
+        if self.data_link is not None:
+            for parent_id, rows in self.data_link.items():
+                for row in rows:
+                    child_id = row[0].value
+                    fields = [col.field for col in self.link_item_config.columns if not col.is_id]
+                    add_query = f' WHERE parent_item={parent_id}'
+                    self.database.delete(self.link_item_config.name, add_query=add_query)
+                    self.database.insert(self.link_item_config.name, fields, [parent_id, child_id, self._sid])
 
     def _insert_sytle_sql(self, value: str) -> None:
         """
@@ -613,6 +680,7 @@ class SpecificationDataItem(GeneralDataItem):
         del self.data[row]
         del self.vertical_header_parameter[row]
 
+
 class InventorSpecificationDataItem(SpecificationDataItem):
     def __init__(self, database: DataBase, table_name: str):
         super().__init__(database, INVENTOR_ITEM_CONFIG)
@@ -626,14 +694,14 @@ class InventorSpecificationDataItem(SpecificationDataItem):
         :return: data Для BuySpecificationDataItem
         :rtype: list[list[DATA_CELL]]
         """
-        
+
         by_data = []
         for header_cell, row in zip(self.vertical_header_parameter, self.data):
             by_row = []
             if not header_cell.parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]:
                 for cell, col in zip(row, self.general_config.columns):
-                    by_cell = DATACLASSES.DATA_CELL() if col.is_id else DATACLASSES.DATA_CELL(value=cell.value)
-                    by_row.append(by_cell)
+                    # by_cell = DATACLASSES.DATA_CELL() if col.is_id else DATACLASSES.DATA_CELL(value=cell.value)
+                    by_row.append(DATACLASSES.DATA_CELL(value=cell.value))
                 by_data.append(by_row + [DATACLASSES.DATA_CELL() for _ in BUY_ITEM_CONFIG.columns] )
 
         return by_data
@@ -644,6 +712,22 @@ class BuySpecificationDataItem(SpecificationDataItem):
         super().__init__(database, BUY_ITEM_CONFIG)
         self.type_spec = ENUMS.NAME_TABLE_SQL.BUY
         self.table_name = table_name
+
+    def set_data(self, data):
+        self._set_data_link(data)
+        super().set_data(data)
+    
+    def _set_data_link(self, data: list[list[DATACLASSES.DATA_CELL]]) -> None:
+        """
+        Формирование временных id Для отображения связей
+        """
+        if self.data is None and self.data_link is None:
+            print('asd')
+            self.data_link = {}
+            for i, row in enumerate(data):
+                tmp_id = f'_{i}'
+                self.data_link[tmp_id] = [[DATACLASSES.DATA_CELL(value=cell.value) for cell in row]]
+                row[0].value = tmp_id
 
 
 class ProdSpecificationDataItem(SpecificationDataItem):
@@ -670,19 +754,21 @@ if __name__ == '__main__':
         'name_drawing': None
     }
     pp_data.set_data(pp_data_dict)
-    pp_data.save(os.path.join(os.getcwd(), '_data2.scdata'))
+    pp_data.save(os.path.join(os.getcwd(), '_data_test.scdata'))
     
-
-    inv_data = InventorSpecificationDataItem(pp_data.database)    
-    path_xlsx = r'C:\Users\p.golubev\Desktop\python\AfaLServis\Constructor\projects\specification\DEBUG\ALS.1648.8.2.01.Из инвентора.xlsx'
+    inv_data = InventorSpecificationDataItem(pp_data.database, '16.16.16')    
+    path_xlsx = r'D:\Python\AlfaServis\Constructor\projects\specification\DEBUG\ALS.1642.4.2.01.00.00.000 СБ - нивентор.xlsx'
     data = get_specifitaction_inventor_from_xlsx(path_xlsx)
 
     inv_data.set_data(data)
-    inv_data.save()
+    vertical_header_parameter = [DATACLASSES.DATA_HEADERS(row=i, column=-1, parameters={ENUMS.PARAMETERS_HEADER.SELECT_ROW.name: True}) for i in range(len(data))]
+    inv_data.vertical_header_parameter = vertical_header_parameter
+    
+    # inv_data.save()
 
-    # buy_data = BuySpecificationDataItem(database)
-    # buy_data.create_sql()
+    buy_data = BuySpecificationDataItem(pp_data.database,'Закупочная 1')
+    buy_data.set_data(inv_data.data_to_by())
+    buy_data.save()
 
-    # tables = pp_data.get_all_specification_data()
-    # print(tables)
+
 

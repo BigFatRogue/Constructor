@@ -104,7 +104,19 @@ class TableView(QtWidgets.QTableView):
     def hide_selection(self) -> None:
         self._frame_selection_rect.hide()
 
-    def set_active_range(self, top: int, left: int, bottom: int, right: int) -> None:
+    def set_selection(self, top: int, left: int, bottom: int, right: int) -> None:
+        """
+        Установить выделение ячеек
+        
+        :param top: столбец верхней левой ячейки
+        :type top: int
+        :param left: строка верхней левой ячейки
+        :type left: int
+        :param bottom: столбец нижней правой ячейки
+        :type bottom: int
+        :param right: строка нижней правой ячейки
+        :type right: int
+        """
         selection = QtCore.QItemSelection(self.model().index(top, left), self.model().index(bottom, right))
         self.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
         self.resize_rect()
@@ -124,3 +136,4 @@ class TableView(QtWidgets.QTableView):
             self.signal_change_zoom.emit(event.angleDelta().y())
         else:
             return super().wheelEvent(event)
+    

@@ -7,7 +7,7 @@ from  projects.specification.core.data_tables import InventorSpecificationDataIt
 from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
 
-from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import DataTable
 
 from projects.tools.functions.create_action_menu import create_action
 
@@ -45,6 +45,7 @@ class TableInventorItem(TableBrowserItem):
             triggerd=self.inventor_to_prod)
 
     def intentor_to_by(self) -> None:
+        self.save()
         SIGNAL_BUS.data_by_from_invetor.emit((self, self.item_data.data_to_by()))
 
     def inventor_to_prod(self) -> None:

@@ -16,6 +16,7 @@ class ColumnConfig:
     field: str = ''
     type_data: str = ''
     column_name: str = ''
+    column_name_inventor: str = ''
     mode_column_name: str = ''
     internal_name: str = ''
     is_view: bool = True
@@ -104,22 +105,13 @@ FIELDS_CONFIG = TableConfig(
     ]
 )
 
-LINK_ITEM_CONFIG = TableConfig(
-    name=ENUMS.NAME_TABLE_SQL.LINKS.value,
-    columns=[
-        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
-        ColumnConfig('element_1', 'INTEGER'),
-        ColumnConfig('element_2', 'INTEGER')
-    ]
-)
-
 PROPERTY_PROJECT_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.PROJECT_PROPERTY.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
-        ColumnConfig('file_name', 'TEXT', 'Название файла', ' <span style=color:red;>*</span>'),
+        ColumnConfig('file_name', 'TEXT', 'Название файла', mode_column_name=' <span style=color:red;>*</span>'),
         ColumnConfig('project_name', 'TEXT', 'Обозначение проекта'),
-        ColumnConfig('project_number', 'TEXT', 'Номер проекта', ' <span style=color:red;>*</span>'),
+        ColumnConfig('project_number', 'TEXT', 'Номер проекта', mode_column_name=' <span style=color:red;>*</span>'),
         ColumnConfig('number_contract', 'TEXT', 'Пункт договора'),
         ColumnConfig('address', 'TEXT', 'Адрес объекта'),
         ColumnConfig('manager', 'TEXT', 'Руководитель проекта'),
@@ -145,12 +137,15 @@ GENERAL_ITEM_CONFIG = TableConfig(
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('number_row', 'INTEGER', is_view=False),
-        ColumnConfig('articul', 'TEXT', 'Инвентарный номер', internal_name='Stock Number', is_key=True),
-        ColumnConfig('description', 'TEXT', 'Описание', internal_name='Description', is_key=True),
-        ColumnConfig('specifications', 'TEXT', 'Технические характеристики', internal_name='Технические характеристики', is_key=True),
-        ColumnConfig('quantity', 'REAL', 'КОЛ.', is_value=True),
-        ColumnConfig('unit', 'TEXT', 'Единичная величина', is_value=True),
-        ColumnConfig('material', 'TEXT', 'Материал', internal_name='Material', is_key=True),
+        ColumnConfig('user_number', 'TEXT', '№'),
+        ColumnConfig('articul', 'TEXT', column_name='Артикул', column_name_inventor='Инвентарный номер', internal_name='Stock Number', is_key=True),
+        ColumnConfig('description', 'TEXT', column_name='Наименование', column_name_inventor='Описание', internal_name='Description', is_key=True),
+        ColumnConfig('specifications', 'TEXT', column_name='Технические характеристики', column_name_inventor='Технические характеристики', internal_name='Технические характеристики', is_key=True),
+        ColumnConfig('diametr', 'TEXT', 'Номинальный диаметр DN'),
+        ColumnConfig('manufactureretr', 'TEXT', 'Производитель'),
+        ColumnConfig('quantity', 'REAL', column_name='Общ. кол-во, шт.', column_name_inventor='КОЛ.', is_value=True),
+        ColumnConfig('unit', 'TEXT', column_name='Ед. изм.', column_name_inventor='Единичная величина', is_value=True),
+        ColumnConfig('material', 'TEXT', column_name='Материал', column_name_inventor='Материал', internal_name='Material', is_key=True),
         ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name),
     ]
 )
@@ -159,11 +154,10 @@ INVENTOR_ITEM_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.INVENTOR.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
-        ColumnConfig('is_select', 'BOOLEAN', is_view=False),
-        ColumnConfig('name', 'TEXT', 'Обозначение', internal_name='Part Number', is_key=True),
-        ColumnConfig('groups', 'TEXT', 'Раздел', internal_name='Раздел', is_key=True),
+        ColumnConfig('name', 'TEXT', column_name='Обозначение', column_name_inventor='Обозначение', internal_name='Part Number', is_key=True),
+        ColumnConfig('groups', 'TEXT', column_name='Раздел', column_name_inventor='Раздел', internal_name='Раздел', is_key=True),
         ColumnConfig('diff', 'REAL', 'Изменение количества'),
-        ColumnConfig('parent_id', 'INTEGER', 'Связь', is_view=False, is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name),
+        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name),
     ]
 )
 
@@ -171,11 +165,8 @@ BUY_ITEM_CONFIG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.BUY.value,
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
-        ColumnConfig('diametr', 'TEXT', 'Номинальный диаметр'),
-        ColumnConfig('manufactureretr', 'TEXT', 'Производитель'),
         ColumnConfig('note', 'TEXT', 'Примечание'),
         ColumnConfig('invoice', 'TEXT', 'Счёт ОМТС'),
-        ColumnConfig('link', 'BOOLEAN', 'Связь', is_link=True),
         ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name)
     ]
 )
@@ -184,11 +175,8 @@ PROD_ITEM_CONFG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.PROD.value,
     columns = [
         ColumnConfig('number_prod', 'INTEGER', '№'),
-        ColumnConfig('diametr', 'TEXT', 'Номинальный диаметр'),
-        ColumnConfig('manufactureretr', 'TEXT', 'Производитель'),
         ColumnConfig('note', 'TEXT', 'Примечание'),
         ColumnConfig('invoice', 'TEXT', 'Счёт ОМТС'),
-        ColumnConfig('link', 'BOOLEAN', 'Связь', is_link=True),
         ColumnConfig('parent_id', 'INTEGER',is_view=False, is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name)
     ]
 )
@@ -234,6 +222,15 @@ PARAMETER_TABLE_CONFIG = TableConfig(
     ]
 )
 
+LINK_ITEM_CONFIG = TableConfig(
+    name=ENUMS.NAME_TABLE_SQL.LINKS.value,
+    columns=[
+        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
+        ColumnConfig('parent_item', 'INTEGER', parent_table_name=GENERAL_ITEM_CONFIG.name, is_foreign_id=True),
+        ColumnConfig('inventor_item', 'INTEGER'),
+        ColumnConfig('sid', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
+    ]
+)
 
 if __name__ == '__main__':
     for i in INVENTOR_ITEM_CONFIG.columns:

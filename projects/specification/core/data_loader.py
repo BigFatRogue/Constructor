@@ -21,8 +21,8 @@ from projects.specification.config.app_context import DATACLASSES
 
 def __get_dict_from_xlsx(filepath: str) -> dict[tuple[str,...], list[float, str]]:
     config_columns: list[ColumnConfig] = GENERAL_ITEM_CONFIG.columns + INVENTOR_ITEM_CONFIG.columns
-    name_columns: list[str] = tuple(col.column_name for col in config_columns if col.is_view)
-    key_name_columns: list[str] = [col.column_name for col in config_columns if col.is_key]
+    name_columns: list[str] = tuple(col.column_name_inventor for col in config_columns if col.is_view)
+    key_name_columns: list[str] = [col.column_name_inventor for col in config_columns if col.is_key]
 
     book = load_workbook(filepath)
     sheet = book.active
@@ -35,7 +35,7 @@ def __get_dict_from_xlsx(filepath: str) -> dict[tuple[str,...], list[float, str]
 
     dict_data: dict[tuple[str,...], list[float, str]] = {}
     number_key_column_name = [dict_name_number_col[key_name] for key_name in key_name_columns]
-    number_quantity, *_ = [dict_name_number_col[col.column_name] for col in config_columns if col.field == 'quantity']
+    number_quantity, *_ = [dict_name_number_col[col.column_name_inventor] for col in config_columns if col.field == 'quantity']
 
     for row_number in range(2, sheet.max_row + 1):
         key = []

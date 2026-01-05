@@ -1,5 +1,4 @@
 import os
-import math
 from PyQt5 import QtWidgets, QtCore
 
 if __name__ == '__main__':
@@ -11,12 +10,12 @@ if __name__ == '__main__':
 
 from projects.specification.config.app_context import SETTING, DATACLASSES, ENUMS
 
-from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
-from projects.specification.ui.widgets.table_widget.tw_table_view import TableView
-from projects.specification.ui.widgets.table_widget.tw_zoom import ZoomTable
-from projects.specification.ui.widgets.table_widget.tw_horizontal_header import HorizontalWithOverlayWidgets
-from projects.specification.ui.widgets.table_widget.tw_vertical_header import VerticallWithOverlayWidgets
-from projects.specification.ui.widgets.table_widget.tw_control_panel import ControlPanelTable
+from projects.specification.ui.widgets.table.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_table_view import TableView
+from projects.specification.ui.widgets.table.tw_zoom import ZoomTable
+from projects.specification.ui.widgets.table.tw_hhow_sorted import HorizontalWithOverlayWidgetsSorded
+from projects.specification.ui.widgets.table.tw_vhow_choose import VerticallWithOverlayWidgetsChoose
+from projects.specification.ui.widgets.table.tw_control_panel import ControlPanelTable
 
 from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
@@ -42,13 +41,13 @@ class TableWidget(QtWidgets.QWidget):
         self.table_view = TableView(self)
         self.table_model: DataTable = None
         
-        self.horizontal_header = HorizontalWithOverlayWidgets(self.table_view, self.range_zoom)
+        self.horizontal_header = HorizontalWithOverlayWidgetsSorded(self.table_view, self.range_zoom)
         self.horizontal_header.sectionResized.connect(self.table_view.resize_rect)      
         self.horizontal_header.sectionResized.connect(self.signal_change_table.emit)  
         self.horizontal_header.signal_change.connect(self.signal_change_table.emit)
         self.table_view.setHorizontalHeader(self.horizontal_header)
         
-        self.vertical_header = VerticallWithOverlayWidgets(self.table_view, self.range_zoom)
+        self.vertical_header = VerticallWithOverlayWidgetsChoose(self.table_view, self.range_zoom)
         self.vertical_header.sectionResized.connect(self.table_view.resize_rect)
         self.vertical_header.sectionResized.connect(self.signal_change_table.emit)  
         self.vertical_header.signal_change.connect(self.signal_change_table.emit)
@@ -168,7 +167,7 @@ class TableWidget(QtWidgets.QWidget):
 
         self.table_view.horizontalScrollBar().setValue(self.table_model.item_data.table_parameter.scroll_x)
         self.table_view.verticalScrollBar().setValue(self.table_model.item_data.table_parameter.scroll_y)
-        self.table_view.set_active_range(*self.table_model.item_data.table_parameter.active_range)
+        self.table_view.set_selection(*self.table_model.item_data.table_parameter.active_range)
 
 
 class __Window(QtWidgets.QMainWindow):

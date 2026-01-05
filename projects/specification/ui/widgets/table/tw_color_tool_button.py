@@ -339,6 +339,7 @@ class ColorToolButton(QtWidgets.QWidget):
         icon = QtGui.QIcon()
         icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'triangle.png'))
         self.btn_rigth.setIcon(icon)
+        self.btn_rigth.setIconSize(QtCore.QSize(10, 10))
         self.btn_rigth.clicked.connect(self._show_popup)
         self.h_layout.addWidget(self.btn_rigth)
 

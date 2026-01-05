@@ -4,7 +4,7 @@ from typing import Callable
 
 from projects.specification.config.app_context import ENUMS
 
-from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import DataTable
 from projects.specification.core.data_tables import GeneralDataItem
 
 

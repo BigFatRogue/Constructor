@@ -3,8 +3,8 @@ import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.app_context import SETTING, DATACLASSES, ENUMS
-from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
-from projects.specification.ui.widgets.table_widget.tw_color_tool_button import ColorToolButton
+from projects.specification.ui.widgets.table.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_color_tool_button import ColorToolButton
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 

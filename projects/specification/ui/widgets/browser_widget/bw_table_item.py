@@ -5,7 +5,9 @@ from projects.specification.config.app_context import SIGNAL_BUS, ENUMS, SETTING
 
 from projects.specification.ui.widgets.browser_widget.bw_item import BrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
-from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import DataTable
+
+from projects.specification.core.data_tables import SpecificationDataItem
 
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
 from projects.tools.functions.create_action_menu import create_action
@@ -20,12 +22,12 @@ class TableBrowserItem(BrowserItem):
                 parent_item: SpecificationItem, 
                 name: str, 
                 table_data: DataTable,
-                item_data: SpecificationItem,
+                item_data: SpecificationDataItem,
                 type_item: ENUMS.TYPE_TREE_ITEM.TABLE_INV):
         
         super().__init__(tree, parent_item)
         self.table_data = table_data
-        self.item_data = item_data
+        self.item_data: SpecificationDataItem = item_data
         self.type_item = type_item
         self.setText(name)
 

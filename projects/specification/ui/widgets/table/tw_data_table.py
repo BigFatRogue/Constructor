@@ -3,114 +3,12 @@ from copy import deepcopy
 from enum import Enum ,auto
 from typing import Any
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui
 
 from projects.specification.config.app_context import DATACLASSES, ENUMS
 
-from projects.specification.core.config_table import ColumnConfig, SPECIFICATION_CONFIG
+from projects.specification.core.config_table import ColumnConfig
 from projects.specification.core.data_tables import SpecificationDataItem
-
-
-class UndoRedoItem:
-    def __init__(self, old_value: Any, new_value: Any):
-        self.old_value = old_value
-        self.new_value = new_value
-    
-    def undo(self) -> None:
-        ...
-    
-    def redo(self) -> None:
-        ...
-        
-
-class UndoRedoItemCell(UndoRedoItem):
-    def __init__(self, cell: DATACLASSES.DATA_CELL, row: int, column: int, old_value: Any, new_value:Any, role: QtCore.Qt.ItemDataRole, font_param: int = None):
-        super().__init__(old_value, new_value)
-        self.cell = cell
-        self.row = row
-        self.column = column
-        self.role = role
-        self.font_param = font_param
-    
-    def undo(self, table_data) -> None:
-        table_data: DataTable
-        table_data._change_cell(self.row, self.column, self.role, self.old_value, self.font_param)
-
-    def redo(self, table_data) -> None:
-        table_data: DataTable
-        table_data._change_cell(self.row, self.column, self.role, self.old_value, self.font_param)
-        
-
-class UndoRedoTable:
-    def __init__(self, table_data):
-        self.table_data: DataTable = table_data
-
-        self.list_undo: list[list[UndoRedoItem]] = []
-        self.list_redo: list[list[UndoRedoItem]] = []
-        self.list_change: list[UndoRedoItem] = []
-        self.is_start_transaction = False
-        self.has_add_change = True
-
-    def start_transaction(self) -> None:
-        self.is_start_transaction = True
-
-    def end_transaction(self) -> None:
-        self.is_start_transaction = False
-        self.list_undo.append(self.list_change)
-        self.list_change = []
-
-    def add_cell(self, cell: DATACLASSES.DATA_CELL, row: int, column: int, old_value: Any, new_value:Any, role: QtCore.Qt.ItemDataRole, font_param: int = None) -> None:
-        """
-        Добавления в лист undo информации об изменение ячейки
-        
-        :param self: Описание
-        :param row: Описание
-        :type row: int
-        :param column: Описание
-        :type column: int
-        :param old_value: Описание
-        :type old_value: Any
-        :param new_value: Описание
-        :type new_value: Any
-        :param role: Описание
-        :type role: QtCore.Qt.ItemDataRole
-        :param font_param: Описание
-        :type font_param: int
-        """
-        if self.has_add_change:
-            if self.list_redo:
-                # если добавляется новое значение, то лист возврата изменений вперёд очищается
-                self.list_redo.clear()
-            
-            item = UndoRedoItemCell(self, cell, row, column, old_value, new_value, role, font_param)
-            if self.is_start_transaction:
-                self.list_change.append(item)
-            else:
-                self.list_undo.append([item])
-    
-    def undo(self) -> None:
-        self.has_add_change = False
-        if self.list_undo:
-            last_item = self.list_undo.pop()
-            self.list_redo.append(last_item)
-            try:
-                for item in last_item:
-                    item.undo()
-            except Exception:
-                self.list_redo.append(last_item)
-        self.has_add_change = True
-            
-    def redo(self) -> None:
-        self.has_add_change = False
-        if self.list_redo:
-            last_item = self.list_redo.pop()
-            self.list_undo.append(last_item)
-            try:
-                for item in last_item:
-                    item.redo()
-            except Exception:
-                self.list_redo.append(last_item)
-        self.has_add_change = True
 
 
 class DataTable(QtCore.QAbstractTableModel):
@@ -161,8 +59,6 @@ class DataTable(QtCore.QAbstractTableModel):
         self._default_bg_color = QtGui.QColor(255, 255, 255)
         self._default_fg_color = QtGui.QColor(QtCore.Qt.GlobalColor.black)
         self._set_styles()
-
-        self.undo_redo = UndoRedoTable(table_data=self)
         
     def _set_index_column_view(self) -> dict[int, int]:
         """
@@ -421,16 +317,13 @@ class DataTable(QtCore.QAbstractTableModel):
         """
         role = QtCore.Qt.ItemDataRole.BackgroundRole
 
-        column = self.item_data.get_index_from_name_filed('is_select')
-        if column >= 0:
-            # self._data[row][column].value = state
-            self.item_data.vertical_header_parameter[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = state
+        self.item_data.vertical_header_parameter[row].parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name] = state
 
-            color = (200, 60, 60, 200) if state else (255, 255, 255)
+        color = (200, 60, 60, 200) if state else (255, 255, 255)
             
-            for x in range(self.columnCount()):
-                self._styles[(row, self._index_column_view[x], role)] = QtGui.QColor(*color)
-                self._data[row][self._index_column_view[x]].background = color
+        for x in range(self.columnCount()):
+            self._styles[(row, self._index_column_view[x], role)] = QtGui.QColor(*color)
+            self._data[row][self._index_column_view[x]].background = color
 
         self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount()), [role])
         # self.headerDataChanged.emit(QtCore.Qt.Orientation.Vertical, row, row + 1)

@@ -1,12 +1,10 @@
 import os
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-from projects.specification.config.app_context import SETTING, ENUMS, DATACLASSES
-
-from projects.specification.ui.widgets.table_widget.tw_header import HeaderWithOverlayWidgets
-from projects.specification.ui.widgets.table_widget.tw_data_table import DataTable
-
 from projects.specification.config.app_context import SETTING, ENUMS
+
+from projects.specification.ui.widgets.table.tw_hhow import HorizontalWithOverlayWidgets
+
 
 
 class PopupOrder(QtWidgets.QWidget):
@@ -213,50 +211,15 @@ class ButtonHorizontalHeader(QtWidgets.QPushButton):
         self.setToolTip(tool_tip)
     
 
-class HorizontalWithOverlayWidgets(HeaderWithOverlayWidgets):
-    signal_change = QtCore.pyqtSignal()
-
+class HorizontalWithOverlayWidgetsSorded(HorizontalWithOverlayWidgets):
     def __init__(self, table_view: QtWidgets.QTableWidget, range_zoom):
-        super().__init__(QtCore.Qt.Orientation.Horizontal, table_view, range_zoom)
+        super().__init__(table_view, range_zoom)
+        
         self.widgets: list[ButtonHorizontalHeader]
-
-        table_view.horizontalScrollBar().valueChanged.connect(self._update_widgets)
-
         self._state_column_sorted: tuple[int, ...] | list [int] = None
         self.popup_order = PopupOrder(self.table_view)
         self.popup_order.signal_sorted.connect(self._set_state_column_sorted)
     
-    def set_table_model(self, table_model):
-        super().set_table_model(table_model)
-        self._set_size_section()
-        self._set_scroll_x()
-    
-    def _set_scroll_x(self) -> None:
-        if self.table_model.item_data.table_parameter:
-            self.table_view.horizontalScrollBar().setValue(self.table_model.item_data.table_parameter.scroll_x)
-
-    def update_scroll_x(self) -> None:
-        if self.table_model and self.table_model.item_data.table_parameter:
-            self.table_model.item_data.table_parameter.scroll_x = self.table_view.horizontalScrollBar().value()
-
-    def _set_size_section(self) -> None:
-        """
-        Установка параметров заголовка из item_data
-
-        Если в item_data ещё нет параметров, то они будут заданны из заголовка
-        
-        :param self: Описание
-        """
-        if self._table_model.item_data.horizontal_header_parameter:
-            for data in self._table_model.item_data.horizontal_header_parameter:
-                self.resizeSection(data.column, data.size)
-        else:
-            headers: list[DATACLASSES.DATA_HEADERS] = []
-            for i in range(self.count()):
-                header_data = DATACLASSES.DATA_HEADERS(-1, i, self.sectionSize(i), self.isVisible())
-                headers.append(header_data)
-            self._table_model.item_data.horizontal_header_parameter = headers
-
     def set_widget(self, align: int=2) -> None:
         self._align_widget = align
 

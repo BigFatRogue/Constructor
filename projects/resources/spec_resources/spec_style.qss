@@ -113,3 +113,15 @@ QTableCornerButton::section {
 #btn_not_fill, #btn_get_other_color {
     border-radius: 0;
 }
+
+/* --------------------- ViewLinkRow -----------------------------*/
+#btn_set_view_link_content {
+    border: none;
+    border-radius: 0;
+    background-color:  none;
+}
+
+#btn_set_view_link_content:hover,
+#TitleViewLinkRow:hover {
+    background-color: #d1d5db;
+}
