@@ -2,6 +2,7 @@ from dataclasses import fields
 from copy import deepcopy
 from enum import Enum ,auto
 from typing import Any
+from copy import deepcopy
 
 from PyQt5 import QtCore, QtGui
 
@@ -11,7 +12,7 @@ from projects.specification.core.config_table import ColumnConfig
 from projects.specification.core.data_tables import SpecificationDataItem
 
 
-class DataTable(QtCore.QAbstractTableModel):
+class ModelDataTable(QtCore.QAbstractTableModel):
     """
     Модель данных для таблиц
     """
@@ -434,3 +435,43 @@ class DataTable(QtCore.QAbstractTableModel):
         self.item_data.delete_row(row) 
         self.layoutChanged.emit()
         self.signal_change.emit()
+
+    def filter(self, text: str, case_sensetive=False) -> set[int]:
+        """
+        Возвращает множество строк, вкоторых присутствует указанный текст
+        
+        :param text: искомый текст
+        :type text: str
+        :param case_sensetive: с уётом регистра
+        :return: множество найдёных строк
+        :rtype: set[int]
+        """
+        if not case_sensetive:
+            lst_text = [s.lower() for s in text.split()]
+        else:
+            lst_text = [s for s in text.split()]
+
+        search_number_row = set()
+        for y in range(self.rowCount()):
+            row = []
+            for x in range(self.columnCount()):
+                cell = self._data[y][self._index_column_view[x]]
+                value = str(cell.value)
+            
+                if not case_sensetive:
+                    value = str(cell.value).lower()    
+                row.append(value)
+            
+            result: bool = all([s in ' '.join(row) for s in lst_text])
+            if result:
+                search_number_row.add(y)
+        
+        return search_number_row
+
+    def get_copy_row(self, row: int) -> list[DATACLASSES.DATA_CELL]:
+        """
+        Возвращает копию строку
+        
+        После получения лучше копировать, чтобы не внести зимнения 
+        """
+        return deepcopy(self._data[row])

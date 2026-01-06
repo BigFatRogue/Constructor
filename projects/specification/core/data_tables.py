@@ -366,6 +366,8 @@ class SpecificationDataItem(GeneralDataItem):
         self.database: DataBase = database
         self.table_name: str = 'Спецификация'
 
+        self._is_update_link = False
+
         self.specification_config: TableConfig = SPECIFICATION_CONFIG
         self.general_config: TableConfig = GENERAL_ITEM_CONFIG
         self.unique_config: TableConfig = unique_config
@@ -397,6 +399,22 @@ class SpecificationDataItem(GeneralDataItem):
     def set_data_link(self, data: list[list[DATACLASSES.DATA_CELL]]) -> None:
         self.data_link = data
 
+    def add_item_data_link(self, id_row: int, row: list[DATACLASSES.DATA_CELL]) -> None:
+        """
+        Добавляет связанне ячейки для заданного id 
+        """
+        if id_row not in self.data_link:
+            self.data_link[id_row] = [row]
+        else:
+            for added_row in self.data_link[id_row]:
+                id_added_row = added_row[0].value
+                if id_added_row == row[0].value:
+                    return
+            self.data_link[id_row].append(row)
+
+    def set_is_update_link(self, value: bool) -> None:
+        self._is_update_link = value
+
     def get_data(self) -> list[list[DATACLASSES.DATA_CELL]]:
         return super().get_data()
 
@@ -422,9 +440,14 @@ class SpecificationDataItem(GeneralDataItem):
             self._insert_in_sql_filed()
 
         self._insert_or_update_sql()
-        self._insert_and_update_data_link_sql()
+        
+        if self._is_update_link:
+            self._insert_and_update_data_link_sql()
+            self._is_update_link = False
+        
         self._insert_or_update_header_parameter_sql()
         self._insert_or_update_table_parameter_sql()
+            
         
         self.database.commit()
         self.database.close()
@@ -565,12 +588,18 @@ class SpecificationDataItem(GeneralDataItem):
     
     def _insert_and_update_data_link_sql(self) -> None:
         if self.data_link is not None:
+            fields = [col.field for col in self.link_item_config.columns if not col.is_id]
             for parent_id, rows in self.data_link.items():
+                add_query = f' WHERE parent_item={parent_id}'
+                
+                # Сначала удалить все связи связанные с id
                 for row in rows:
                     child_id = row[0].value
-                    fields = [col.field for col in self.link_item_config.columns if not col.is_id]
-                    add_query = f' WHERE parent_item={parent_id}'
                     self.database.delete(self.link_item_config.name, add_query=add_query)
+                
+                # Затем записать новые связи связанные с id
+                for row in rows:
+                    child_id = row[0].value
                     self.database.insert(self.link_item_config.name, fields, [parent_id, child_id, self._sid])
 
     def _insert_sytle_sql(self, value: str) -> None:
@@ -645,7 +674,6 @@ class SpecificationDataItem(GeneralDataItem):
         """
         Сохранение в БД данных о текущих параметрах таблицы (масштабирвоание, координаты скрола и др.)
         """
-        print(self.table_parameter.get_dict_data())
         value: str = json.dumps(self.table_parameter.get_dict_data())
 
         query = f"""
@@ -671,7 +699,10 @@ class SpecificationDataItem(GeneralDataItem):
         self.database.delete(self.specification_config.name, id_row=self._sid)
 
     def insert_row(self, row: int) -> None:
-        self.data.insert(row, [DATACLASSES.DATA_CELL() for i in range(len(self.data[0]))])
+        self.data.insert(row, [DATACLASSES.DATA_CELL(value='') for i in range(len(self.data[0]))])
+        tmp_id = f'_{len(self.data)}'
+        self.data[row][0].value = tmp_id
+        self.data_link[tmp_id] = []
         self.vertical_header_parameter.insert(row, DATACLASSES.DATA_HEADERS(row=row, column=-1, size=30))
         for i, header_data in enumerate(self.vertical_header_parameter):
             header_data.row = i
@@ -722,7 +753,6 @@ class BuySpecificationDataItem(SpecificationDataItem):
         Формирование временных id Для отображения связей
         """
         if self.data is None and self.data_link is None:
-            print('asd')
             self.data_link = {}
             for i, row in enumerate(data):
                 tmp_id = f'_{i}'

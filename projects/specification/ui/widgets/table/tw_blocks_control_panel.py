@@ -3,7 +3,7 @@ import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.app_context import SETTING, DATACLASSES, ENUMS
-from projects.specification.ui.widgets.table.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_color_tool_button import ColorToolButton
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
@@ -13,7 +13,7 @@ class BlockControlPanel(QtWidgets.QWidget):
     """
     Базовый элемент для блока панели управления таблицей
     """
-    def __init__(self, parent: QtWidgets.QFrame, table_model: DataTable):
+    def __init__(self, parent: QtWidgets.QFrame, table_model: ModelDataTable):
         super().__init__(parent)
         self.table_model = table_model
         self.selection = None
@@ -23,7 +23,7 @@ class BlockControlPanel(QtWidgets.QWidget):
         self.grid.setSpacing(3)
         self.setLayout(self.grid)
 
-    def set_table_model(self, table_model: DataTable) -> None:
+    def set_table_model(self, table_model: ModelDataTable) -> None:
         """
         Установка модели данных, в которой будет производится изменения
         
@@ -49,7 +49,7 @@ class FontStyleBlock(BlockControlPanel):
     """
     Блок управления стилями ячеек в выдлененных диапазонах
     """
-    def __init__(self, parent: QtWidgets.QFrame, table_data: DataTable):
+    def __init__(self, parent: QtWidgets.QFrame, table_data: ModelDataTable):
         super().__init__(parent, table_data)
 
         self.type_block = ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.FONT
@@ -181,7 +181,7 @@ class AlignCellBlock(BlockControlPanel):
     """
     Блок управления выравниванием для ячеек в диапазонах
     """
-    def __init__(self, parent: QtWidgets.QFrame, table_model: DataTable):
+    def __init__(self, parent: QtWidgets.QFrame, table_model: ModelDataTable):
         super().__init__(parent, table_model)
 
         self.type_block = ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN

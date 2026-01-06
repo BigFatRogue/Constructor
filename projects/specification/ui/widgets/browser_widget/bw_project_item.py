@@ -3,8 +3,11 @@ import os
 
 from projects.specification.config.app_context import ENUMS, SIGNAL_BUS, SETTING
 from projects.specification.ui.widgets.browser_widget.bw_item import BrowserItem
+from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
+from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationInventorItem
 
 from projects.specification.core.data_tables import PropertyProjectData
+
 
 from projects.tools.functions.create_action_menu import create_action
 
@@ -63,3 +66,12 @@ class ProjectItem(BrowserItem):
     
     def delete_project_from_list(self) -> None:
         ...
+    
+    def get_inventor_items(self) -> list[TableInventorItem]:
+        lst = []
+        for i in range(self.childCount()):
+            project_child = self.child(i)
+            if isinstance(project_child, SpecificationInventorItem):
+                for j in range(project_child.childCount()):
+                    lst.append(project_child.child(j))
+        return lst

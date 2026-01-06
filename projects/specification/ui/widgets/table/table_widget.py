@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
 from projects.specification.config.app_context import SETTING, DATACLASSES, ENUMS
 
-from projects.specification.ui.widgets.table.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_table_view import TableView
 from projects.specification.ui.widgets.table.tw_zoom import ZoomTable
 from projects.specification.ui.widgets.table.tw_hhow_sorted import HorizontalWithOverlayWidgetsSorded
@@ -39,7 +39,7 @@ class TableWidget(QtWidgets.QWidget):
         self.v_layout = QtWidgets.QVBoxLayout(self)
 
         self.table_view = TableView(self)
-        self.table_model: DataTable = None
+        self.table_model: ModelDataTable = None
         
         self.horizontal_header = HorizontalWithOverlayWidgetsSorded(self.table_view, self.range_zoom)
         self.horizontal_header.sectionResized.connect(self.table_view.resize_rect)      

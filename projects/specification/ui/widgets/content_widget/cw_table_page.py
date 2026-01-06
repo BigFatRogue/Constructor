@@ -10,13 +10,12 @@ if __name__ == '__main__':
     sys.path.append(test_path)
 
     from projects.specification.ui.widgets.browser_widget.browser_widget import BrowserWidget
-    from projects.specification.ui.widgets.browser_widget.bw_project_item import ProjectItem
     from typing import Iterable, Type
 
 from projects.specification.config.app_context import DATACLASSES, SETTING
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 
-from projects.specification.ui.widgets.table.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_table_view import TableView
 from projects.specification.ui.widgets.table.tw_zoom import ZoomTable
 from projects.specification.ui.widgets.table.tw_hhow import HorizontalWithOverlayWidgets
@@ -24,11 +23,14 @@ from projects.specification.ui.widgets.table.tw_hhow_sorted import HorizontalWit
 from projects.specification.ui.widgets.table.tw_vhow import VerticallWithOverlayWidgets
 from projects.specification.ui.widgets.table.tw_vhow_choose import VerticallWithOverlayWidgetsChoose
 from projects.specification.ui.widgets.table.tw_control_panel import ControlPanelTable
-from projects.specification.ui.widgets.table.tw_view_link_row import ViewLinkRow
+from projects.specification.ui.widgets.table.tw_link_row import LinkRow
 
+from projects.specification.ui.widgets.browser_widget.bw_project_item import ProjectItem
+from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationInventorItem
 from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
 from projects.specification.ui.widgets.browser_widget.bw_table_by_item import TableByItem
+
 
 from projects.specification.core.data_tables import SpecificationDataItem, InventorSpecificationDataItem, BuySpecificationDataItem, ProdSpecificationDataItem
 
@@ -46,7 +48,7 @@ class PageTable(PageContent):
         self.v_layout = QtWidgets.QVBoxLayout(self)
 
         self.table_view = TableView(self)
-        self.table_model: DataTable = None
+        self.table_model: ModelDataTable = None
         
         self.control_panel = ControlPanelTable(self, self.table_view)
         self.zoom_table = ZoomTable(parent=self, range_zoom=self.range_zoom)
@@ -54,13 +56,14 @@ class PageTable(PageContent):
         self.table_view.signale_change_selection.connect(self._show_link)
         self.zoom_table.signal_change_zoom.connect(self._set_zoom)
 
-        self.view_link_row = ViewLinkRow(self)
-        self._active_row: int = None
-        self.view_link_row.signal_is_show.connect(self._resize_spliter)
+        self.widget_link_row = LinkRow(self)
+        self.widget_link_row.signal_is_show.connect(self._resize_spliter)
+        self.widget_link_row.signal_add_row_link.connect(self._add_link_row)
+        self.widget_link_row.signal_del_row_link.connect(self._del_link_row)
         
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
         self.splitter.addWidget(self.table_view)
-        self.splitter.addWidget(self.view_link_row)
+        self.splitter.addWidget(self.widget_link_row)
 
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStyleSheet("""
@@ -99,9 +102,11 @@ class PageTable(PageContent):
         :type item_tree: TableBrowserItem
         """
         if item_tree.item_data.data_link is None:
-            self.view_link_row.hide()
+            self.widget_link_row.hide()
         else:
-            self.view_link_row.show()
+            self.widget_link_row.show()
+            project_item: ProjectItem = item_tree.parent_item.parent_item
+            self.widget_link_row.set_table_inventor(project_item.get_inventor_items())                        
 
         if self._current_horizontal_headres and self._current_vertical_headres:
             self._current_horizontal_headres.update_scroll_x()
@@ -117,8 +122,6 @@ class PageTable(PageContent):
         self.table_model.set_range_step_zoom(self.range_zoom)
         self.zoom_table.set_table_model(self.table_model)
         self.table_view.setModel(self.table_model)
-        # self._current_horizontal_headres.set_table_model(self.table_model)
-        # self._current_vertical_headres.set_table_model(self.table_model)
 
         if isinstance(item_tree, TableInventorItem):
             self._set_item_invetor()
@@ -221,7 +224,7 @@ class PageTable(PageContent):
     def _resize_spliter(self, is_show: bool) -> None:
         if is_show:
             sizes = list(self.splitter.sizes())
-            sizes[1] = self.view_link_row.title.height()
+            sizes[1] = self.widget_link_row.title.height()
             self.splitter.setSizes(sizes)
 
     def change_table(self) -> None:
@@ -240,8 +243,29 @@ class PageTable(PageContent):
         if number_row is not None and self.table_model.item_data.data_link is not None:
             id_row = self.table_model.item_data.data[number_row][0].value
             if id_row is not None:
-                self.view_link_row.populate(data=self.table_model.item_data.data_link[id_row], number_row=number_row + 1)
+                data = self.table_model.item_data.data_link.get(id_row)
+                data = data if data else []
+
+                self.widget_link_row.populate(data=data, number_row=number_row)
     
+    def _add_link_row(self, data: tuple[int, list[DATACLASSES.DATA_CELL]]) -> None:
+        number_row, row_inventor_link = data
+        id_row = self.table_model.item_data.data[number_row][0].value
+        self.table_model.item_data.add_item_data_link(id_row, row_inventor_link)
+        
+        self.widget_link_row.populate(data=self.table_model.item_data.data_link.get(id_row), number_row=number_row)
+        self.change_table()
+        self.table_model.item_data.set_is_update_link(True)
+
+    def _del_link_row(self, data: tuple[int, int]) -> None:
+        number_row, row_link = data
+        id_row = self.table_model.item_data.data[number_row][0].value
+        del self.table_model.item_data.data_link[id_row][row_link]
+        
+        self.widget_link_row.populate(data=self.table_model.item_data.data_link.get(id_row), number_row=number_row)
+        self.change_table()
+        self.table_model.item_data.set_is_update_link(True)
+
 
 class __Window(QtWidgets.QMainWindow):
     """

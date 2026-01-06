@@ -2,7 +2,7 @@
 from PyQt5 import QtWidgets, QtCore
 from projects.specification.config.app_context import DATACLASSES
 
-from projects.specification.ui.widgets.table.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
 
 
 class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
@@ -22,7 +22,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
 
         self.widgets: list[QtWidgets.QWidget] = [] 
         self.table_view = table_view
-        self._table_model: DataTable = None
+        self._table_model: ModelDataTable = None
         self.min_zoom, self.max_zoom, self.step_zoom = range_zoom
         self._align_widget = self.ALIGN_RIGHT
 
@@ -43,10 +43,10 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
         self.geometriesChanged.connect(self._update_widgets)        
     
     @property
-    def table_model(self) -> DataTable:
+    def table_model(self) -> ModelDataTable:
         return self._table_model
 
-    def set_table_model(self, table_model: DataTable) -> None:
+    def set_table_model(self, table_model: ModelDataTable) -> None:
         self._table_model = table_model
 
     def _set_size_section(self) -> None:

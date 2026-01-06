@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
 from projects.specification.config.app_context import SETTING, ENUMS
 
-from projects.specification.ui.widgets.table.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_blocks_control_panel import BlockControlPanel, FontStyleBlock, AlignCellBlock
 from projects.tools.custom_qwidget.line_separate import QHLineSeparate, QVLineSeparate
 
@@ -28,7 +28,7 @@ class ControlPanelTable(QtWidgets.QFrame):
         super().__init__(parent)
 
         self.table_view = table_view
-        self.table_model: DataTable = None
+        self.table_model: ModelDataTable = None
         self.blocks: list[Type[BlockControlPanel]] = [FontStyleBlock, AlignCellBlock]
         self.blocks_inited: dict[str, dict[str, BlockControlPanel | QVLineSeparate | bool]] = {}
         
@@ -91,7 +91,7 @@ class ControlPanelTable(QtWidgets.QFrame):
     def show_align_block(self, value) -> None:
         self._show_block(ENUMS.TYPE_BLOCK_PROPERTY_CONTROL_PANEL.ALIGN, value)
     
-    def set_table_model(self, table_model: DataTable) -> None:
+    def set_table_model(self, table_model: ModelDataTable) -> None:
         """
         Установка модели данных, в которой будет производится изменения
         

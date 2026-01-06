@@ -73,7 +73,7 @@ class Tree(QtWidgets.QTreeWidget):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             event.accept()
             return super().mousePressEvent(event)
-
+    
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class BrowserWidget(QtWidgets.QWidget):
@@ -311,7 +311,7 @@ class BrowserWidget(QtWidgets.QWidget):
         """
         data = get_specifitaction_inventor_from_xlsx(filepath)
         parent_item: SpecificationItem = self.tree.currentItem()
-        self.create_intentor_table(parent_item=parent_item, name=get_now_time(), data=data)
+        self.create_intentor_table(parent_item=parent_item, name=f'Cпецификация inventor № {parent_item.childCount() + 1}', data=data)
     
     def inventor_table_to_by(self, value: tuple[TableInventorItem, list[list[DATACLASSES.DATA_CELL]]]) -> None:
         inv_item , data = value

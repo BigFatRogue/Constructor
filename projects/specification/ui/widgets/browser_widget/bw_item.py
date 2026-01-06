@@ -4,7 +4,7 @@ from typing import Callable
 
 from projects.specification.config.app_context import ENUMS
 
-from projects.specification.ui.widgets.table.tw_data_table import DataTable
+from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
 from projects.specification.core.data_tables import GeneralDataItem
 
 
@@ -23,7 +23,7 @@ class BrowserItem(QtWidgets.QTreeWidgetItem):
         self.__is_init: bool = False
         self.__is_save: bool = False
         self.filepath: str = None
-        self.table_data: DataTable = None
+        self.table_data: ModelDataTable = None
         self.item_data: GeneralDataItem = None 
 
         # Для делегата
