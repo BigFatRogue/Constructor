@@ -5,7 +5,7 @@ from projects.specification.config.app_context import SIGNAL_BUS, ENUMS, SETTING
 
 from projects.specification.ui.widgets.browser_widget.bw_item import BrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem
-from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
+from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 
 from projects.specification.core.data_tables import SpecificationDataItem
 

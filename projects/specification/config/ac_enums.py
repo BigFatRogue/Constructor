@@ -46,9 +46,15 @@ class EnumStatusBar(Enum):
     SPECIFICATION_LOAD = 'Спецификация загружена'
 
 
-class TypeAlignText(Enum):
-    H_ALIGN = auto()
-    V_ALIGN = auto()
+class ParameterFont(Enum):
+    """
+    Парметры стиля текста в ячейке
+    """
+    FONT_PARAM_FAMILY = auto()
+    FONT_PARAM_SIZE = auto()
+    FONT_PARAM_BOLD = auto()
+    FONT_PARAM_ITALIC = auto()
+    FONT_PARAM_UNDERLINE = auto()
 
 
 class StateSortedColumn(Enum):
@@ -91,3 +97,4 @@ class AppContextEnums:
     CONSTANTS = Constants
     PARAMETERS_HEADER = ParamatersHeader
     PARAMETERS_TABLE = PatametersTable
+    PARAMETR_FONT = ParameterFont

@@ -7,7 +7,7 @@ from projects.specification.core.config_table import ColumnConfig, GENERAL_ITEM_
 from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
 
 from projects.specification.ui.widgets.table.tw_vhow_choose import VerticallWithOverlayWidgetsChoose
-from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
+from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 
 from projects.tools.functions.create_action_menu import create_action
 

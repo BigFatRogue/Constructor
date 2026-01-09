@@ -2,7 +2,7 @@ import os
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 from projects.specification.config.app_context import SETTING
-from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
+from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 

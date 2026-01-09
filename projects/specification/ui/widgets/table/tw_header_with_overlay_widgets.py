@@ -2,7 +2,7 @@
 from PyQt5 import QtWidgets, QtCore
 from projects.specification.config.app_context import DATACLASSES
 
-from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
+from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 
 
 class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):

@@ -15,7 +15,7 @@ if __name__ == '__main__':
 from projects.specification.config.app_context import DATACLASSES, SETTING
 from projects.specification.ui.widgets.content_widget.cw_page import PageContent
 
-from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
+from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_table_view import TableView
 from projects.specification.ui.widgets.table.tw_zoom import ZoomTable
 from projects.specification.ui.widgets.table.tw_hhow import HorizontalWithOverlayWidgets
@@ -75,7 +75,7 @@ class PageTable(PageContent):
         self.v_layout.addWidget(self.zoom_table)
 
     def _set_property_header(self, header: HorizontalWithOverlayWidgets | VerticallWithOverlayWidgets) -> None:
-        header.sectionResized.connect(self.table_view.resize_rect)      
+        # header.sectionResized.connect(self.table_view.resize_rect)      
         header.sectionResized.connect(self.change_table)  
         header.signal_change.connect(self.change_table)
 
@@ -265,7 +265,7 @@ class PageTable(PageContent):
         self.widget_link_row.populate(data=self.table_model.item_data.data_link.get(id_row), number_row=number_row)
         self.change_table()
         self.table_model.item_data.set_is_update_link(True)
-
+    
 
 class __Window(QtWidgets.QMainWindow):
     """

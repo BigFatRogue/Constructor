@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
 from projects.specification.config.app_context import SETTING, DATACLASSES, ENUMS
 
-from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
+from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_table_view import TableView
 from projects.specification.ui.widgets.table.tw_zoom import ZoomTable
 from projects.specification.ui.widgets.table.tw_hhow_sorted import HorizontalWithOverlayWidgetsSorded

@@ -30,7 +30,6 @@ class WindowSpecification(QtWidgets.QMainWindow):
 
         self.browser_widget.open_project(r'D:\Python\AlfaServis\Constructor\Proekt 1.scdata')
 
-    
     def init_widnow(self) -> None:
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -77,7 +76,6 @@ class WindowSpecification(QtWidgets.QMainWindow):
         SIGNAL_BUS.delele_item.connect(self.content_widget.view_empty_page)
         SIGNAL_BUS.satus_bar.connect(self.set_status)
         
-    
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         self.splitter.addWidget(self.browser_widget)
         self.splitter.addWidget(self.content_widget)

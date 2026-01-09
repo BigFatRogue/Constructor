@@ -1,9 +1,22 @@
+from PyQt5 import QtCore
 from dataclasses import dataclass
 from enum import Enum
+from typing import Self
+from projects.specification.config.ac_enums import AppContextEnums
+
+
+_DICT_QT2CSS_ALIGN: dict[QtCore.Qt.AlignmentFlag] = {
+    QtCore.Qt.AlignmentFlag.AlignHCenter: 'center',
+    QtCore.Qt.AlignmentFlag.AlignLeft: 'left',
+    QtCore.Qt.AlignmentFlag.AlignRight: 'rigth',
+    QtCore.Qt.AlignmentFlag.AlignTop: 'top',
+    QtCore.Qt.AlignmentFlag.AlignVCenter: 'middle',
+    QtCore.Qt.AlignmentFlag.AlignBottom: 'bottom'
+}
 
 @dataclass
 class DataCell:
-    value: int | float | str | None = None
+    value: int | float | str = ''
     align_h: int = 4
     align_v: int = 128
     font_family: str = 'Arial'
@@ -12,8 +25,12 @@ class DataCell:
     italic: bool = False
     underline: bool = False
     color: tuple[int, int, int, int] = (0, 0, 0, 255)
-    background: tuple[int, int, int, int] = None
+    background: tuple[int, int, int, int] = (255, 255, 255, 255)
     span: tuple[int, int] = (1, 1)
+
+    def set_property_from_cell(self, cell: Self) -> None:
+        for prop_name, value in cell.__dict__.items():
+            self.__dict__[prop_name] = value
 
     def get_dict_style(self) -> dict[str, int | float| str | bool | tuple[int, ...]]:
         return {
@@ -28,6 +45,53 @@ class DataCell:
             'background': self.background,
             'span': self.span,
         }
+
+    def get_td_html(self) -> str:
+        """
+        Преобразует свойства объекта в тэг td со стилями
+        
+        :param self: Описание
+        :return: Описание
+        :rtype: str
+        """
+
+        style: dict[str, int | float| str | bool | tuple[int, ...]] = {
+            'font-family': self.font_family,
+            'font-size': self.font_size,
+            'font-weight': 'bold' if self.bold else None,
+            'font-style': 'italic' if self.italic else None,
+            'text-decoration': 'underline' if self.underline else None,
+            'color': self._tuple_color2hex(self.color),
+            'background-color': self._tuple_color2hex(self.background),
+            'text-align': _DICT_QT2CSS_ALIGN.get(self.align_h),
+            'vertical-align': _DICT_QT2CSS_ALIGN.get(self.align_v),
+        }
+        
+        str_style = ''
+        for name, prop in style.items():
+            if prop is not None:
+                str_style += f'{name}: {prop};\n'
+
+        return f'<td style="{str_style}" colspan={self.span[0]} rowspan={self.span[1]}>{self.value}</td>'
+
+    def _tuple_color2hex(self, color: tuple[int, int, int, int]) -> str:
+        if color is None or color == (255, 255, 255, 255):
+            return 'none'
+        return "#{:02X}{:02X}{:02X}".format(*color)
+
+    def get_value_from_role(self, role: QtCore.Qt.ItemDataRole, font_param: AppContextEnums.PARAMETR_FONT = None) -> int | float | str | tuple:
+        dct = {
+            (QtCore.Qt.ItemDataRole.FontRole, AppContextEnums.PARAMETR_FONT.FONT_PARAM_FAMILY): self.font_family,
+            (QtCore.Qt.ItemDataRole.FontRole, AppContextEnums.PARAMETR_FONT.FONT_PARAM_SIZE): self.font_size,
+            (QtCore.Qt.ItemDataRole.FontRole, AppContextEnums.PARAMETR_FONT.FONT_PARAM_BOLD): self.bold,
+            (QtCore.Qt.ItemDataRole.FontRole, AppContextEnums.PARAMETR_FONT.FONT_PARAM_ITALIC): self.italic,
+            (QtCore.Qt.ItemDataRole.FontRole, AppContextEnums.PARAMETR_FONT.FONT_PARAM_UNDERLINE): self.underline,
+            (QtCore.Qt.ItemDataRole.TextAlignmentRole, None): self.align_h | self.align_v,
+            (QtCore.Qt.ItemDataRole.BackgroundColorRole, None): self.background,
+            (QtCore.Qt.ItemDataRole.ForegroundRole, None): self.color,
+            (QtCore.Qt.ItemDataRole.EditRole, None): self.value
+            }
+        return dct[(role, font_param)] 
 
 
 class ParameterTable:
@@ -50,6 +114,7 @@ class ParameterTable:
     
     def __repr__(self) -> str:
         return self.__str__()
+
 
 class ParameterHeaders:
     """
@@ -77,6 +142,7 @@ class ParameterHeaders:
     
     def __repr__(self):
         return self.__str__()
+
 
 @dataclass
 class AppContextDataClasses:

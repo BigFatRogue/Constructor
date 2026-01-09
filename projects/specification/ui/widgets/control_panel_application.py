@@ -8,7 +8,30 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context import SETTING, SIGNAL_BUS, ENUMS
+from projects.specification.config.app_context import SETTING, SIGNAL_BUS, DECORATE
+
+
+
+class ButtonCPA(QtWidgets.QPushButton):
+    def __init__(self, parent, name_icon: str):
+        super().__init__(parent)
+
+        self.setFixedSize(23, 23)
+        self.set_icon(name_icon)
+    
+    def set_icon(self, name_icon: str) -> None:
+        icon = QtGui.QIcon()
+        icon.addFile(os.path.join(SETTING.ICO_FOLDER, name_icon))
+        self.setIcon(icon)
+
+
+# @DECORATE.UNDO_REDO_FOCUSABLE(type_widget=DECORATE.TYPE_WIDGET.BUTTON_UNDO)
+# class ButtonCPAUndo(ButtonCPA): ...
+
+
+# @DECORATE.UNDO_REDO_FOCUSABLE(type_widget=DECORATE.TYPE_WIDGET.BUTTON_REDO)
+# class ButtonCPARedo(ButtonCPA): ...
+
 
 
 class ControlPanelAppliction(QtWidgets.QWidget):
@@ -16,7 +39,6 @@ class ControlPanelAppliction(QtWidgets.QWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
-
         self.__init_widget()
 
     def __init_widget(self) -> None:
@@ -36,39 +58,22 @@ class ControlPanelAppliction(QtWidgets.QWidget):
         self.h_layout_frame.setSpacing(2)
         self.h_layout_frame.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
 
-        self.btn_save = QtWidgets.QPushButton(self.frame)
-        self.btn_save.setFixedSize(23, 23)
+        self.btn_save = ButtonCPA(self.frame, 'save.png')
         self.btn_save.setToolTip('Сохранить таблицу\nCtrl + S')
         self.btn_save.setShortcut('Ctrl+S')
         self.btn_save.clicked.connect(SIGNAL_BUS.save.emit)
-        icon = QtGui.QIcon()
-        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'save.png'))
-        self.btn_save.setIcon(icon)
         self.h_layout_frame.addWidget(self.btn_save)
 
-        self.btn_back = QtWidgets.QPushButton(self.frame)
-        self.btn_back.setFixedSize(23, 23)
-        self.btn_back.setToolTip('Отменить изменения\nCtrl + Z')
-        self.btn_back.setShortcut('Ctrl+Z')
-        self.btn_back.clicked.connect(SIGNAL_BUS.back.emit)
-        icon = QtGui.QIcon()
-        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'arrow_back.png'))
-        self.btn_back.setIcon(icon)
-        self.h_layout_frame.addWidget(self.btn_back)
+        self.btn_undo = ButtonCPA(self.frame, 'arrow_back.png')
+        self.btn_undo.setToolTip('Отменить изменения\nCtrl + Z')
+        self.btn_undo.setShortcut('Ctrl+Z')
+        self.btn_undo.clicked.connect(SIGNAL_BUS.undo.emit)
+        self.h_layout_frame.addWidget(self.btn_undo)
+        DECORATE.UNDO_REDO_GROUP.set_btn_undo(self.btn_undo)
 
-        self.btn_forward = QtWidgets.QPushButton(self.frame)
-        self.btn_forward.setFixedSize(23, 23)
-        self.btn_forward.setToolTip('Вернуть изменения\nCtrl + Shift + Z')
-        self.btn_forward.setShortcut('Ctrl+Shift+Z')
-        self.btn_forward.clicked.connect(SIGNAL_BUS.forward.emit)
-        icon = QtGui.QIcon()
-        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'arrow_forward.png'))
-        self.btn_forward.setIcon(icon)
-        self.h_layout_frame.addWidget(self.btn_forward)
-
-    
-    def click_back(self) -> None:
-        ...
-
-    def click_forward(self) -> None:
-        ...
+        self.btn_redo = ButtonCPA(self.frame, 'arrow_forward.png')
+        self.btn_redo.setToolTip('Вернуть изменения\nCtrl + Shift + Z')
+        self.btn_redo.setShortcut('Ctrl+Shift+Z')
+        self.btn_redo.clicked.connect(SIGNAL_BUS.redo.emit)
+        self.h_layout_frame.addWidget(self.btn_redo)
+        DECORATE.UNDO_REDO_GROUP.set_btn_reod(self.btn_redo)

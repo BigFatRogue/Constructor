@@ -8,8 +8,8 @@ class SignalBus(QObject):
 
     # save ловит main_window, чтобы последовательно вызвать методы сохранения у брауузера и контент области
     save = pyqtSignal() 
-    back = pyqtSignal()
-    forward = pyqtSignal()
+    undo = pyqtSignal()
+    redo = pyqtSignal()
 
     open_project = pyqtSignal()
     delele_item = pyqtSignal()

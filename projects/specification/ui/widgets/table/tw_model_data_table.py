@@ -1,8 +1,6 @@
 from dataclasses import fields
 from copy import deepcopy
-from enum import Enum ,auto
-from typing import Any
-from copy import deepcopy
+from typing import Self
 
 from PyQt5 import QtCore, QtGui
 
@@ -11,19 +9,15 @@ from projects.specification.config.app_context import DATACLASSES, ENUMS
 from projects.specification.core.config_table import ColumnConfig
 from projects.specification.core.data_tables import SpecificationDataItem
 
+from projects.specification.ui.widgets.table.tw_undo_redo_table import UndoRedoTable
+
 
 class ModelDataTable(QtCore.QAbstractTableModel):
     """
-    Модель данных для таблиц
+    Модель данных для таблиц спецификаций
     """
     
     signal_change = QtCore.pyqtSignal()
-
-    FONT_PARAM_FAMILY = 1
-    FONT_PARAM_SIZE = 2
-    FONT_PARAM_BOLD = 3
-    FONT_PARAM_ITALIC = 4
-    FONT_PARAM_UNDERLINE = 5
 
     def __init__(self, item_data: SpecificationDataItem, range_zoom: tuple[int, int , int]=None):
         """
@@ -51,6 +45,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
 
         self._styles: dict[tuple[int, int, int], QtGui.QFont | QtGui.QColor | int] = {}
 
+        self._default_value = ''
         self._default_family = 'Arial'
         self._default_font_size = 12
         self._default_bold = False
@@ -60,6 +55,8 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self._default_bg_color = QtGui.QColor(255, 255, 255)
         self._default_fg_color = QtGui.QColor(QtCore.Qt.GlobalColor.black)
         self._set_styles()
+
+        self.undo_redo = UndoRedoTable(self)
         
     def _set_index_column_view(self) -> dict[int, int]:
         """
@@ -164,12 +161,14 @@ class ModelDataTable(QtCore.QAbstractTableModel):
     def setData(self, index: QtCore.QModelIndex, value, role=QtCore.Qt.ItemDataRole.EditRole):
         row = index.row()
         column = self._index_column_view[index.column()]
+        cell = self._data[row][column]
         
-        self._data[row][column].value = value
+        self.undo_redo.add_cell(row=row, column=index.column(), old_value=cell.value, new_value=value, role=role)
+        cell.value = value
         self.dataChanged.emit(index, index, [role])
         return True
 
-    def set_range_style(self, ranges: list[QtCore.QItemSelectionRange], role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param=None) -> None:
+    def set_range_style(self, ranges: list[QtCore.QItemSelectionRange], role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param: ENUMS.PARAMETR_FONT=None) -> None:
         """
         Установка стиля ячеек в диапазоне
         
@@ -183,21 +182,22 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         """
         if not ranges:
             return
-
+        self.undo_redo.start_transaction()
         for rng in ranges:
             for row in range(rng.top(), rng.bottom() + 1):
                 for column in range(rng.left(), rng.right() + 1):
                     self.change_cell(row=row, column=column, value=value, role=role, font_param=font_param)
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), [role])
+        self.undo_redo.end_transaction()
         self.signal_change.emit()
 
-    def change_cell(self, row: int, column: int, role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param=None) -> None:
+    def change_cell(self, row: int, column: int, role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param: ENUMS.PARAMETR_FONT=None) -> None:
         """
         Изменение свойств одной ячейки DATACLASS.CELL_DATA
         
         :param row: номер строки
         :type row: int
-        :param column: номер столбца
+        :param column: номер столбца в QTableView
         :type column: int
         :param role: роль
         :type role: QtCore.Qt.ItemDataRole
@@ -206,24 +206,27 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         :param font_param: какой параметр текста (размер, шрифт и др.)
         """
         cell = self._data[row][self._index_column_view[column]]
-        # self.undo_redo.add_cell()
+        self.undo_redo.add_cell(row=row, column=column, old_value=cell.get_value_from_role(role, font_param) , new_value=value, role=role, font_param=font_param)
 
-        if role == QtCore.Qt.ItemDataRole.FontRole and font_param:
+        if role == QtCore.Qt.ItemDataRole.EditRole:
+            cell.value = value
+
+        elif role == QtCore.Qt.ItemDataRole.FontRole and font_param:
             font = self._styles[(row, self._index_column_view[column], role)]
             
-            if font_param == self.FONT_PARAM_SIZE:
+            if font_param == ENUMS.PARAMETR_FONT.FONT_PARAM_SIZE:
                 cell.font_size = value
                 font.setPointSize(self.get_view_font_size(int(value)))
-            elif font_param == self.FONT_PARAM_FAMILY:
+            elif font_param == ENUMS.PARAMETR_FONT.FONT_PARAM_FAMILY:
                 cell.font_family = value
                 font.setFamily(value)
-            elif font_param == self.FONT_PARAM_BOLD:
+            elif font_param == ENUMS.PARAMETR_FONT.FONT_PARAM_BOLD:
                 cell.bold = value
                 font.setBold(value)
-            elif font_param == self.FONT_PARAM_ITALIC:
+            elif font_param == ENUMS.PARAMETR_FONT.FONT_PARAM_ITALIC:
                 cell.italic = value
                 font.setItalic(value)
-            elif font_param == self.FONT_PARAM_UNDERLINE:
+            elif font_param == ENUMS.PARAMETR_FONT.FONT_PARAM_UNDERLINE:
                 cell.underline = value
                 font.setUnderline(value)
         
@@ -235,7 +238,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         elif role  == QtCore.Qt.ItemDataRole.BackgroundColorRole:
             if isinstance(value, (tuple, list)):
                 self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(*value)
-                cell.background = tuple(*value)
+                cell.background = tuple(value)
             if isinstance(value, QtGui.QColor):
                 self._styles[(row, self._index_column_view[column], role)] = value
                 cell.background = value.getRgb()
@@ -246,7 +249,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         elif role  == QtCore.Qt.ItemDataRole.ForegroundRole:
             if isinstance(value, (tuple, list)):
                 self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(*value)
-                cell.color = tuple(*value)
+                cell.color = tuple(value)
             if isinstance(value, QtGui.QColor):
                 self._styles[(row, self._index_column_view[column], role)] = value
                 cell.color = value.getRgb()
@@ -331,12 +334,14 @@ class ModelDataTable(QtCore.QAbstractTableModel):
 
     def get_style_selection(self, selection: list[QtCore.QItemSelectionRange]) -> DATACLASSES.DATA_CELL:
         """
-        Получение значения стиля диапазонов
+        Получение значения стиля диапазонов в одну переменную типа DataCell
+
+        Используется панелью управления, для отображения стиля выделения
         
         :param selection: выделение в QtableView
         :type selection: list[QtCore.QItemSelectionRange]
         :return: ячейка содержащая общие стили диапазонов
-        :rtype: CELL_STYLE
+        :rtype: DataCell
         """
         style_ranges = None
         for rng in selection:
@@ -355,21 +360,40 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         
         return style_ranges
 
-    def reset_style(self, ranges: list[QtCore.QItemSelectionRange]) -> None:
+    def paste_value_from_model(self, source_model: Self, source_coords: tuple[int, int, int, int], target_top_left: tuple[int, int]) -> None:        
+        self.undo_redo.start_transaction()
+
+        t_top, t_left = target_top_left
+        s_top, s_left, s_bottom, s_rigth = source_coords
+
+        for source_row, target_row in zip(range(s_top, s_bottom + 1), range(t_top, t_top + s_bottom - s_top + 1)):
+            for source_column, target_column in zip(range(s_left, s_rigth + 1), range(t_left, t_left + s_rigth - s_left + 1)):
+                source_cell = source_model._data[source_row][source_model]
+                self.change_cell(row=target_row, column=target_column, value=self._default_align, role=QtCore.Qt.ItemDataRole.TextAlignmentRole)
+                self.change_cell(row=row, column=column, value=self._default_bg_color, role=QtCore.Qt.ItemDataRole.BackgroundColorRole)
+                self.change_cell(row=row, column=column, value=self._default_fg_color, role=QtCore.Qt.ItemDataRole.ForegroundRole)
+                    
+        
+        self.undo_redo.end_transaction()
+
+    def paste_value_from_buffer(self) -> None:
+        ...
+
+    def reset_style(self, selection: list[QtCore.QItemSelectionRange]) -> None:
         """
         Сброс стиля диапазона до стандартных значений
         
         :param ranges: выделение в QtableView
         :type ranges: list[QtCore.QItemSelectionRange]
         """
-        if not ranges:
+        if not selection:
             return
-
-        for rng in ranges:
+        
+        self.undo_redo.start_transaction()
+        for rng in selection:
             for row in range(rng.top(), rng.bottom() + 1):
                 for column in range(rng.left(), rng.right() + 1):
-                    
-                    for font_param, value in zip((self.FONT_PARAM_FAMILY, self.FONT_PARAM_SIZE, self.FONT_PARAM_BOLD, self.FONT_PARAM_ITALIC, self.FONT_PARAM_UNDERLINE),
+                    for font_param, value in zip((ENUMS.PARAMETR_FONT.FONT_PARAM_FAMILY, ENUMS.PARAMETR_FONT.FONT_PARAM_SIZE, ENUMS.PARAMETR_FONT.FONT_PARAM_BOLD, ENUMS.PARAMETR_FONT.FONT_PARAM_ITALIC, ENUMS.PARAMETR_FONT.FONT_PARAM_UNDERLINE),
                                           (self._default_family, self._default_font_size,self._default_bold, self._default_italic, self._default_underline)):
                         self.change_cell(row=row, column=column, role=QtCore.Qt.ItemDataRole.FontRole, value=value, font_param=font_param)
                     
@@ -379,6 +403,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
                         
             role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
             self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), role)
+        self.undo_redo.end_transaction()
         self.signal_change.emit()
     
     def sorted_column(self, state_sorted: list[ENUMS.STATE_SORTED_COLUMN]) -> None:
@@ -475,3 +500,19 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         После получения лучше копировать, чтобы не внести зимнения 
         """
         return deepcopy(self._data[row])
+    
+    def get_visible_coords(self, top: int, left: int, bottom: int, rigth: int) -> tuple[int, int, int, int]:
+        """
+        Получить координаты в self._data из видимых координат 
+        """
+        return top, self._index_column_view[left], bottom, self._index_column_view[rigth]
+
+    def delete_value_in_range(self, selection: list[QtCore.QItemSelectionRange]) -> None:
+        if bool(self.get_flags() & QtCore.Qt.ItemFlag.ItemIsEditable):
+            self.undo_redo.start_transaction()
+            for rng in selection:
+                for row in range(rng.top(), rng.bottom() + 1):
+                    for column in range(rng.left(), rng.right() + 1):
+                        self.change_cell(row=row, column=column, value=self._default_value, role=QtCore.Qt.ItemDataRole.EditRole)
+            self.undo_redo.end_transaction()
+            self.layoutChanged.emit()

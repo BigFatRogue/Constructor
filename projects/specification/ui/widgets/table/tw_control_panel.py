@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
 from projects.specification.config.app_context import SETTING, ENUMS
 
-from projects.specification.ui.widgets.table.tw_data_table import ModelDataTable
+from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_blocks_control_panel import BlockControlPanel, FontStyleBlock, AlignCellBlock
 from projects.tools.custom_qwidget.line_separate import QHLineSeparate, QVLineSeparate
 
