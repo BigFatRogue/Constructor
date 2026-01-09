@@ -7,23 +7,8 @@ from projects.specification.config.app_context import DATACLASSES
 
 
 class ModelDataTable(Protocol):
-    FONT_PARAM_FAMILY = 1
-    FONT_PARAM_SIZE = 2
-    FONT_PARAM_BOLD = 3
-    FONT_PARAM_ITALIC = 4
-    FONT_PARAM_UNDERLINE = 5
-
     def change_cell(self, row: int, column: int, role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param=None) -> None:
          ...
-
-
-class TypeCommandChange(Enum):
-    VALUE = auto()
-    STYLE = auto()
-    SPAN = auto()
-    SIZE = auto()
-    VISIBLY = auto()
-    INSERT = auto()
 
 
 class UndoRedoItem:

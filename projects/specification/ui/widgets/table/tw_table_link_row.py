@@ -121,7 +121,7 @@ class ModelTableLink(QtCore.QAbstractTableModel):
         row = index.row()
         column = self._index_column_view[index.column()]
 
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
             return self._data[row][column].value
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
@@ -130,6 +130,9 @@ class ModelTableLink(QtCore.QAbstractTableModel):
                 return self._view_columns[section].column_name
             elif orientation == QtCore.Qt.Orientation.Vertical:
                 return str(section + 1)
+
+    def flags(self, index):
+        return QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsEditable
 
     def populate(self, data: list[list[DATACLASSES.DATA_CELL]]) -> None:
         self._data = data

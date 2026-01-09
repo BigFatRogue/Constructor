@@ -84,11 +84,13 @@ class ModelDataTable(QtCore.QAbstractTableModel):
             for x, cell in enumerate(row):
                 if number_index == x:
                     cell.value = y
-                    
-                if cell.color is not None:
-                    self._styles[(y, x, QtCore.Qt.ItemDataRole.ForegroundRole)] = QtGui.QColor(*cell.color)
-                if cell.background is not None:
-                    self._styles[(y, x, QtCore.Qt.ItemDataRole.BackgroundRole)] = QtGui.QColor(*cell.background)
+                
+                if cell.color is None:
+                    cell.color = self._default_fg_color.getRgb()
+                if cell.background is None:
+                    cell.background = self._default_bg_color.getRgb()
+                self._styles[(y, x, QtCore.Qt.ItemDataRole.ForegroundRole)] = QtGui.QColor(*cell.color)
+                self._styles[(y, x, QtCore.Qt.ItemDataRole.BackgroundRole)] = QtGui.QColor(*cell.background)
 
                 font = QtGui.QFont()
                 font.setFamily(cell.font_family or self._default_family)
@@ -360,21 +362,20 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         
         return style_ranges
 
-    def paste_value_from_model(self, source_model: Self, source_coords: tuple[int, int, int, int], target_top_left: tuple[int, int]) -> None:        
+    def paste_value_from_model(self, source_model: Self, source_rows: list[int], source_columns: list[int], target_address: tuple[int, int]) -> None:        
         self.undo_redo.start_transaction()
-
-        t_top, t_left = target_top_left
-        s_top, s_left, s_bottom, s_rigth = source_coords
-
-        for source_row, target_row in zip(range(s_top, s_bottom + 1), range(t_top, t_top + s_bottom - s_top + 1)):
-            for source_column, target_column in zip(range(s_left, s_rigth + 1), range(t_left, t_left + s_rigth - s_left + 1)):
-                source_cell = source_model._data[source_row][source_model]
-                self.change_cell(row=target_row, column=target_column, value=self._default_align, role=QtCore.Qt.ItemDataRole.TextAlignmentRole)
-                self.change_cell(row=row, column=column, value=self._default_bg_color, role=QtCore.Qt.ItemDataRole.BackgroundColorRole)
-                self.change_cell(row=row, column=column, value=self._default_fg_color, role=QtCore.Qt.ItemDataRole.ForegroundRole)
-                    
         
+        t_row, t_column = target_address
+        
+        for source_row, target_row in zip(source_rows, range(t_row, t_row + len(source_rows) + 1)):
+            for source_column, target_column in zip(source_columns, range(t_column, t_column + len(source_columns) + 1)):
+                source_cell = source_model._data[source_row][source_column]
+                dict_role_value_soruce_cell = source_cell.get_dict_role_value()
+                for (role, font_param), value in dict_role_value_soruce_cell.items():
+                    self.change_cell(row=target_row, column=target_column, value=value, role=role, font_param=font_param)
+    
         self.undo_redo.end_transaction()
+        self.layoutChanged.emit()
 
     def paste_value_from_buffer(self) -> None:
         ...
@@ -389,20 +390,17 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         if not selection:
             return
         
+        cell_default = DATACLASSES.DATA_CELL()
+        dict_role_value_cell_default = cell_default.get_dict_role_value()
+
         self.undo_redo.start_transaction()
         for rng in selection:
             for row in range(rng.top(), rng.bottom() + 1):
                 for column in range(rng.left(), rng.right() + 1):
-                    for font_param, value in zip((ENUMS.PARAMETR_FONT.FONT_PARAM_FAMILY, ENUMS.PARAMETR_FONT.FONT_PARAM_SIZE, ENUMS.PARAMETR_FONT.FONT_PARAM_BOLD, ENUMS.PARAMETR_FONT.FONT_PARAM_ITALIC, ENUMS.PARAMETR_FONT.FONT_PARAM_UNDERLINE),
-                                          (self._default_family, self._default_font_size,self._default_bold, self._default_italic, self._default_underline)):
-                        self.change_cell(row=row, column=column, role=QtCore.Qt.ItemDataRole.FontRole, value=value, font_param=font_param)
-                    
-                    self.change_cell(row=row, column=column, value=self._default_align, role=QtCore.Qt.ItemDataRole.TextAlignmentRole)
-                    self.change_cell(row=row, column=column, value=self._default_bg_color, role=QtCore.Qt.ItemDataRole.BackgroundColorRole)
-                    self.change_cell(row=row, column=column, value=self._default_fg_color, role=QtCore.Qt.ItemDataRole.ForegroundRole)
-                        
-            role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
-            self.dataChanged.emit(self.index(rng.top(), rng.left()), self.index(rng.bottom(), rng.right()), role)
+                    for (role, font_param), value in dict_role_value_cell_default.items():
+                        if role != QtCore.Qt.ItemDataRole.EditRole:
+                            self.change_cell(row=row, column=column, value=value, role=role, font_param=font_param)
+
         self.undo_redo.end_transaction()
         self.signal_change.emit()
     
@@ -501,11 +499,11 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         """
         return deepcopy(self._data[row])
     
-    def get_visible_coords(self, top: int, left: int, bottom: int, rigth: int) -> tuple[int, int, int, int]:
+    def get_visible_coords(self, top: int, left: int, bottom: int, rigth: int) -> tuple[tuple[int, ...], tuple[int, ...]]:
         """
         Получить координаты в self._data из видимых координат 
         """
-        return top, self._index_column_view[left], bottom, self._index_column_view[rigth]
+        return tuple(y for y in range(top, bottom + 1)), tuple(self._index_column_view[x] for x in range(left, rigth + 1))
 
     def delete_value_in_range(self, selection: list[QtCore.QItemSelectionRange]) -> None:
         if bool(self.get_flags() & QtCore.Qt.ItemFlag.ItemIsEditable):

@@ -151,20 +151,20 @@ class FontStyleBlock(BlockControlPanel):
     
     def set_font_family_range(self, value: QtGui.QFont) -> None:
         if not self._is_view:
-            self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_FAMILY)
+            self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, ENUMS.PARAMETR_FONT.FONT_PARAM_FAMILY)
 
     def set_font_size_range(self, value: str) -> None:
         if not self._is_view:
-            self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_SIZE)
+            self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, ENUMS.PARAMETR_FONT.FONT_PARAM_SIZE)
 
     def set_bold_range(self, value) -> None:
-        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_BOLD)
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, ENUMS.PARAMETR_FONT.FONT_PARAM_BOLD)
 
     def set_italic_range(self, value: bool) -> None:
-        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_ITALIC)
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, ENUMS.PARAMETR_FONT.FONT_PARAM_ITALIC)
 
     def set_underline_range(self, value: bool) -> None:
-        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, self.table_model.FONT_PARAM_UNDERLINE)
+        self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.FontRole, value, ENUMS.PARAMETR_FONT.FONT_PARAM_UNDERLINE)
 
     def set_color(self, value: QtGui.QColor) -> None:
         self.table_model.set_range_style(self.selection, QtCore.Qt.ItemDataRole.ForegroundRole, value)

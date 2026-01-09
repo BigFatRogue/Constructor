@@ -42,6 +42,7 @@ class __UndoRedoGroup(QtCore.QObject):
             return
         
         check = hasattr(widget, 'redo') and hasattr(widget, 'undo')
+        
         if self.btn_undo:
             self.btn_undo.setEnabled(check)
         else:

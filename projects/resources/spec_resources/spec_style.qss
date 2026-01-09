@@ -58,6 +58,14 @@ QTableCornerButton::section {
     border-right: 1px solid #D8D8D8;
     background-color:white;
 }
+#HeaderWithOverlayWidgets::section:hover,
+QTableCornerButton::section:hover {
+    background-color: rgba(0, 180, 0, 50);
+}
+
+#HeaderWithOverlayWidgets::section:checked {
+    background-color: rgba(0, 180, 0, 50);
+}
 
 
 #zoom_widget_frame {

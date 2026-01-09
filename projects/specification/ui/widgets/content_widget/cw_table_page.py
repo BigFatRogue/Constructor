@@ -23,7 +23,7 @@ from projects.specification.ui.widgets.table.tw_hhow_sorted import HorizontalWit
 from projects.specification.ui.widgets.table.tw_vhow import VerticallWithOverlayWidgets
 from projects.specification.ui.widgets.table.tw_vhow_choose import VerticallWithOverlayWidgetsChoose
 from projects.specification.ui.widgets.table.tw_control_panel import ControlPanelTable
-from projects.specification.ui.widgets.table.tw_link_row import LinkRow
+from projects.specification.ui.widgets.table.tw_table_link_row import LinkRow
 
 from projects.specification.ui.widgets.browser_widget.bw_project_item import ProjectItem
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationInventorItem
@@ -308,7 +308,6 @@ class __Window(QtWidgets.QMainWindow):
                     cchild = child.child(j)
                     if isinstance(cchild, TableByItem):
                         return cchild
-
 
 if __name__ == '__main__':
     import sys

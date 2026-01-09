@@ -79,8 +79,8 @@ class DataCell:
             return 'none'
         return "#{:02X}{:02X}{:02X}".format(*color)
 
-    def get_value_from_role(self, role: QtCore.Qt.ItemDataRole, font_param: AppContextEnums.PARAMETR_FONT = None) -> int | float | str | tuple:
-        dct = {
+    def get_dict_role_value(self) -> dict[tuple[QtCore.Qt.ItemDataRole, AppContextEnums.PARAMETR_FONT | None] | int | float | str | tuple]:
+        return {
             (QtCore.Qt.ItemDataRole.FontRole, AppContextEnums.PARAMETR_FONT.FONT_PARAM_FAMILY): self.font_family,
             (QtCore.Qt.ItemDataRole.FontRole, AppContextEnums.PARAMETR_FONT.FONT_PARAM_SIZE): self.font_size,
             (QtCore.Qt.ItemDataRole.FontRole, AppContextEnums.PARAMETR_FONT.FONT_PARAM_BOLD): self.bold,
@@ -91,7 +91,9 @@ class DataCell:
             (QtCore.Qt.ItemDataRole.ForegroundRole, None): self.color,
             (QtCore.Qt.ItemDataRole.EditRole, None): self.value
             }
-        return dct[(role, font_param)] 
+
+    def get_value_from_role(self, role: QtCore.Qt.ItemDataRole, font_param: AppContextEnums.PARAMETR_FONT = None) -> int | float | str | tuple:
+        return self.get_dict_role_value()[(role, font_param)] 
 
 
 class ParameterTable:

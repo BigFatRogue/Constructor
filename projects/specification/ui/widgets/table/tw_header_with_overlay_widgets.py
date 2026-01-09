@@ -19,7 +19,7 @@ class HeaderWithOverlayWidgets(QtWidgets.QHeaderView):
 
     def __init__(self, orientation: QtCore.Qt.Orientation, table_view: QtWidgets.QTableView, range_zoom: tuple[int, int, int]):
         super().__init__(orientation, table_view)
-
+        self.setObjectName('HeaderWithOverlayWidgets')
         self.widgets: list[QtWidgets.QWidget] = [] 
         self.table_view = table_view
         self._table_model: ModelDataTable = None
