@@ -80,7 +80,13 @@ class UndoRedoItemRowDelete(UndoRedoItem):
     
     def redo(self):
         self.table_model.delete_row(self.number_rows)
-        
+
+# TODO реазиловать
+class UndoRedoItemBrowerInsert(UndoRedoItem): ...
+
+# TODO реазиловать
+class UndoRedoItemBrowerDelete(UndoRedoItem): ...
+
 
 class UndoRedoTable:
     def __init__(self, table_model):

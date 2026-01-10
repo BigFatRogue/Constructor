@@ -1,3 +1,9 @@
+"""
+Приложене, для генерации интерактивного тура для приложения написанного на PyQt5
+
+Запускает само приложение и позволяет настроить шаги тура, также записать какие-то gif 
+"""
+
 import sys
 import os 
 from pathlib import Path
@@ -21,15 +27,16 @@ from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestio
 
 # Добавлене путей к приложению, которое необходимо запустить 
 PATH_PROJCETS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PATH_APPLICATION = os.path.join(PATH_PROJCETS, 'copy_assembly')
-PATH_APPLICATION_RESOURCES = os.path.join(PATH_PROJCETS, 'resources\\ca_resources')
+PATH_APPLICATION = os.path.join(PATH_PROJCETS, 'specification')
+PATH_APPLICATION_RESOURCES = os.path.join(PATH_PROJCETS, 'resources\\spec_resources')
 PATH_SAVE_CONTENT_GIF = os.path.join(PATH_APPLICATION_RESOURCES, 'gif')
 PATH_SAVE_CONTENT_IMAGE = os.path.join(PATH_APPLICATION_RESOURCES, 'image')
 
 sys.path.append(PATH_PROJCETS)
 sys.path.append(PATH_APPLICATION)
 
-from copy_assembly.ca_main import WindowCopyAssembly
+from specification.ui.main_window import WindowSpecification  as child_ppplication
+# from copy_assembly.ca_main import WindowCopyAssembly as child_ppplication
 from projects.tools.helper_interactive import HelperInteractive
 
 
@@ -859,6 +866,6 @@ class WindowCreaterConfigHelpTour(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
 
-    window = WindowCreaterConfigHelpTour(application=WindowCopyAssembly)
+    window = WindowCreaterConfigHelpTour(application=child_ppplication)
     window.show()
     sys.exit(app.exec_())

@@ -56,6 +56,11 @@ class SelectionTable(QtWidgets.QFrame):
         self.color_border = QtGui.QColor(0, 128, 0)
         self.color_outline = QtGui.QColor(QtCore.Qt.GlobalColor.white)
 
+
+        self._init_animation_copy()
+        self._init_rect_rigth_bootom()
+
+    def _init_animation_copy(self) -> None:
         self.dash_offset = 0
 
         self.animation = QtCore.QVariantAnimation()
@@ -65,6 +70,18 @@ class SelectionTable(QtWidgets.QFrame):
         self.animation.setLoopCount(-1)
         self.animation.valueChanged.connect(self.set_dash_offset)
         self.animation.start()
+
+    def _init_rect_rigth_bootom(self) -> None:
+        self.grid = QtWidgets.QGridLayout(self)
+        self.grid.setContentsMargins(0, 0, 0, 0)
+        self.grid.setSpacing(0)
+        self.grid.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignBottom)
+
+        btn = QtWidgets.QPushButton()
+        btn.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
+        btn.setFixedSize(20, 20)
+        self.grid.addWidget(btn, 0, 0, 1, 1)
+
 
     def set_indexes(self, start_index: QtCore.QModelIndex, end_index: QtCore.QModelIndex) -> None:
         self.start_index: QtCore.QModelIndex = start_index
@@ -300,6 +317,7 @@ class _Model(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self._data = [['' for __ in range(15)] for _ in range(200)]
 
+
     def rowCount(self, parent=QtCore.QModelIndex()):
         return len(self._data)
     
@@ -312,7 +330,18 @@ class _Model(QtCore.QAbstractTableModel):
         
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             return self._data[index.row()][index.column()]
+    
+    def setData(self, index: QtCore.QModelIndex, value, role=QtCore.Qt.ItemDataRole.EditRole):
+        row = index.row()
+        column = index.column()
+        self._data[row][column] = value
+        
+        self.dataChanged.emit(index, index, [role])
 
+        return True
+
+    def flags(self, index):
+        return QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsEditable
 
 class _Window(QtWidgets.QMainWindow):
     """

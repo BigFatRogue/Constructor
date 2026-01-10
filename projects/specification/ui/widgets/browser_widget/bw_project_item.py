@@ -8,6 +8,8 @@ from projects.specification.ui.widgets.browser_widget.bw_specefication_item impo
 
 from projects.specification.core.data_tables import PropertyProjectData
 
+from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
+
 
 from projects.tools.functions.create_action_menu import create_action
 
@@ -65,7 +67,12 @@ class ProjectItem(BrowserItem):
             triggerd=self.delete_project_from_list)
     
     def delete_project_from_list(self) -> None:
-        ...
+        msg = MessegeBoxQuestion(self.tree, question='Удалить проект из списка?', title='Удаление')
+        if msg.exec():
+            root = self.tree.invisibleRootItem()
+            for item in self.tree.selectedItems():
+                (item.parent() or root).removeChild(item)
+            SIGNAL_BUS.delele_item.emit()
     
     def get_inventor_items(self) -> list[TableInventorItem]:
         lst = []
