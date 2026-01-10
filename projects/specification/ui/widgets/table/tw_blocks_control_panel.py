@@ -7,6 +7,7 @@ from projects.specification.ui.widgets.table.tw_model_data_table import ModelDat
 from projects.specification.ui.widgets.table.tw_color_tool_button import ColorToolButton
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
+from projects.tools.functions.create_action_menu import create_action
 
 
 class BlockControlPanel(QtWidgets.QWidget):
@@ -67,6 +68,7 @@ class FontStyleBlock(BlockControlPanel):
         self.h_layout_row_1.addWidget(self.combo_box_font_family)
 
         self.combo_box_font_size = QtWidgets.QComboBox(self)
+        self.combo_box_font_size.setEditable(True)
         self.__fill_font_size()
         self.combo_box_font_size.currentTextChanged.connect(self.set_font_size_range)
         self.h_layout_row_1.addWidget(self.combo_box_font_size)
@@ -76,9 +78,21 @@ class FontStyleBlock(BlockControlPanel):
         self.h_layout_row_2.setSpacing(2)
         self.grid.addLayout(self.h_layout_row_2, 1, 0, 1, 1, alignment=QtCore.Qt.AlignmentFlag.AlignLeft)
 
+        # TODO реализовать
+        self.btn_copy_style = QtWidgets.QPushButton(self)
+        self.btn_copy_style.setFixedSize(25, 25)
+        icon = QtGui.QIcon()
+        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'brush.png'))
+        self.btn_copy_style.setIcon(icon)
+        # self.btn_copy_style.signal_get_color.connect()
+        self.btn_copy_style.setToolTip('Копировать стиль')
+        self.h_layout_row_2.addWidget(self.btn_copy_style)
+
         self.btn_bold =  QtWidgets.QPushButton(self)
         self.btn_bold.setFixedSize(25, 25)
         self.btn_bold.setText('Ж')
+        self.btn_bold.setToolTip('Полужирный CTRL + B')
+        self.btn_bold.setShortcut('ctrl+b')
         font = self.btn_bold.font()
         font.setBold(True)
         self.btn_bold.setFont(font)
@@ -89,6 +103,8 @@ class FontStyleBlock(BlockControlPanel):
         self.btn_italic =  QtWidgets.QPushButton(self)
         self.btn_italic.setFixedSize(25, 25)
         self.btn_italic.setText('К')
+        self.btn_italic.setToolTip('Курсив CTRL + I')
+        self.btn_italic.setShortcut('ctrl+i')
         font = self.btn_italic.font()
         font.setBold(True)
         font.setItalic(True)
@@ -100,6 +116,8 @@ class FontStyleBlock(BlockControlPanel):
         self.btn_underline =  QtWidgets.QPushButton(self)
         self.btn_underline.setFixedSize(25, 25)
         self.btn_underline.setText('Ч')
+        self.btn_underline.setToolTip('Подчёркнутый CTRL + U')
+        self.btn_italic.setShortcut('ctrl+u')
         font = self.btn_underline.font()
         font.setBold(True)
         font.setUnderline(True)
@@ -110,21 +128,34 @@ class FontStyleBlock(BlockControlPanel):
 
         self.btn_background_color = ColorToolButton(self)
         self.btn_background_color.set_icon(os.path.join(SETTING.ICO_FOLDER, 'fill_color.png'))
-        self.btn_background_color.setFixedSize(35, 25)
+        self.btn_background_color.setFixedSize(40, 25)
+        self.btn_background_color.setToolTip('Цвет заливки')
         self.btn_background_color.signal_get_color.connect(self.set_background_color)
         self.h_layout_row_2.addWidget(self.btn_background_color)
 
         self.btn_foreground_color = ColorToolButton(self)
         self.btn_foreground_color.set_text('A')
-        self.btn_foreground_color.setFixedSize(35, 25)
+        self.btn_foreground_color.setFixedSize(40, 25)
+        self.btn_foreground_color.setToolTip('Цвет Текста')
         self.btn_foreground_color.signal_get_color.connect(self.set_color)
         self.h_layout_row_2.addWidget(self.btn_foreground_color)
 
-        self.btn_rest_style =  QtWidgets.QPushButton(self)
-        self.btn_rest_style.setFixedSize(25, 25)
-        self.btn_rest_style.setText('R')
-        self.btn_rest_style.clicked.connect(self.reset_style)
-        self.h_layout_row_2.addWidget(self.btn_rest_style)
+        self.btn_reset_style = QtWidgets.QToolButton(self)
+        self.btn_reset_style.setFixedHeight(25)
+        self.btn_reset_style.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        icon = QtGui.QIcon()
+        icon.addFile(os.path.join(SETTING.ICO_FOLDER, 'eraser.png'))
+        self.btn_reset_style.setIcon(icon)
+        self.btn_reset_style.setIconSize(QtCore.QSize(13, 13))
+
+        menu = QtWidgets.QMenu()
+        create_action(menu=menu, 
+                                           title='Очистить форматы',
+                                           triggerd=self.reset_style)
+        self.btn_reset_style.setMenu(menu)
+        self.btn_reset_style.clicked.connect(self.reset_style)
+        self.btn_reset_style.setToolTip('Очистить')
+        self.h_layout_row_2.addWidget(self.btn_reset_style)
 
     def __fill_font_size(self) -> None:
         """

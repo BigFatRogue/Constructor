@@ -15,6 +15,7 @@ from projects.tools.functions.decorater_qt_object import decorater_set_hand_curs
 
 from projects.tools.custom_qwidget.line_separate import QHLineSeparate
 
+
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class PopupColorPanel(QtWidgets.QWidget):
     property_color_rbg = 'color'
@@ -238,6 +239,9 @@ class PopupColorPanel(QtWidgets.QWidget):
 
 
 class ButtonColor(QtWidgets.QPushButton):
+    """
+    Самописный ToolButton, так как надо было рисовать внутри кнопки
+    """
     signal_clicked = QtCore.pyqtSignal(QtGui.QColor)
 
     def __init__(self, parent):
@@ -302,6 +306,11 @@ class ButtonColor(QtWidgets.QPushButton):
         painter.setBrush(brush)
         painter.drawRect(self._line_rect)
 
+        pen = QtGui.QPen(QtCore.Qt.GlobalColor.lightGray)
+        pen.setWidth(1)
+        painter.setPen(pen)
+        painter.drawLine(w, self._padding, w, h - self._padding)
+
         if self._text:
             font_rect = QtCore.QRect(x, y - self._line_height // 2,  w, h)
             pen = QtGui.QPen(QtGui.QColor(0, 0, 0))
@@ -317,6 +326,9 @@ class ButtonColor(QtWidgets.QPushButton):
 
 @decorater_set_hand_cursor_button([QtWidgets.QPushButton])
 class ColorToolButton(QtWidgets.QWidget):
+    """
+    Основной виджет добавляемый в приложение
+    """
     signal_get_color = QtCore.pyqtSignal(object) # получить цвет от виджета
     signal_set_color = QtCore.pyqtSignal(object) # задать цвет от виджету
 
@@ -405,7 +417,7 @@ class Window(QtWidgets.QMainWindow):
         self.v_lauout.setContentsMargins(0, 0, 0, 0)
 
         self.tool_btn = ColorToolButton(self)
-        self.tool_btn.setFixedSize(35, 25)
+        self.tool_btn.setFixedSize(40, 25)
         # self.tool_btn.set_text('A')
         self.tool_btn.set_icon(os.path.join(SETTING.ICO_FOLDER, 'fill_color.png'))
         # self.tool_btn.signal_get_color.connect(lambda color: print(color))
