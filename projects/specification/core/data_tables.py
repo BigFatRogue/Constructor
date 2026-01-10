@@ -1,5 +1,4 @@
-from typing import Union
-from dataclasses import dataclass, fields
+from typing import Union, Sequence
 import json
 
 if __name__ == '__main__':
@@ -148,7 +147,7 @@ class GeneralDataItem:
     def _select_sql(self) -> tuple | None:
         ... 
     
-    def _delete_sql(self) -> None:
+    def _delete_specification_sql(self) -> None:
         ...
     
 
@@ -224,7 +223,7 @@ class PropertyProjectData(GeneralDataItem):
         Обновление данных в таблице свойств проекта
         """
         self.database.update(table_name=self.config.name, 
-                            id_row=1, 
+                            row_id=1, 
                             fields=tuple(self.data.keys()), 
                             value=tuple(self.data.values()))    
     
@@ -242,7 +241,7 @@ class PropertyProjectData(GeneralDataItem):
         
         return {k: v for k, v in zip(view_fields, res.fetchall()[0])} if res else {}
 
-    def _delete_sql(self) -> None:
+    def _delete_specification_sql(self) -> None:
         """
         Реализация метода удаление проекта из БД
         """
@@ -271,7 +270,7 @@ class PropertyProjectData(GeneralDataItem):
             SELECT * 
             FROM {ENUMS.NAME_TABLE_SQL.GENERAL.value} 
             LEFT JOIN {table['type_spec']} ON {table['type_spec']}.parent_id = {ENUMS.NAME_TABLE_SQL.GENERAL.value}.id 
-            WHERE {ENUMS.NAME_TABLE_SQL.GENERAL.value}.parent_id = {table['id']}
+            WHERE {ENUMS.NAME_TABLE_SQL.GENERAL.value}.sid = {table['id']}
             ORDER BY number_row
             """
 
@@ -300,13 +299,12 @@ class PropertyProjectData(GeneralDataItem):
         :rtype: dict[tuple[int, int], dict[str, str | bool | int]]
         """
         fields_style = tuple(col.field for col in PARAMETER_CELL_CONFIG.columns if not col.is_id)
-        
         res = self.database.execute(f"""
         SELECT number_row, column, {', '.join(fields_style)}
         FROM {PARAMETER_CELL_LINK_CONFIG.name}
         LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {PARAMETER_CELL_LINK_CONFIG.name}.parent_id
         LEFT JOIN {PARAMETER_CELL_CONFIG.name} ON {PARAMETER_CELL_CONFIG.name}.id = {PARAMETER_CELL_LINK_CONFIG.name}.style_id
-        WHERE sid = {sid}
+        WHERE {GENERAL_ITEM_CONFIG.name}.sid = {sid}
         ORDER BY number_row
         """).fetchall()
 
@@ -319,7 +317,7 @@ class PropertyProjectData(GeneralDataItem):
 
     def _load_parameter_header(self, sid: int) -> list[list]:
         fields: list[str] = [col.field for col in PARAMETER_HEADER_CONFIG.columns if not col.is_id and not col.is_foreign_id]
-        add_query = f' WHERE parent_id = {sid}'
+        add_query = f' WHERE sid = {sid}'
         res = self.database.select(PARAMETER_HEADER_CONFIG.name, fields, add_query).fetchall()
 
         data_header = []
@@ -329,7 +327,7 @@ class PropertyProjectData(GeneralDataItem):
 
     def _load_parameter_table(self, sid: int) -> dict[str, int | tuple[int, int, int, int]] | None:
         fields = [col.field for col in PARAMETER_TABLE_CONFIG.columns if not col.is_id and not col.is_foreign_id]
-        add_query = f' WHERE parent_id = {sid}'
+        add_query = f' WHERE sid = {sid}'
         res = self.database.select(PARAMETER_TABLE_CONFIG.name, fields, add_query).fetchall()
 
         if res:
@@ -345,7 +343,7 @@ class PropertyProjectData(GeneralDataItem):
         FROM {LINK_ITEM_CONFIG.name}
         LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = inventor_item
         LEFT JOIN {INVENTOR_ITEM_CONFIG.name} ON {INVENTOR_ITEM_CONFIG.name}.parent_id  = inventor_item
-        WHERE sid = {sid}
+        WHERE {LINK_ITEM_CONFIG.name}.sid = {sid}
         """)
 
         dct: dict[int, list[list]] = {}
@@ -380,6 +378,7 @@ class SpecificationDataItem(GeneralDataItem):
         
         self.data: list[list[DATACLASSES.DATA_CELL]] = None
         self.data_link: dict[int | str, list[list[DATACLASSES.DATA_CELL]]] = None
+        self._list_delete_row: list[int] = [] #хранит id из general_config
         self.table_parameter: DATACLASSES.PARAMETER_TABLE = None
         self.horizontal_header_parameter: list [DATACLASSES.DATA_HEADERS] = None
         self.vertical_header_parameter: list [DATACLASSES.DATA_HEADERS] = None
@@ -413,6 +412,12 @@ class SpecificationDataItem(GeneralDataItem):
             self.data_link[id_row].append(row)
 
     def set_is_update_link(self, value: bool) -> None:
+        """
+        Установка флага необходимости обновления ссылок
+        
+        :param value: True - обновить, False - не обновлять
+        :type value: bool
+        """
         self._is_update_link = value
 
     def get_data(self) -> list[list[DATACLASSES.DATA_CELL]]:
@@ -438,23 +443,23 @@ class SpecificationDataItem(GeneralDataItem):
             self._create_sql()
             self._insert_specification_sql()
             self._insert_in_sql_filed()
-
-        self._insert_or_update_sql()
         
+        self._insert_or_update_sql()
+        self._delete_row_sql()
+
         if self._is_update_link:
             self._insert_and_update_data_link_sql()
             self._is_update_link = False
         
         self._insert_or_update_header_parameter_sql()
         self._insert_or_update_table_parameter_sql()
-            
         
         self.database.commit()
         self.database.close()
 
     def delete(self) -> None:
         if self._sid:
-            self._delete_sql()
+            self._delete_specification_sql()
             self.database.commit()
             self.database.close()
         
@@ -488,8 +493,9 @@ class SpecificationDataItem(GeneralDataItem):
         field_sql = tuple(col.field for col in self.specification_config.columns if not col.is_id)
         now_str = get_now_time()
 
-        self.database.insert(self.specification_config.name, field_sql, (self.type_spec.value, self.table_name, now_str))
-        self._sid = self.database.get_last_id()
+        cur = self.database.insert(self.specification_config.name, field_sql, (self.type_spec.value, self.table_name, now_str))
+        row_id = cur.fetchall()[0][0]
+        self._sid = row_id
 
         self.database.commit()
     
@@ -534,21 +540,21 @@ class SpecificationDataItem(GeneralDataItem):
         id_unique, *value_unique = [cell.value for cell in row_data[len(self.general_config.columns): ]]
 
         # ----------------- Работа с general_config
-        self.database.insert(self.general_config.name, self.fields_general[1:], value_general)
-        id_general = self.database.get_last_id()
+        value_general[-1] = self._sid
+        cur = self.database.insert(self.general_config.name, self.fields_general[1:], value_general)
+        id_general = cur.fetchall()[0][0]
 
         self._update_id_link_data(old_id=row_data[0].value, new_id=id_general)
 
         row_data[0].value = id_general
         row_data[len(self.general_config.columns) -1].value = self._sid
-        self._set_foreign_key(self.general_config, last_id=id_general, parent_id=self._sid)
 
         # ----------------- Работа с unique_config
-        self.database.insert(self.unique_config.name, self.fields_unique[1:], value_unique)
-        id_unique = self.database.get_last_id()
+        value_unique[-1] = id_general
+        cur = self.database.insert(self.unique_config.name, self.fields_unique[1:], value_unique)
+        id_unique = cur.fetchall()[0][0]
         row_data[len(self.general_config.columns)].value = id_unique
         row_data[len(self.total_columns) - 1].value = id_general
-        self._set_foreign_key(self.unique_config, last_id=id_unique, parent_id=id_general)
 
         for x, (cell, col) in enumerate(zip(row_data, self.total_columns)):
             if not col.is_id and col.is_view:
@@ -660,14 +666,14 @@ class SpecificationDataItem(GeneralDataItem):
             
             query = f"""
             SELECT
-                EXISTS(SELECT * FROM {self.parameter_header_config.name} WHERE row = {header_data.row} AND column = {header_data.column} AND parent_id = {self._sid}) as cell
+                EXISTS(SELECT * FROM {self.parameter_header_config.name} WHERE row = {header_data.row} AND column = {header_data.column} AND sid = {self._sid}) as cell
             """
             exists = self.database.execute(query).fetchall()[0][0]
         
             if exists == 0:
                 self.database.insert(PARAMETER_HEADER_CONFIG.name, fields, values)
             else:
-                add_query = f" WHERE row = {header_data.row} AND column = {header_data.column} AND parent_id = {self._sid}"
+                add_query = f" WHERE row = {header_data.row} AND column = {header_data.column} AND sid = {self._sid}"
                 self.database.update(table_name=PARAMETER_HEADER_CONFIG.name, fields=fields, value=values, add_query=add_query)
     
     def _insert_or_update_table_parameter_sql(self) -> None:
@@ -678,7 +684,7 @@ class SpecificationDataItem(GeneralDataItem):
 
         query = f"""
         SELECT 
-            EXISTS(SELECT * FROM {self.parameter_table_config.name} WHERE parent_id = {self._sid}) as paramaters_table
+            EXISTS(SELECT * FROM {self.parameter_table_config.name} WHERE sid = {self._sid}) as paramaters_table
         """
         exists = self.database.execute(query).fetchall()[0][0]
 
@@ -686,7 +692,7 @@ class SpecificationDataItem(GeneralDataItem):
             fields = [col.field for col in self.parameter_table_config.columns if not col.is_id]
             self.database.insert(self.parameter_table_config.name, fields, [value, self._sid])
         else:
-            add_query = f' WHERE parent_id = {self._sid}'
+            add_query = f' WHERE sid = {self._sid}'
             self.database.update(self.parameter_table_config.name, ['parameters'], [value], add_query=add_query)
         
     def get_index_from_name_filed(self, field: str) -> int:
@@ -695,22 +701,47 @@ class SpecificationDataItem(GeneralDataItem):
                 return i
         return -1 
 
-    def _delete_sql(self) -> None:
-        self.database.delete(self.specification_config.name, id_row=self._sid)
+    def _delete_specification_sql(self) -> None:
+        """
+        Удалить спецификацию из БД
+        
+        :param self: Описание
+        """
+        self.database.delete(self.specification_config.name, row_id=self._sid)
 
-    def insert_row(self, row: int) -> None:
-        self.data.insert(row, [DATACLASSES.DATA_CELL(value='') for i in range(len(self.data[0]))])
-        tmp_id = f'_{len(self.data)}'
-        self.data[row][0].value = tmp_id
-        self.data_link[tmp_id] = []
-        self.vertical_header_parameter.insert(row, DATACLASSES.DATA_HEADERS(row=row, column=-1, size=30))
+    def insert_row(self, row: int, row_data: list[DATACLASSES.DATA_CELL] = None, vertical_header_data: list[DATACLASSES.DATA_HEADERS]=None) -> None:
+        if row_data is None:
+            self.data.insert(row, [DATACLASSES.DATA_CELL(value='') for i in range(len(self.data[0]))])
+            tmp_id = f'_{len(self.data)}'
+            self.data[row][0].value = tmp_id
+            self.data_link[tmp_id] = []
+        else:
+            self.data.insert(row, row_data)
+        
+        if vertical_header_data is None:
+            self.vertical_header_parameter.insert(row, DATACLASSES.DATA_HEADERS(row=row, column=-1, size=30))
+        else:
+            self.vertical_header_parameter.insert(row, vertical_header_data)
+        
         for i, header_data in enumerate(self.vertical_header_parameter):
             header_data.row = i
 
-    def delete_row(self, row: int) -> None:
-        del self.data[row]
-        del self.vertical_header_parameter[row]
+    def delete_row(self, rows: Sequence[int]) -> tuple[list[DATACLASSES.DATA_CELL], list[DATACLASSES.DATA_HEADERS]]:
+        self._list_delete_row += [self.data[row][0].value for row in rows]
 
+        delete_row = [row for i, row in enumerate(self.data) if i in rows]
+        delete_vertical_header = [row for i, row in enumerate(self.vertical_header_parameter) if i in rows]
+
+        self.data[:] = [row for i, row in enumerate(self.data) if i not in rows]
+        self.vertical_header_parameter[:] = [row for i, row in enumerate(self.vertical_header_parameter) if i not in rows]
+
+        return delete_row, delete_vertical_header
+
+    def _delete_row_sql(self) -> None:
+        str_list_delete_row = ', '.join([str(i) for i in self._list_delete_row])
+        add_query = f' WHERE id IN ({str_list_delete_row})'
+        self.database.delete(table_name=self.general_config.name, add_query=add_query)
+        self._list_delete_row.clear()
 
 class InventorSpecificationDataItem(SpecificationDataItem):
     def __init__(self, database: DataBase, table_name: str):

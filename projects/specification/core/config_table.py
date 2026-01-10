@@ -53,7 +53,7 @@ class TableConfig:
         unique = []
         for col in self.columns:
             if col.is_foreign_id and col.parent_table_name is not None:
-                col_foreign_key = ColumnConfig('', f'FOREIGN KEY ({col.field}) REFERENCES {col.parent_table_name} ON UPDATE CASCADE ON DELETE CASCADE', is_foreign_key=True, is_view=False)
+                col_foreign_key = ColumnConfig('', f'FOREIGN KEY ({col.field}) REFERENCES {col.parent_table_name} ON DELETE CASCADE', is_foreign_key=True, is_view=False)
                 self.columns_property.append(col_foreign_key)
             if col.is_unique:
                 unique.append(col.field)
@@ -146,7 +146,7 @@ GENERAL_ITEM_CONFIG = TableConfig(
         ColumnConfig('quantity', 'REAL', column_name='Общ. кол-во, шт.', column_name_inventor='КОЛ.', is_value=True),
         ColumnConfig('unit', 'TEXT', column_name='Ед. изм.', column_name_inventor='Единичная величина', is_value=True),
         ColumnConfig('material', 'TEXT', column_name='Материал', column_name_inventor='Материал', internal_name='Material', is_key=True),
-        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name),
+        ColumnConfig('sid', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name),
     ]
 )
 
@@ -209,7 +209,7 @@ PARAMETER_HEADER_CONFIG = TableConfig(
         ColumnConfig('size', 'INTEGER'),
         ColumnConfig('is_view', 'BOOLEAN'),
         ColumnConfig('parameters', 'TEXT'),
-        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
+        ColumnConfig('sid', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
     ]
 )
 
@@ -218,7 +218,7 @@ PARAMETER_TABLE_CONFIG = TableConfig(
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('parameters', 'TEXT'),
-        ColumnConfig('parent_id', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
+        ColumnConfig('sid', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
     ]
 )
 
@@ -231,6 +231,7 @@ LINK_ITEM_CONFIG = TableConfig(
         ColumnConfig('sid', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
     ]
 )
+
 
 if __name__ == '__main__':
     for i in INVENTOR_ITEM_CONFIG.columns:

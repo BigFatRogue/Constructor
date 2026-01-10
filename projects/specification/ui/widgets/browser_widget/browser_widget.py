@@ -238,7 +238,7 @@ class BrowserWidget(QtWidgets.QWidget):
         :param filepath: полный путь к файлу проекта (файл формата <MYFORMAT>)
         :type filepath: str
         """
-        if filepath not in self.get_filepath_projects():
+        if filepath not in self.get_filepath_projects() and os.path.exists(filepath):
             project_item = self.create_project()
             project_item.set_filepath(filepath)
             self.create_main_item_project(project_item)

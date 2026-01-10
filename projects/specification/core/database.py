@@ -15,6 +15,7 @@ class DataBase:
         try:
             self.conn = sqlite3.connect(self.filepath)
             self.cur = self.conn.cursor()
+            self.cur.execute("PRAGMA foreign_keys = ON;")
         except Exception as error:
             print('Ошибка подключения к БД')
             print(error)
@@ -52,22 +53,8 @@ class DataBase:
 
     def execute(self, query, *args, **kwargs) -> sqlite3.Cursor | None:
         self.connect()
+        # print(f'{query=}', f'args=')
         return self.conn.execute(query, *args, **kwargs)
-        # try:
-        #     return self.conn.execute(query, *args, **kwargs)
-        # except Exception as erorr:
-        #     print(erorr)
-        #     print('Ошибка выполнения запроса')
-        #     print(query, *args, **kwargs, sep='\n')
-
-    def get_last_id(self) -> int:
-        """
-        Последний добавленый id в БД. Должен вызывается сразу же после команды по вставки новой строки  
-        
-        :return: id
-        :rtype: int
-        """
-        return self.execute('SELECT last_insert_rowid();').fetchall()[0][0]
 
     def _list_fields_to_str(self, fields: list[str] | tuple[str, ...]) -> str:
         if not isinstance(fields, tuple):
@@ -81,13 +68,13 @@ class DataBase:
     def create(self, table_name: str, fields: list[str] | tuple[str, ...]) -> None:
         self.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({self._list_fields_to_str(fields)})")
 
-    def insert(self, table_name: str, fields: list[str] | tuple[str, ...], values: list[str | int | float | bool], add_qurey: str = '') -> None:
+    def insert(self, table_name: str, fields: list[str] | tuple[str, ...], values: list[str | int | float | bool], add_qurey: str = '') -> sqlite3.Cursor:
         count_values = ', '.join(['?'] * len(fields))
-        query = f"INSERT INTO {table_name} ({self._list_fields_to_str(fields)}) VALUES({count_values})" + add_qurey
-        self.execute(query, values)
+        query = f"INSERT INTO {table_name} ({self._list_fields_to_str(fields)}) VALUES({count_values})" + add_qurey + ' RETURNING id'
+        return self.execute(query, values)
 
-    def update(self, table_name: str, fields: list[str] | tuple[str, ...], value: list[int | float | str | bool], id_row: int = None, add_query: str = '') -> None:
-        id_where = f' WHERE id={id_row}' if id_row is not None else ''
+    def update(self, table_name: str, fields: list[str] | tuple[str, ...], value: list[int | float | str | bool], row_id: int = None, add_query: str = '') -> None:
+        id_where = f' WHERE id={row_id}' if row_id is not None else ''
         
         str_values = ', '.join([f'{f} = ?' for f in fields])
         self.execute(f'UPDATE {table_name} SET {str_values}' + id_where + add_query, value)
@@ -95,9 +82,8 @@ class DataBase:
     def select(self, table_table: str, fields: list[str] | tuple[str, ...], add_qurey='') -> sqlite3.Cursor:
         return self.execute(f'SELECT {self._list_fields_to_str(fields)} FROM {table_table}' + add_qurey)
     
-    def delete(self, table_name: str, id_row: int = None, add_query: str = '') -> None:
-        self.execute("PRAGMA foreign_keys = ON;")
-        id_where = f' WHERE id={id_row}' if id_row is not None else ''
+    def delete(self, table_name: str, row_id: int = None, add_query: str = '') -> None:
+        id_where = f' WHERE id={row_id}' if row_id is not None else ''
         self.execute(f'DELETE FROM {table_name}' + id_where + add_query)
 
 if __name__ == '__main__':

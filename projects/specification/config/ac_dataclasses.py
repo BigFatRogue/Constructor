@@ -139,12 +139,6 @@ class ParameterHeaders:
             parameters[key] = value
         return {'row': self.row, 'column': self.column, 'size': self.size, 'is_view': self.is_view, 'parameters': parameters}
 
-    def __str__(self):
-        return f'{self.row=}, {self.column=}, {self.size=}, {self.is_view=}, {self.parameters=}'
-    
-    def __repr__(self):
-        return self.__str__()
-
 
 @dataclass
 class AppContextDataClasses:

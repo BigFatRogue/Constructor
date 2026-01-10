@@ -56,7 +56,7 @@ class __Clipboard:
         self.html_table = fr'<table cellspacing="0" cellpadding="3" style="border-collapse: collapse;">{"".join(lines_html)}</table>'
         self.text = "\n".join(lines_text)
 
-    def paste(self, target_model: ModelDataTable, row: int, column: int) -> list[list[DATACLASSES.DATA_CELL]]:
+    def paste(self, target_model: ModelDataTable, row: int, column: int) -> None:
         if self.text == QtWidgets.QApplication.clipboard().text():
             target_model.paste_value_from_model(source_model=self.current_model, source_rows=self.rows, source_columns=self.columns, target_address=(row, column))
         else:

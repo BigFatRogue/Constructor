@@ -52,18 +52,6 @@ class VerticallWithOverlayWidgetsChoose(VerticallWithOverlayWidgets):
 
         self._is_edited = False
 
-    def insert_row_up(self) -> None:
-        if self._active_select_row == 0:
-            self.table_model.insert_row(0)
-        else:
-            self.table_model.insert_row(self._active_select_row - 1)
-
-    def insert_row_down(self) -> None:
-        self.table_model.insert_row(self._active_select_row + 1)
-
-    def delete_row(self) -> None:
-        self.table_model.delete_row(self._active_select_row)
-
     def set_widget(self, align: int=2):
         self._align_widget = align
 

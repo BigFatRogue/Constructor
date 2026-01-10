@@ -58,7 +58,18 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         self.table_model.insert_row(self._active_select_row + 1)
 
     def delete_row(self) -> None:
-        self.table_model.delete_row(self._active_select_row)
+        selection = self.selectionModel().selection()
+        set_row: set[int] = set()
+        if not selection.isEmpty():
+            for rng in self.selectionModel().selection():
+                rng: QtCore.QItemSelectionRange
+                for row in range(rng.top(), rng.bottom() + 1):
+                    set_row.add(row)
+        
+        if self._active_select_row not in set_row:
+            set_row = {self._active_select_row}
+
+        self.table_model.delete_row(rows=set_row)
 
     def set_table_model(self, table_model):
         super().set_table_model(table_model)

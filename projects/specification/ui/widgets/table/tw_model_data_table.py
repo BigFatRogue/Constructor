@@ -1,6 +1,6 @@
 from dataclasses import fields
 from copy import deepcopy
-from typing import Self
+from typing import Self, Sequence
 
 from PyQt5 import QtCore, QtGui
 
@@ -103,7 +103,8 @@ class ModelDataTable(QtCore.QAbstractTableModel):
                 self._styles[(y, x, QtCore.Qt.ItemDataRole.TextAlignmentRole)] = cell.align_h | cell.align_v
 
         role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
-        self.dataChanged.emit(self.index(0, 0), self.index(len(self._data), len(self._data[0])), role)
+        if self._data:
+            self.dataChanged.emit(self.index(0, 0), self.index(len(self._data), len(self._data[0])), role)
 
     def get_view_font_size(self, value: int) -> int:
         """
@@ -446,16 +447,18 @@ class ModelDataTable(QtCore.QAbstractTableModel):
                 
                 data.value = row
     
-    def insert_row(self, row: int) -> None:
-        self.item_data.insert_row(row)
+    def insert_row(self, row: int, row_data: list[DATACLASSES.DATA_CELL] = None, vertical_header_data: list[DATACLASSES.DATA_HEADERS]=None) -> None:
+        self.item_data.insert_row(row, row_data, vertical_header_data)
         self._set_styles()
         self._update_number_row()
         self.layoutChanged.emit()
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])
         self.signal_change.emit()
+        self.undo_redo.add_insert_row(row)
     
-    def delete_row(self, row: int) -> None:
-        self.item_data.delete_row(row) 
+    def delete_row(self, rows: Sequence[int]) -> None:
+        delete_rows, delete_verical_headres = self.item_data.delete_row(rows) 
+        self.undo_redo.add_delete_row(number_rows=rows, rows=delete_rows, vertival_headers=delete_verical_headres)
         self.layoutChanged.emit()
         self.signal_change.emit()
 

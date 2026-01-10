@@ -1,6 +1,6 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 from enum import Enum ,auto
-from typing import Any, Protocol
+from typing import Any, Protocol, Sequence
 from copy import deepcopy
 
 from projects.specification.config.app_context import DATACLASSES
@@ -9,6 +9,12 @@ from projects.specification.config.app_context import DATACLASSES
 class ModelDataTable(Protocol):
     def change_cell(self, row: int, column: int, role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param=None) -> None:
          ...
+    
+    def insert_row(self, row: int, row_data: list[DATACLASSES.DATA_CELL] = None, vertical_header_data: list[DATACLASSES.DATA_HEADERS]=None) -> None:
+        ...
+    
+    def delete_row(self, rows: Sequence[int]) -> None:
+        ...
 
 
 class UndoRedoItem:
@@ -43,6 +49,37 @@ class UndoRedoItemCell(UndoRedoItem):
     def redo(self) -> None:
         self.table_model.change_cell(self.row, self.column, self.role, self.new_value, self.font_param)
         self.table_model.layoutChanged.emit()
+
+
+class UndoRedoItemRowInsert(UndoRedoItem):
+    def __init__(self, table_model: ModelDataTable, row: int):
+        super().__init__(None, None)
+
+        self.table_model = table_model
+        self.row = row
+    
+    def undo(self):
+        self.table_model.delete_row(rows=(self.row, ))
+
+    def redo(self):
+        self.table_model.insert_row(row=self.row)
+
+
+class UndoRedoItemRowDelete(UndoRedoItem):
+    def __init__(self, table_model: ModelDataTable, number_rows: Sequence[int], rows: list[list[DATACLASSES.DATA_CELL]], verical_headers: list[DATACLASSES.DATA_HEADERS]):
+        super().__init__(None, None)
+
+        self.table_model = table_model
+        self.number_rows = number_rows
+        self.vartical_headers = verical_headers
+        self.rows = rows
+
+    def undo(self):
+        for number_row, row_data, header_data in zip(self.number_rows, self.rows, self.vartical_headers):
+            self.table_model.insert_row(row=number_row, row_data=row_data, vertical_header_data=header_data)
+    
+    def redo(self):
+        self.table_model.delete_row(self.number_rows)
         
 
 class UndoRedoTable:
@@ -64,6 +101,14 @@ class UndoRedoTable:
             self.list_undo.append([i for i in self.list_change])
             self.list_change.clear()
 
+    def _check_add_item(self) -> bool:
+        if self.has_add_change:
+            if self.list_redo:
+                # если добавляется новое значение, то лист возврата изменений вперёд очищается
+                self.list_redo.clear()
+            return True
+        return False
+
     def add_cell(self, row: int, column: int, old_value: Any, new_value: Any, role: QtCore.Qt.ItemDataRole, font_param: int = None) -> None:
         """
         Добавления в лист undo информации об изменение ячейки
@@ -81,19 +126,36 @@ class UndoRedoTable:
         :param font_param: какой параметр текста изменяется
         :type font_param: int
         """
-
-        if self.has_add_change:
-            if self.list_redo:
-                # если добавляется новое значение, то лист возврата изменений вперёд очищается
-                self.list_redo.clear()
-            
-            item = UndoRedoItemCell(table_model=self.table_model, row=row, column=column, old_value=old_value, new_value=new_value, role=role, font_param=font_param)
-            if item.new_value != item.old_value:
-                if self.is_start_transaction:
-                    self.list_change.append(item)
-                else:
-                    self.list_undo.append([item])
+        if not self._check_add_item():
+            return
+                    
+        item = UndoRedoItemCell(table_model=self.table_model, row=row, column=column, old_value=old_value, new_value=new_value, role=role, font_param=font_param)
+        if item.new_value != item.old_value:
+            if self.is_start_transaction:
+                self.list_change.append(item)
+            else:
+                self.list_undo.append([item])
     
+    def add_insert_row(self, row: int) -> None:
+        if not self._check_add_item():
+            return
+        
+        item = UndoRedoItemRowInsert(table_model=self.table_model, row=row)
+        if self.is_start_transaction:
+            self.list_change.append(item)
+        else:
+            self.list_undo.append([item])
+
+    def add_delete_row(self, number_rows: Sequence[int], rows: list[DATACLASSES.DATA_CELL], vertival_headers: list[DATACLASSES.DATA_HEADERS]) -> None:
+        if not self._check_add_item():
+            return
+        
+        item = UndoRedoItemRowDelete(table_model=self.table_model, number_rows=number_rows, rows=rows, verical_headers=vertival_headers)
+        if self.is_start_transaction:
+            self.list_change.append(item)
+        else:
+            self.list_undo.append([item])
+
     def undo(self) -> None:
         self.has_add_change = False
         if self.list_undo:

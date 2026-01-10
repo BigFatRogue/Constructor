@@ -77,6 +77,7 @@ class PageTable(PageContent):
     def _set_property_header(self, header: HorizontalWithOverlayWidgets | VerticallWithOverlayWidgets) -> None:
         # header.sectionResized.connect(self.table_view.resize_rect)      
         header.sectionResized.connect(self.change_table)  
+        header.sectionResized.connect(self.table_view.resize_rect)
         header.signal_change.connect(self.change_table)
 
     def _set_current_header(self, orientation: QtCore.Qt.Orientation, header: HorizontalWithOverlayWidgets | HorizontalWithOverlayWidgetsSorded) -> None:
