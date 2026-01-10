@@ -169,6 +169,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self.undo_redo.add_cell(row=row, column=index.column(), old_value=cell.value, new_value=value, role=role)
         cell.value = value
         self.dataChanged.emit(index, index, [role])
+        self.signal_change.emit()
         return True
 
     def set_range_style(self, ranges: list[QtCore.QItemSelectionRange], role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param: ENUMS.PARAMETR_FONT=None) -> None:

@@ -717,6 +717,9 @@ class SpecificationDataItem(GeneralDataItem):
             self.data_link[tmp_id] = []
         else:
             self.data.insert(row, row_data)
+            row_id = row_data[0].value
+            if row_id in self._list_delete_row:
+                self._list_delete_row.remove(row_id)
         
         if vertical_header_data is None:
             self.vertical_header_parameter.insert(row, DATACLASSES.DATA_HEADERS(row=row, column=-1, size=30))
@@ -738,10 +741,12 @@ class SpecificationDataItem(GeneralDataItem):
         return delete_row, delete_vertical_header
 
     def _delete_row_sql(self) -> None:
-        str_list_delete_row = ', '.join([str(i) for i in self._list_delete_row])
-        add_query = f' WHERE id IN ({str_list_delete_row})'
-        self.database.delete(table_name=self.general_config.name, add_query=add_query)
-        self._list_delete_row.clear()
+        if self._list_delete_row:
+            str_list_delete_row = ', '.join([str(i) for i in self._list_delete_row])
+            add_query = f' WHERE id IN ({str_list_delete_row})'
+            self.database.delete(table_name=self.general_config.name, add_query=add_query)
+            self._list_delete_row.clear()
+
 
 class InventorSpecificationDataItem(SpecificationDataItem):
     def __init__(self, database: DataBase, table_name: str):
