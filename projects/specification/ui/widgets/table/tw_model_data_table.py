@@ -154,7 +154,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         column = self._index_column_view[index.column()]
 
         if role in (QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole):
-            return self._data[row][column].value
+            return str(self._data[row][column].value)
         
         elif (row, column, role) in self._styles:
             return self._styles[(row, column, role)]

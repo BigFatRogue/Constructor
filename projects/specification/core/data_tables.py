@@ -274,7 +274,9 @@ class PropertyProjectData(GeneralDataItem):
             ORDER BY number_row
             """
 
-            data = [[DATACLASSES.DATA_CELL(value=str(cell) if cell is not None else cell) for cell in row] for row in self.database.execute(query).fetchall()]
+            data: list[list[DATACLASSES.DATA_CELL]] = []
+            
+            data = [[DATACLASSES.DATA_CELL(value=cell) for cell in row] for row in self.database.execute(query).fetchall()]
             table['data'] = data
 
             cells_style = self._load_styles(table['id'])
@@ -337,17 +339,11 @@ class PropertyProjectData(GeneralDataItem):
         fields_general = [f'{GENERAL_ITEM_CONFIG.name}.{col.field}' for col in GENERAL_ITEM_CONFIG.columns if col]
         fields_inventor = [f'{INVENTOR_ITEM_CONFIG.name}.{col.field}' for col in INVENTOR_ITEM_CONFIG.columns]
         str_fields = ', '.join(fields_general + fields_inventor)
-        print(f"""
-        SELECT {LINK_ITEM_CONFIG.name}.parent_item, {str_fields}
-        FROM {LINK_ITEM_CONFIG.name}
-        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {LINK_ITEM_CONFIG.name}.invetor_item
-        LEFT JOIN {INVENTOR_ITEM_CONFIG.name} ON {INVENTOR_ITEM_CONFIG.name}.parent_id  = {GENERAL_ITEM_CONFIG.name}.id
-        WHERE {LINK_ITEM_CONFIG.name}.sid = {sid}
-        """)
+
         res = self.database.execute(f"""
         SELECT {LINK_ITEM_CONFIG.name}.parent_item, {str_fields}
         FROM {LINK_ITEM_CONFIG.name}
-        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {LINK_ITEM_CONFIG.name}.invetor_item
+        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {LINK_ITEM_CONFIG.name}.inventor_item
         LEFT JOIN {INVENTOR_ITEM_CONFIG.name} ON {INVENTOR_ITEM_CONFIG.name}.parent_id  = {GENERAL_ITEM_CONFIG.name}.id
         WHERE {LINK_ITEM_CONFIG.name}.sid = {sid}
         """)
