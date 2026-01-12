@@ -14,6 +14,7 @@ from projects.specification.ui.widgets.table.tw_clipboard import CLIPBOARD, Type
 
 from projects.tools.functions.create_action_menu import create_action
 
+
 class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)

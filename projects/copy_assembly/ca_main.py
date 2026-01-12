@@ -475,14 +475,17 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         counter_row = RowCounter()
 
         self.grid = QtWidgets.QGridLayout(self)
+        self.grid.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setSpacing(5)
         # ------------------------------------------------------------------------------------------------#
         self.label_search_to = QtWidgets.QLabel(self)
         self.label_search_to.setText('Искать в')
+        self.label_search_to.setFixedWidth(self.label_search_to.sizeHint().width())   
         self.grid.addWidget(self.label_search_to, counter_row.value, 0, 1, 1)
 
         self.lineedit_search_to = QtWidgets.QLineEdit(self)
+        self.lineedit_search_to.setMaximumWidth(350)
         self.grid.addWidget(self.lineedit_search_to, counter_row.value, 1, 1, 1)
 
         self.check_box_register = QtWidgets.QCheckBox(self)
@@ -496,12 +499,14 @@ class FrameTreeFromDict(QtWidgets.QFrame):
         self.grid.addWidget(self.label_replace_to, counter_row.next(), 0, 1, 1)
 
         self.lineedit_replace_to = QtWidgets.QLineEdit(self)
+        self.lineedit_replace_to.setMaximumWidth(350)
         self.lineedit_replace_to.returnPressed.connect(self.__click_btn_replace)
         self.grid.addWidget(self.lineedit_replace_to, counter_row.value, 1, 1, 1)
 
         self.btn_replace = QtWidgets.QPushButton(self)
         self.btn_replace.setObjectName('btn_replace')
         self.btn_replace.setText('Заменить')
+        self.btn_replace.setFixedWidth(int(self.check_box_register.sizeHint().width()))  
         self.btn_replace.clicked.connect(self.__click_btn_replace)
         self.grid.addWidget(self.btn_replace, counter_row.value, 2, 1, 1)
 
@@ -900,8 +905,10 @@ class WindowCopyAssembly(QtWidgets.QMainWindow):
 
         self.btn_choose_path_assembly = QtWidgets.QPushButton(self)
         self.btn_choose_path_assembly.setObjectName('btn_choose_path_assembly')
-        self.btn_choose_path_assembly.setMinimumSize(30, 20)
-        self.btn_choose_path_assembly.setMaximumSize(30, 20)
+        self.btn_choose_path_assembly.setText('Открыть сборку')
+        self.btn_choose_path_assembly.setFixedWidth(int(self.btn_choose_path_assembly.sizeHint().width() * 1.3))
+        # self.btn_choose_path_assembly.setMinimumSize(30, 20)
+        # self.btn_choose_path_assembly.setMaximumSize(30, 20)
         self.btn_choose_path_assembly.clicked.connect(self.click_choose_assembly)
         self.btn_choose_path_assembly.setToolTip('Выбрать сборку в проводнике')
         icon = QtGui.QIcon()
