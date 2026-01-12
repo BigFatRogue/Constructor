@@ -13,7 +13,7 @@ class ModelDataTable(Protocol):
     def insert_row(self, row: int, row_data: list[DATACLASSES.DATA_CELL] = None, vertical_header_data: list[DATACLASSES.DATA_HEADERS]=None) -> None:
         ...
     
-    def delete_row(self, rows: Sequence[int]) -> None:
+    def delete_row(self, rows: Sequence[int], is_undo:bool = False) -> None:
         ...
 
 
@@ -59,7 +59,7 @@ class UndoRedoItemRowInsert(UndoRedoItem):
         self.row = row
     
     def undo(self):
-        self.table_model.delete_row(rows=(self.row, ))
+        self.table_model.delete_rows(rows=(self.row, ), is_undo=True)
 
     def redo(self):
         self.table_model.insert_row(row=self.row)
@@ -79,7 +79,8 @@ class UndoRedoItemRowDelete(UndoRedoItem):
             self.table_model.insert_row(row=number_row, row_data=row_data, vertical_header_data=header_data)
     
     def redo(self):
-        self.table_model.delete_row(self.number_rows)
+        self.table_model.delete_rows(self.number_rows)
+
 
 # TODO реазиловать
 class UndoRedoItemBrowerInsert(UndoRedoItem): ...

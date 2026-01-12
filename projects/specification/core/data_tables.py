@@ -732,8 +732,13 @@ class SpecificationDataItem(GeneralDataItem):
         for i, header_data in enumerate(self.vertical_header_parameter):
             header_data.row = i
 
-    def delete_row(self, rows: Sequence[int]) -> tuple[list[DATACLASSES.DATA_CELL], list[DATACLASSES.DATA_HEADERS]]:
-        self._list_delete_row += [self.data[row][0].value for row in rows]
+    def delete_rows(self, rows: Sequence[int], is_undo: bool) -> tuple[list[DATACLASSES.DATA_CELL], list[DATACLASSES.DATA_HEADERS]]:
+        if not is_undo:
+            for row in rows:
+                row_id = self.data[row][0].value
+                if isinstance(row_id, str) and '_' in row_id:
+                    continue
+                self._list_delete_row += [self.data[row][0].value for row in rows]
 
         delete_row = [row for i, row in enumerate(self.data) if i in rows]
         delete_vertical_header = [row for i, row in enumerate(self.vertical_header_parameter) if i in rows]

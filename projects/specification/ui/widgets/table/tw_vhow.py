@@ -69,7 +69,7 @@ class VerticallWithOverlayWidgets(HeaderWithOverlayWidgets):
         if self._active_select_row not in set_row:
             set_row = {self._active_select_row}
 
-        self.table_model.delete_row(rows=set_row)
+        self.table_model.delete_rows(rows=set_row)
 
     def set_table_model(self, table_model):
         super().set_table_model(table_model)

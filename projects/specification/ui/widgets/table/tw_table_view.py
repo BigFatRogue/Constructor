@@ -208,15 +208,15 @@ class HandleSelectionTable(QtWidgets.QFrame):
     def _set_group_row_or_columns_value(self, line_1: list[int], line_2: list[int]) -> dict[int, dict[(tuple[int, type], float | tuple[str, int])]]:
         model: ModelDataTable = self.table_view.model()
         groups: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
-        is_swap = line_1 != self.rows
+        is_swap = line_1 == self.rows
         
         for index_1 in line_1:
             group: dict[int, list[int | str | float]] = {}
             current_group: int = 0
             for i, index_2 in enumerate(line_2):
-                index_1, index_2 = (index_1, index_2) if is_swap else (index_2, index_1)
+                row, column = (index_1, index_2) if is_swap else (index_2, index_1)
                 
-                value = model._data[index_1][index_2].value
+                value = model._data[row][column].value
                 
                 type_value, value = self._preprocess_value(value)
                 type_value = str if type_value == tuple else type_value
@@ -515,7 +515,8 @@ class TableView(QtWidgets.QTableView):
         self.context_menu.addSeparator()
         # ----------------------- Работа строк ----------------------------
         create_action(menu=self.context_menu ,
-            title='Удалить строку')
+            title='Удалить строку',
+            triggerd=self._delete_rows)
         
         create_action(menu=self.context_menu ,
             title='Вставить строку выше',
@@ -655,6 +656,22 @@ class TableView(QtWidgets.QTableView):
     def _insert_row_down(self) -> None:
         model: ModelDataTable = self.model()
         model.insert_row(row=self.currentIndex().row() + 1)
+
+    def _delete_rows(self) -> None:
+        model: ModelDataTable = self.model()
+
+        selection = self.selectionModel().selection()
+        set_row: set[int] = set()
+        if not selection.isEmpty():
+            for rng in self.selectionModel().selection():
+                rng: QtCore.QItemSelectionRange
+                for row in range(rng.top(), rng.bottom() + 1):
+                    set_row.add(row)
+        
+        if self._active_select_row.row() not in set_row:
+            set_row = {self._active_select_row.row()}
+
+        model.delete_rows(rows=set_row)
 
     def undo(self) -> None:
         model: ModelDataTable = self.model()

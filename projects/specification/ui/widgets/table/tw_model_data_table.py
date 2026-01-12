@@ -464,8 +464,8 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self.signal_change.emit()
         self.undo_redo.add_insert_row(row)
     
-    def delete_row(self, rows: Sequence[int]) -> None:
-        delete_rows, delete_verical_headres = self.item_data.delete_row(rows) 
+    def delete_rows(self, rows: Sequence[int], is_undo:bool = False) -> None:
+        delete_rows, delete_verical_headres = self.item_data.delete_rows(rows, is_undo) 
         self.undo_redo.add_delete_row(number_rows=rows, rows=delete_rows, vertival_headers=delete_verical_headres)
         self.layoutChanged.emit()
         self.signal_change.emit()
