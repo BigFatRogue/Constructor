@@ -332,7 +332,7 @@ class HighlightDelegate(QtWidgets.QStyledItemDelegate):
                     icon_width = option.decorationSize.width() * 1.5 if index.data(QtCore.Qt.DecorationRole) else 0
 
                     x_offset += icon_width + self.parent.style().pixelMetric(QtWidgets.QStyle.PM_FocusFrameHMargin)
-                    rect = QtCore.QRect(x_offset, option.rect.y(), width,  option.rect.height())
+                    rect = QtCore.QRect(int(x_offset), int(option.rect.y()), int(width),  int(option.rect.height()))
                     painter.fillRect(rect, QtGui.QBrush(QtGui.QColor(255, 255, 0)))
         
         super().paint(painter, option, index)

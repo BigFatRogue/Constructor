@@ -107,7 +107,7 @@ def get_from_excel(filepath: str, sheet_name=None, signal=None) -> dict:
         for n, t in zip(numbers, tags):
             blocks_number[t[0].value] = n[0].value
 
-    sheet = doc['Спецификация с TAG-номерами']
+    sheet = doc.worksheets[0]
 
     tags = sheet[f'G8:G{sheet.max_row}']
     arts = sheet[f'J8:J{sheet.max_row}']
