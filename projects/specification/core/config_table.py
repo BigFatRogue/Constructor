@@ -227,7 +227,7 @@ LINK_ITEM_CONFIG = TableConfig(
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True),
         ColumnConfig('parent_item', 'INTEGER', parent_table_name=GENERAL_ITEM_CONFIG.name, is_foreign_id=True),
-        ColumnConfig('inventor_item', 'INTEGER', parent_table_name=INVENTOR_ITEM_CONFIG.name, is_foreign_id=True),
+        ColumnConfig('inventor_item', 'INTEGER', parent_table_name=GENERAL_ITEM_CONFIG.name, is_foreign_id=True),
         ColumnConfig('sid', 'INTEGER', is_view=False, is_foreign_id=True, parent_table_name=SPECIFICATION_CONFIG.name)
     ]
 )

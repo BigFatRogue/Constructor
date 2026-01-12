@@ -337,12 +337,18 @@ class PropertyProjectData(GeneralDataItem):
         fields_general = [f'{GENERAL_ITEM_CONFIG.name}.{col.field}' for col in GENERAL_ITEM_CONFIG.columns if col]
         fields_inventor = [f'{INVENTOR_ITEM_CONFIG.name}.{col.field}' for col in INVENTOR_ITEM_CONFIG.columns]
         str_fields = ', '.join(fields_general + fields_inventor)
-
+        print(f"""
+        SELECT {LINK_ITEM_CONFIG.name}.parent_item, {str_fields}
+        FROM {LINK_ITEM_CONFIG.name}
+        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {LINK_ITEM_CONFIG.name}.invetor_item
+        LEFT JOIN {INVENTOR_ITEM_CONFIG.name} ON {INVENTOR_ITEM_CONFIG.name}.parent_id  = {GENERAL_ITEM_CONFIG.name}.id
+        WHERE {LINK_ITEM_CONFIG.name}.sid = {sid}
+        """)
         res = self.database.execute(f"""
         SELECT {LINK_ITEM_CONFIG.name}.parent_item, {str_fields}
         FROM {LINK_ITEM_CONFIG.name}
-        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = inventor_item
-        LEFT JOIN {INVENTOR_ITEM_CONFIG.name} ON {INVENTOR_ITEM_CONFIG.name}.parent_id  = inventor_item
+        LEFT JOIN {GENERAL_ITEM_CONFIG.name} ON {GENERAL_ITEM_CONFIG.name}.id = {LINK_ITEM_CONFIG.name}.invetor_item
+        LEFT JOIN {INVENTOR_ITEM_CONFIG.name} ON {INVENTOR_ITEM_CONFIG.name}.parent_id  = {GENERAL_ITEM_CONFIG.name}.id
         WHERE {LINK_ITEM_CONFIG.name}.sid = {sid}
         """)
 
@@ -447,6 +453,7 @@ class SpecificationDataItem(GeneralDataItem):
         self._insert_or_update_sql()
         self._delete_row_sql()
 
+        self.database.commit()
         if self._is_update_link:
             self._insert_and_update_data_link_sql()
             self._is_update_link = False
@@ -606,7 +613,7 @@ class SpecificationDataItem(GeneralDataItem):
                 # Затем записать новые связи связанные с id
                 for row in rows:
                     child_id = row[0].value
-                    self.database.insert(self.link_item_config.name, fields, [parent_id, child_id, self._sid])
+                    self.database.insert(self.link_item_config.name, fields, [int(parent_id), int(child_id), self._sid])
 
     def _insert_sytle_sql(self, value: str) -> None:
         """

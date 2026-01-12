@@ -173,6 +173,12 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self.signal_change.emit()
         return True
 
+    def get_data(self, row: int, column: int) -> DATACLASSES.DATA_CELL:
+        """
+        Получение значений data по видимым в QtableView адресам
+        """
+        return self._data[row][self._index_column_view[column]]
+
     def set_range_style(self, ranges: list[QtCore.QItemSelectionRange], role: QtCore.Qt.ItemDataRole, value: int | str | QtGui.QColor, font_param: ENUMS.PARAMETR_FONT=None) -> None:
         """
         Установка стиля ячеек в диапазоне

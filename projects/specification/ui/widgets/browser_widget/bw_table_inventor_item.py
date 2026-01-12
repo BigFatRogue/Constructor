@@ -45,7 +45,8 @@ class TableInventorItem(TableBrowserItem):
             triggerd=self.inventor_to_prod)
 
     def intentor_to_by(self) -> None:
-        self.save()
+        if not self.is_save:
+            self.save()
         SIGNAL_BUS.data_by_from_invetor.emit((self, self.item_data.data_to_by()))
 
     def inventor_to_prod(self) -> None:

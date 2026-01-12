@@ -1,5 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
+from typing import Type
 
 if __name__ == '__main__':
     import sys
@@ -8,7 +9,7 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
-from projects.specification.config.app_context import DECORATE
+from projects.specification.config.app_context import DECORATE, DATACLASSES
 from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_clipboard import CLIPBOARD, TypeItemClipboard 
 
@@ -133,9 +134,13 @@ class HandleSelectionTable(QtWidgets.QFrame):
         super().__init__(parent)
         self.table_view = parent
         self._is_press_lbm: bool = False
+
         self._curent_select_index: QtCore.QModelIndex = None
         self._current_start_index: QtCore.QModelIndex | None = None
         self._current_end_index: QtCore.QModelIndex | None = None
+        self._current_data: list[list[DATACLASSES.DATA_CELL]] = None
+        self._avg_value_rows: list[tuple[Type, float | str]] = []
+        self._avg_value_columns: list[tuple[Type, float | tuple[str | int]]] = []
 
         self.rows: list[int] = None
         self.columns: list[int] = None
@@ -154,8 +159,9 @@ class HandleSelectionTable(QtWidgets.QFrame):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self._is_press_lbm = True
             first_range = self.table_view.selectionModel().selection().takeFirst()
-            self._current_start_index = first_range.topLeft()
-            self._current_end_index = first_range.bottomRight()
+            self._current_start_index = self.table_view.model().index(first_range.top(), first_range.left())
+            self._current_end_index = self.table_view.model().index(first_range.bottom(), first_range.right())
+            self.calculate_avg_value()
         return super().mousePressEvent(event)
     
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
@@ -164,6 +170,7 @@ class HandleSelectionTable(QtWidgets.QFrame):
             self._curent_select_index = None
             self._current_start_index = None
             self._current_end_index = None
+            self._current_data = None
             self.rows = None
             self.columns = None
         return super().mouseReleaseEvent(event)
@@ -173,41 +180,85 @@ class HandleSelectionTable(QtWidgets.QFrame):
             viewport = self.table_view.viewport()
             pos = viewport.mapFromGlobal(event.globalPos())
             index = self.table_view.indexAt(pos)
-           
-            if self._curent_select_index is None:
-                self._curent_select_index = index
-                return
-
-            if index != self._curent_select_index:
-                self._curent_select_index = index
-                self._set_selection(index)
             
-            event.accept()
-            return
+            if index.isValid(): 
+                if self._curent_select_index is None:
+                    self._curent_select_index = index
+                    return
+
+                if index != self._curent_select_index:
+                    self._curent_select_index = index
+                    self._set_selection(index)
+            
+                event.accept()
+                return
         return super().mouseMoveEvent(event)
-
-    def _set_selection(self, index: QtCore.QModelIndex | None) -> None:
-        if index is None or not index.isValid(): 
-            return
+    
+    def calculate_avg_value(self) -> None:
+        model: ModelDataTable = self.table_view.model()
+        self.rows, self.columns = model.get_visible_coords(top=self._current_start_index.row(), left=self._current_start_index.column(), 
+                                                 bottom=self._current_end_index.row(), rigth=self._current_end_index.column ())
+        self._current_data = [[model._data[row][column] for column in self.columns] for row in self.rows]
         
+        row_groups = self._set_group_row_or_columns_value(self.rows, self.columns)
+        columns_groups = self._set_group_row_or_columns_value(self.columns, self.rows)
+        print(f'{row_groups=}')
+        print(f'{columns_groups=}')
+
+    def _set_group_row_or_columns_value(self, line_1: list[int], line_2: list[int]) -> dict[int, dict[(tuple[int, type], float | tuple[str, int])]]:
+        model: ModelDataTable = self.table_view.model()
+        groups: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
+        is_swap = line_1 != self.rows
+        
+        for index_1 in line_1:
+            group: dict[int, list[int | str | float]] = {}
+            current_group: int = 0
+            for i, index_2 in enumerate(line_2):
+                index_1, index_2 = (index_1, index_2) if is_swap else (index_2, index_1)
+                
+                value = model._data[index_1][index_2].value
+                
+                type_value, value = self._preprocess_value(value)
+                type_value = str if type_value == tuple else type_value
+
+                if not group:
+                    group[(type_value, current_group)] = [value]
+                    continue
+
+                if (type_value, current_group) in group:
+                    if type_value in (float, int):
+                        group[(type_value, current_group)].append(value)
+                    elif type_value == str:
+                        last_value_group = group[(type_value, current_group)][-1]
+                        if value[0] == last_value_group[0]:
+                            group[(type_value, current_group)].append(value)
+                        else:
+                            current_group = i
+                            group[(type_value, current_group)] = [value]
+                else:
+                    current_group = i
+                    group[(type_value, current_group)] = [value]
+            
+            groups[index_1] = group
+        
+        return groups
+
+    def _set_selection(self, index: QtCore.QModelIndex) -> None:
         row_index, column_index = index.row(), index.column()
-        row_start, column_start = self._current_start_index.row(), self._current_start_index.column()
-        row_end, column_end = self._current_end_index.row(), self._current_end_index.column()
+        self._current_start_index = self.table_view.model().index(self._current_start_index.row(), self._current_start_index.column())
 
-        start_index = self.table_view.model().index(row_start, column_start)
-
-        if abs(row_index - row_end) > abs(column_index - column_end):
-            end_index = self.table_view.model().index(row_index, column_end)
-            selection = QtCore.QItemSelection(start_index, end_index)
+        if abs(row_index - self._current_end_index.row()) > abs(column_index - self._current_end_index.column()):
+            end_index = self.table_view.model().index(row_index, self._current_end_index.column())
+            selection = QtCore.QItemSelection(self._current_start_index, end_index)
             self.table_view.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
             # -1 так как нужно расчитать среднее для выделенного диапазона, а index относится уже к выделенной ячейки 
-            self.auto_fill_value(row_start, column_start, row_index - 1, column_index)
+            # self.auto_fill_value(self._current_start_index.row(), self._current_start_index.column(), row_index - 1, column_index)
         else:
-            end_index = self.table_view.model().index(row_end, column_index)
-            selection = QtCore.QItemSelection(start_index, end_index)
+            end_index = self.table_view.model().index(self._current_end_index.row(), column_index)
+            selection = QtCore.QItemSelection(self._current_start_index, end_index)
             self.table_view.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
             # -1 так как нужно расчитать среднее для выделенного диапазона, а index относится уже к выделенной ячейки 
-            self.auto_fill_value(row_start, column_start, row_index, column_index - 1)
+            # self.auto_fill_value(self._current_start_index.row(), self._current_start_index.column(), row_index, column_index - 1)
         
     def auto_fill_value(self, top: int, left: int, bottom: int, rigth: int):
         model: ModelDataTable = self.table_view.model()
@@ -260,7 +311,7 @@ class HandleSelectionTable(QtWidgets.QFrame):
                     avg_columns_group[number_row].append(avg_value)
 
         print(avg_columns_group)
-
+    
     def create_list_avg_for_rows_columns(self, line1: list[int], line2: list[int]) -> dict[int, dict[int, float | tuple[str, int]]]:
         
         model: ModelDataTable = self.table_view.model()
@@ -372,7 +423,6 @@ class HandleSelectionTable(QtWidgets.QFrame):
         avg = self.calculate_avg_float(digit_values)
         
         return (values[0][0], avg)
-
 
 
 class ContextMenu(QtWidgets.QMenu):
