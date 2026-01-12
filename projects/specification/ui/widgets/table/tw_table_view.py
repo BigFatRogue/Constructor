@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
+import os
 
 if __name__ == '__main__':
     import sys
@@ -9,8 +10,9 @@ if __name__ == '__main__':
 
 from projects.specification.config.app_context import DECORATE
 from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
-from projects.specification.ui.widgets.table.tw_clipboard import CLIPBOARD 
+from projects.specification.ui.widgets.table.tw_clipboard import CLIPBOARD, TypeItemClipboard 
 
+from projects.tools.functions.create_action_menu import create_action
 
 class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, parent=None):
@@ -58,7 +60,6 @@ class SelectionTable(QtWidgets.QFrame):
 
 
         self._init_animation_copy()
-        self._init_rect_rigth_bootom()
 
     def _init_animation_copy(self) -> None:
         self.dash_offset = 0
@@ -71,28 +72,18 @@ class SelectionTable(QtWidgets.QFrame):
         self.animation.valueChanged.connect(self.set_dash_offset)
         self.animation.start()
 
-    def _init_rect_rigth_bootom(self) -> None:
-        self.grid = QtWidgets.QGridLayout(self)
-        self.grid.setContentsMargins(0, 0, 0, 0)
-        self.grid.setSpacing(0)
-        self.grid.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignBottom)
-
-        btn = QtWidgets.QPushButton()
-        btn.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
-        btn.setFixedSize(20, 20)
-        self.grid.addWidget(btn, 0, 0, 1, 1)
-
-
     def set_indexes(self, start_index: QtCore.QModelIndex, end_index: QtCore.QModelIndex) -> None:
         self.start_index: QtCore.QModelIndex = start_index
         self.end_index: QtCore.QModelIndex = end_index
 
-    def draw(self) -> None:
+    def draw(self) -> QtCore.QRect:
         rect_start = self.table_view.visualRect(self.start_index)
         rect_end = self.table_view.visualRect(self.end_index)
         
         rect = QtCore.QRect(self.table_view.viewport().mapTo(self.table_view, rect_start.topLeft()),self.table_view.viewport().mapTo(self.table_view, rect_end.bottomRight()))
         self.setGeometry(rect)
+
+        return rect
 
     def set_dash_offset(self, offset):
         self.dash_offset = offset
@@ -136,15 +127,290 @@ class SelectionTable(QtWidgets.QFrame):
             painter.drawRect(rect)
 
 
+class HandleSelectionTable(QtWidgets.QFrame):
+    def __init__(self, parent: QtWidgets.QTableView):
+        super().__init__(parent)
+        self.table_view = parent
+        self._is_press_lbm: bool = False
+        self._curent_select_index: QtCore.QModelIndex = None
+        self._current_start_index: QtCore.QModelIndex | None = None
+        self._current_end_index: QtCore.QModelIndex | None = None
+
+        self.rows: list[int] = None
+        self.columns: list[int] = None
+        self.list_next: list[str | int | float] = []
+        
+        self.setObjectName("HandleSelectionTable")
+        self.setStyleSheet("#HandleSelectionTable {background-color: rgb(0, 128, 0)}")
+        self.setFixedSize(7, 7)
+        self.setMouseTracking(True)
+        self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
+
+    def draw(self, rect_selection: QtCore.QRect) -> None:
+        self.move(QtCore.QPoint(rect_selection.right() - self.width(), rect_selection.bottom() - self.height()))
+    
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._is_press_lbm = True
+            first_range = self.table_view.selectionModel().selection().takeFirst()
+            self._current_start_index = first_range.topLeft()
+            self._current_end_index = first_range.bottomRight()
+        return super().mousePressEvent(event)
+    
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._is_press_lbm = False
+            self._curent_select_index = None
+            self._current_start_index = None
+            self._current_end_index = None
+            self.rows = None
+            self.columns = None
+        return super().mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        if self._is_press_lbm:
+            viewport = self.table_view.viewport()
+            pos = viewport.mapFromGlobal(event.globalPos())
+            index = self.table_view.indexAt(pos)
+           
+            if self._curent_select_index is None:
+                self._curent_select_index = index
+                return
+
+            if index != self._curent_select_index:
+                self._curent_select_index = index
+                self._set_selection(index)
+            
+            event.accept()
+            return
+        return super().mouseMoveEvent(event)
+
+    def _set_selection(self, index: QtCore.QModelIndex | None) -> None:
+        if index is None or not index.isValid(): 
+            return
+        
+        row_index, column_index = index.row(), index.column()
+        row_start, column_start = self._current_start_index.row(), self._current_start_index.column()
+        row_end, column_end = self._current_end_index.row(), self._current_end_index.column()
+
+        start_index = self.table_view.model().index(row_start, column_start)
+
+        if abs(row_index - row_end) > abs(column_index - column_end):
+            end_index = self.table_view.model().index(row_index, column_end)
+            selection = QtCore.QItemSelection(start_index, end_index)
+            self.table_view.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
+            # -1 так как нужно расчитать среднее для выделенного диапазона, а index относится уже к выделенной ячейки 
+            self.auto_fill_value(row_start, column_start, row_index - 1, column_index)
+        else:
+            end_index = self.table_view.model().index(row_end, column_index)
+            selection = QtCore.QItemSelection(start_index, end_index)
+            self.table_view.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
+            # -1 так как нужно расчитать среднее для выделенного диапазона, а index относится уже к выделенной ячейки 
+            self.auto_fill_value(row_start, column_start, row_index, column_index - 1)
+        
+    def auto_fill_value(self, top: int, left: int, bottom: int, rigth: int):
+        model: ModelDataTable = self.table_view.model()
+        
+        if self.rows is None or self.columns is None:
+            self.rows, self.columns = model.get_visible_coords(top=top, left=left, bottom=bottom, rigth=rigth)
+
+        columns_group: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
+        for row in self.rows:
+            column_gorup: dict[int, list[int | str | float]] = {}
+            current_group: int = 0
+            for i, col in enumerate(self.columns):
+                value = model._data[row][col].value
+                
+                type_value, value = self._preprocess_value(value)
+                type_value = str if type_value == tuple else type_value
+
+                if not column_gorup:
+                    column_gorup[(type_value, current_group)] = [value]
+                    continue
+
+                if (type_value, current_group) in column_gorup:
+                    if type_value in (float, int):
+                        column_gorup[(type_value, current_group)].append(value)
+                    elif type_value == str:
+                        last_value_group = column_gorup[(type_value, current_group)][-1]
+                        if value[0] == last_value_group[0]:
+                            column_gorup[(type_value, current_group)].append(value)
+                        else:
+                            current_group = i
+                            column_gorup[(type_value, current_group)] = [value]
+                else:
+                    current_group = i
+                    column_gorup[(type_value, current_group)] = [value]
+            
+            columns_group[row] = column_gorup
+
+        avg_columns_group: dict[int, dict[int, float | tuple[str, int]]] = {}
+        for number_row, groups in columns_group.items():
+            for (tp, number_group), value in groups.items():
+                avg_value = []
+                if tp in (float, int):
+                    avg_value = {(tp, number_group): self.calculate_avg_float(value)}
+                elif tp == str:
+                    avg_value = {(tp, number_group): self.calculate_avg_str(value)}
+                
+                if not number_row in avg_columns_group:
+                    avg_columns_group[number_row] = [avg_value]
+                else:
+                    avg_columns_group[number_row].append(avg_value)
+
+        print(avg_columns_group)
+
+    def create_list_avg_for_rows_columns(self, line1: list[int], line2: list[int]) -> dict[int, dict[int, float | tuple[str, int]]]:
+        
+        model: ModelDataTable = self.table_view.model()
+
+        line_group: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
+        for row in line1:
+            column_gorup: dict[int, list[int | str | float]] = {}
+            current_group: int = 0
+            for i, col in enumerate(line2):
+                value = model._data[row][col].value
+                
+                type_value, value = self._preprocess_value(value)
+                type_value = str if type_value == tuple else type_value
+
+                if not column_gorup:
+                    column_gorup[(type_value, current_group)] = [value]
+                    continue
+
+                if (type_value, current_group) in column_gorup:
+                    if type_value in (float, int):
+                        column_gorup[(type_value, current_group)].append(value)
+                    elif type_value == str:
+                        last_value_group = column_gorup[(type_value, current_group)][-1]
+                        if value[0] == last_value_group[0]:
+                            column_gorup[(type_value, current_group)].append(value)
+                        else:
+                            current_group = i
+                            column_gorup[(type_value, current_group)] = [value]
+                else:
+                    current_group = i
+                    column_gorup[(type_value, current_group)] = [value]
+            
+            line_group[row] = column_gorup
+
+        avg_columns_group: dict[int, dict[int, float | tuple[str, int]]] = {}
+        for number_row, groups in line_group.items():
+            for (tp, number_group), value in groups.items():
+                avg_value = []
+                if tp in (float, int):
+                    avg_value = {(tp, number_group): self.calculate_avg_float(value)}
+                elif tp == str:
+                    avg_value = {(tp, number_group): self.calculate_avg_str(value)}
+                
+                if not number_row in avg_columns_group:
+                    avg_columns_group[number_row] = [avg_value]
+                else:
+                    avg_columns_group[number_row].append(avg_value)
+
+    def _preprocess_value(self, value: str | int | float | None) -> tuple[type, str | float | None]:
+        """
+        Первоначальня проверка данных и попытка преобразовать значнеие во float
+        """
+        if isinstance(value, int):
+            return int, float(value)
+        if isinstance(value, float):
+            return float, value
+        
+        if isinstance(value, str):
+            if value.isdigit():
+                return int, float(value)
+            else:
+                value = value.replace(',', '.')
+                try:
+                    return float, float(value)
+                except Exception:
+                    ...
+
+            return tuple, self._separating_number_to_str(value)
+        
+        return (None, value)
+
+    def _separating_number_to_str(self, value: str) -> None | tuple[str, int]:
+        """
+        Отделение от строкового значения цифры в конце строки, если она есть
+        """
+        if not value or not value[-1].isdigit():
+            return (value, 0)
+        
+        list_digit: list[str] = []
+        for i, s in enumerate(value[::-1]):
+            if s.isdigit():
+                list_digit.append(s)
+            else:
+                break
+        digit = int(''.join(list_digit[::-1]))
+        
+        return (value[0:-i], digit)
+
+    def calculate_avg_float(self, values: list[float]) -> float:
+        """
+        Расчёт СЛЕДУЮЩЕГО значения для списка значений чисел
+        """
+        len_values = len(values)
+        if len_values == 1:
+            return values[0]
+        
+        set_division = {values[i + 1] - values[i] for i in range(len_values - 1)}
+        if len(set_division) == 1:
+            return values[-1] + set_division.pop()
+        else:
+            return sum(values) / len(values)
+
+    def calculate_avg_str(self, values: tuple[str, int]) -> str:
+        """
+        Расчёт СЛЕДУЮЩЕГО значения для списка значений строк
+        """
+        
+        digit_values = [v[1] for v in values]
+        avg = self.calculate_avg_float(digit_values)
+        
+        return (values[0][0], avg)
+
+
+
+class ContextMenu(QtWidgets.QMenu):
+    def __init__(self, parent):
+        super().__init__(parent)
+    
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            action = self.actionAt(event.pos())
+            if action and action.menu():
+                action.trigger()
+                self.hide()
+                event.accept()
+                return
+
+        return super().mousePressEvent(event)
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
+        if event.key() == QtCore.Qt.Key.Key_Return:
+            action = self.activeAction()
+            if action and action.menu():
+                action.trigger()
+                self.hide()
+                event.accept()
+                return
+        return super().keyPressEvent(event)
+
+
 @DECORATE.UNDO_REDO_FOCUSABLE       
 class TableView(QtWidgets.QTableView):
     signal_change_zoom = QtCore.pyqtSignal(int)
     signale_change_selection = QtCore.pyqtSignal(object)
+    signal_copy_link = QtCore.pyqtSignal(int)
 
     def __init__(self, parent):
         super().__init__(parent)
         self.setObjectName('TableSpecification')
         self._is_ctrl = False
+        self._is_edited = True
 
         self.setWordWrap(False)
 
@@ -154,7 +420,66 @@ class TableView(QtWidgets.QTableView):
 
         self._selection_rect = SelectionTable(self)
         self._selection_rects: list[SelectionTable] = []
-                
+        self._handle_rect = HandleSelectionTable(self)
+
+        self.init_contex_menu()
+
+    def init_contex_menu(self) -> None:
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+
+        self.context_menu = ContextMenu(self)
+
+        # ----------------------- Копирование ----------------------------
+        action_copy = create_action(menu=self.context_menu ,
+            title='Копировать')
+        
+        menu_copy = QtWidgets.QMenu(self)
+        action_copy.setMenu(menu_copy)
+        
+        create_action(menu=menu_copy ,
+            title='Копировать связи',
+            triggerd=self._copy_link)
+        
+        create_action(menu=menu_copy ,
+            title='Копировать значение')
+        
+        create_action(menu=menu_copy ,
+            title='Копировать ячейку(и)')
+        
+        # ----------------------- Вставка ----------------------------
+        action_paste = create_action(menu=self.context_menu,
+            title='Вставить',
+            triggerd=self._paste)
+        
+        menu_paste = QtWidgets.QMenu(self)
+        action_paste.setMenu(menu_paste)
+
+        create_action(menu=menu_paste ,
+            title='Вставить значение')
+        
+        create_action(menu=menu_paste ,
+            title='Вставить ячейку(и)')
+
+        self.context_menu.addSeparator()
+        # ----------------------- Работа строк ----------------------------
+        create_action(menu=self.context_menu ,
+            title='Удалить строку')
+        
+        create_action(menu=self.context_menu ,
+            title='Вставить строку выше',
+            triggerd=self._insert_row_up)
+        
+        create_action(menu=self.context_menu ,
+            title='Вставить строку ниже',
+            triggerd=self._insert_row_down)
+
+    def show_context_menu(self, position: QtCore.QPoint) -> None:
+        if self._is_edited:
+            self._active_select_row = self.indexAt(position)
+            if self._active_select_row != -1:
+                self.context_menu.exec_(self.viewport().mapToGlobal(position))
+
     def selectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection):
         self.resize_rect()
         self.signale_change_selection.emit(self.selectionModel().selection())
@@ -170,11 +495,12 @@ class TableView(QtWidgets.QTableView):
             start_index = self.model().index(top, left)
             end_index = self.model().index(bottom, right)
             self._selection_rect.set_indexes(start_index, end_index)
-            self._selection_rect.draw()
+            rect = self._selection_rect.draw()
+            self._handle_rect.draw(rect)
 
             for section_rect in self._selection_rects:
                 section_rect.draw()
-        
+            
     def set_selection(self, top: int, left: int, bottom: int, right: int) -> None:
         """
         Установить выделение ячеек
@@ -262,6 +588,23 @@ class TableView(QtWidgets.QTableView):
         
         return True
     
+    def _copy_cells(self) -> None:
+        CLIPBOARD.copy(self.model(), self.selectionModel().selection())
+
+    def _copy_link(self) -> None:
+        CLIPBOARD.copy(self.model(), self.selectionModel().selection(), TypeItemClipboard.LINK)
+
+    def _paste(self) -> None:
+        CLIPBOARD.paste(self.model(), row=self.currentIndex().row(), column=self.currentIndex().column())
+
+    def _insert_row_up(self) -> None:
+        model: ModelDataTable = self.model()
+        model.insert_row(row=self.currentIndex().row() - 1)
+
+    def _insert_row_down(self) -> None:
+        model: ModelDataTable = self.model()
+        model.insert_row(row=self.currentIndex().row() + 1)
+
     def undo(self) -> None:
         model: ModelDataTable = self.model()
         model.undo_redo.undo()
@@ -291,11 +634,11 @@ class TableView(QtWidgets.QTableView):
             self._merge_selection_if_rect()
             if self._check_copy():
                 self._show_selection_copy()
-                CLIPBOARD.copy(model, self.selectionModel().selection())
+                self._copy_cells()
             event.accept()
         
         elif event.key() == QtCore.Qt.Key.Key_V and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
-            CLIPBOARD.paste(model, row=self.currentIndex().row(), column=self.currentIndex().column())
+            self._paste()
             self._delete_selection_copy()
             event.accept()
         
@@ -315,7 +658,7 @@ class TableView(QtWidgets.QTableView):
 class _Model(QtCore.QAbstractTableModel):
     def __init__(self, parent):
         super().__init__(parent)
-        self._data = [['' for __ in range(15)] for _ in range(200)]
+        self._data = [['' for __ in range(15)] for _ in range(10)]
 
 
     def rowCount(self, parent=QtCore.QModelIndex()):
@@ -342,6 +685,7 @@ class _Model(QtCore.QAbstractTableModel):
 
     def flags(self, index):
         return QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsEditable
+
 
 class _Window(QtWidgets.QMainWindow):
     """

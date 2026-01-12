@@ -274,7 +274,7 @@ class PropertyProjectData(GeneralDataItem):
             ORDER BY number_row
             """
 
-            data = [[DATACLASSES.DATA_CELL(value=cell) for cell in row] for row in self.database.execute(query).fetchall()]
+            data = [[DATACLASSES.DATA_CELL(value=str(cell) if cell is not None else cell) for cell in row] for row in self.database.execute(query).fetchall()]
             table['data'] = data
 
             cells_style = self._load_styles(table['id'])

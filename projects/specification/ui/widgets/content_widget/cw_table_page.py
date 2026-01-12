@@ -31,7 +31,6 @@ from projects.specification.ui.widgets.browser_widget.bw_table_item import Table
 from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
 from projects.specification.ui.widgets.browser_widget.bw_table_by_item import TableByItem
 
-
 from projects.specification.core.data_tables import SpecificationDataItem, InventorSpecificationDataItem, BuySpecificationDataItem, ProdSpecificationDataItem
 
 
@@ -74,6 +73,7 @@ class PageTable(PageContent):
         self.v_layout.addWidget(self.splitter)
         self.v_layout.addWidget(self.zoom_table)
 
+        
     def _set_property_header(self, header: HorizontalWithOverlayWidgets | VerticallWithOverlayWidgets) -> None:
         # header.sectionResized.connect(self.table_view.resize_rect)      
         header.sectionResized.connect(self.change_table)  

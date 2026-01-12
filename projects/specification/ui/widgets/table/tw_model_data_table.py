@@ -167,7 +167,8 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         cell = self._data[row][column]
         
         self.undo_redo.add_cell(row=row, column=index.column(), old_value=cell.value, new_value=value, role=role)
-        cell.value = value
+        
+        cell.value = str(value) if value is not None else value
         self.dataChanged.emit(index, index, [role])
         self.signal_change.emit()
         return True
@@ -507,6 +508,9 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         """
         Получить координаты в self._data из видимых координат 
         """
+        print(bottom, rigth)
+        top, bottom = (top, bottom) if top < bottom else (bottom, top)
+        left, rigth = (left, rigth) if left < rigth else (rigth, left)
         return tuple(y for y in range(top, bottom + 1)), tuple(self._index_column_view[x] for x in range(left, rigth + 1))
 
     def delete_value_in_range(self, selection: list[QtCore.QItemSelectionRange]) -> None:
