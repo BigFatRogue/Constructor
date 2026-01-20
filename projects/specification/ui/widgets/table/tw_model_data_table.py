@@ -514,7 +514,6 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         """
         Получить координаты в self._data из видимых координат 
         """
-        print(bottom, rigth)
         top, bottom = (top, bottom) if top < bottom else (bottom, top)
         left, rigth = (left, rigth) if left < rigth else (rigth, left)
         return tuple(y for y in range(top, bottom + 1)), tuple(self._index_column_view[x] for x in range(left, rigth + 1))

@@ -95,6 +95,11 @@ class DataCell:
     def get_value_from_role(self, role: QtCore.Qt.ItemDataRole, font_param: AppContextEnums.PARAMETR_FONT = None) -> int | float | str | tuple:
         return self.get_dict_role_value()[(role, font_param)] 
 
+    def __str__(self):
+        return str(self.value)
+    
+    def __repr__(self):
+        return self.__str__()
 
 class ParameterTable:
     def __init__(self, active_range: tuple[int, int, int, int], current_zoom: int, scroll_x: int, scroll_y: int):

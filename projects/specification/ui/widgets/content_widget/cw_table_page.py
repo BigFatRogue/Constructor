@@ -312,7 +312,6 @@ class __Window(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     import sys
-    from projects.specification.core.data_loader import get_specifitaction_inventor_from_xlsx
     app = QtWidgets.QApplication(sys.argv)
     window = __Window()
     

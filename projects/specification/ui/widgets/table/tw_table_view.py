@@ -1,5 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
+from dataclasses import dataclass
 from typing import Type
 
 if __name__ == '__main__':
@@ -16,6 +17,401 @@ from projects.specification.ui.widgets.table.tw_clipboard import CLIPBOARD, Type
 from projects.tools.functions.create_action_menu import create_action
 
 
+class AvgGroupFloatItem:
+    def __init__(self, type_value=int):
+        self.avg: float = 0
+        self.type_value: Type[int] | Type[float] = type_value
+        self.values: list[float] = []
+
+    def add_value(self, value: float) -> None:
+        if self.values:
+            self.avg = diff if (diff := value - self.values[-1]) != self.avg else self.avg
+        self.values.append(value)
+
+    def get_avg(self) -> int | float:
+        return self.type_value(self.avg)
+
+
+class AvgGroupStringItem:
+    def __init__(self):
+        self.type_value: Type = str
+        self.avg_string_part: int
+        self.avg_int_part: int = None
+        self.values: list[tuple[str, int]] = []
+        self._cach_value: dict[str, tuple[str, int]] = {}
+
+    def add_value(self, value: str) -> None:
+        separate_value = self._cach_value.get(value)
+        if separate_value is not None:
+            self.values.append(separate_value)
+        else:
+            self.values.append(self.separate_int_part(value))
+
+    def separate_int_part(self, value: str) -> tuple[str, int]:
+        """
+        Отделение от строкового значения цифры в конце строки, если она есть
+        """
+        if not value or not value[-1].isdigit():
+            return (value, None)
+        
+        list_digit: list[str] = []
+        for i, s in enumerate(value[::-1]):
+            if s.isdigit():
+                list_digit.append(s)
+            else:
+                break
+        digit = int(''.join(list_digit[::-1]))
+        
+        return (value[0:-i], digit)
+
+    def check_string_part(self, value) -> bool:
+        if self.values:
+            if type(value) == self.type_value:
+                separate_value = self.separate_int_part(value)
+                self._cach_value = {value: separate_value}
+                if separate_value[0] == self.values[-1][0]:
+                    return True
+        
+        return False
+
+    def get_avg(self) -> str:
+        return
+
+
+class AutoFillData:
+    def __init__(self):
+        self.table_model: ModelDataTable = None
+
+        self._rows_data: list[int] = None
+        self._columns_data: list[int] = None
+        self._current_data: list[list[dict[str, list[DATACLASSES.DATA_CELL] | int]]] = None
+
+        self.current_group: AvgGroupFloatItem | AvgGroupStringItem = None
+        self._avg_groups_rows: list[list[AvgGroupFloatItem | AvgGroupStringItem]] = []
+        self._avg_groups_columns: list[list[AvgGroupFloatItem | AvgGroupStringItem]] = []
+
+    def set_model(self, table_model) -> None:
+        self.table_model = table_model
+
+    def set_current_data(self, start_index: QtCore.QModelIndex, end_index: QtCore.QModelIndex) -> None:
+        self._rows_data, self._columns_data = self.table_model.get_visible_coords(top=start_index.row(), left=start_index.column(), 
+                                                                                  bottom=end_index.row(), rigth=end_index.column())
+        self._current_data = [[{'cell': self.table_model._data[row][column], 'row_group': None, 'column_group': None} for column in self._columns_data] for row in self._rows_data]
+
+        self._avg_groups_rows = self._set_group_row_or_columns_value_2(self._rows_data, self._columns_data)
+        self._avg_groups_columns = self._set_group_row_or_columns_value_2(self._columns_data, self._rows_data)
+        print()
+        # self._avg_groups_rows = self._calculate_avg_for_groups(row_groups)
+        # self._avg_groups_columns = self._calculate_avg_for_groups(columns_groups)
+
+    def _try_str2float(self, value: str | int | float | None) -> tuple[Type[int] | Type[float], int | float] | None:
+        """
+        Первоначальня проверка данных и попытка преобразовать значнеие во float
+        """
+        if isinstance(value, int):
+            return int, float(value)
+        if isinstance(value, float):
+            return float, value
+        
+        if isinstance(value, str):
+            if value.isdigit():
+                return int, float(value)
+            else:
+                value = value.replace(',', '.')
+                try:
+                    return float, float(value)
+                except Exception:
+                    ...
+        return
+
+    def _set_group_row_or_columns_value_2(self, line_1: list[int], line_2: list[int]) -> list[list[AvgGroupFloatItem | AvgGroupStringItem]]:
+        groups: list[list[AvgGroupFloatItem | AvgGroupStringItem]] = []
+        is_swap = line_1 == self._rows_data
+        key_type_group = 'row_group' if is_swap else 'column_group'
+        
+        for j, index_1 in enumerate(line_1):
+            line_group: list[AvgGroupFloatItem | AvgGroupStringItem] = []
+            self.current_group: AvgGroupFloatItem | AvgGroupStringItem = None
+            for i, index_2 in enumerate(line_2):
+                row, column = (index_1, index_2) if is_swap else (index_2, index_1)
+                y, x = (j, i) if is_swap else (i, j)
+                
+                value = self.table_model._data[row][column].value
+                
+                if (number_value := self._try_str2float(value)):
+                    type_value, value = number_value
+                    if self.current_group is None or not isinstance(self.current_group, AvgGroupFloatItem):
+                        self.current_group = AvgGroupFloatItem(type_value)
+                        line_group.append(self.current_group)
+                        self.current_group.add_value(value)
+                    else:
+                        self.current_group.add_value(value)
+                    
+                else:
+                    if self.current_group is None \
+                        or not isinstance(self.current_group, AvgGroupStringItem) \
+                        or not self.current_group.check_string_part(value):
+                        
+                        self.current_group = AvgGroupStringItem()
+                        line_group.append(self.current_group)
+                        self.current_group.add_value(value)
+                    else:                      
+                        self.current_group.add_value(value)
+                
+                self._current_data[y][x][key_type_group] = len(line_group)  - 1
+            groups.append(line_group)
+        return groups                          
+
+    
+    def _set_group_row_or_columns_value(self, line_1: list[int], line_2: list[int]) -> dict[int, dict[(tuple[int, type], float | tuple[str, int])]]:
+        model: ModelDataTable = self.table_view.model()
+        groups: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
+        is_swap = line_1 == self.rows
+        key_type_group = 'row_group' if is_swap else 'column_group'
+        
+        for j, index_1 in enumerate(line_1):
+            group: dict[int, list[int | str | float]] = {}
+            current_group: int = 0
+            for i, index_2 in enumerate(line_2):
+                row, column = (index_1, index_2) if is_swap else (index_2, index_1)
+                x, y = (j, i) if is_swap else (i, j)
+                
+                value = model._data[row][column].value
+                
+                type_value, value = self._preprocess_value(value)
+                type_value = str if type_value == tuple else type_value
+
+                if not group:
+                    group[(type_value, current_group)] = [value]
+                    self._current_data[x][y][key_type_group] = current_group
+                    continue
+                
+                if (type_value, current_group) in group:
+                    if type_value in (float, int):
+                        group[(type_value, current_group)].append(value)
+                    elif type_value == str:
+                        last_value_group = group[(type_value, current_group)][-1]
+                        if value[0] == last_value_group[0]:
+                            group[(type_value, current_group)].append(value)
+                        else:
+                            current_group = i
+                            group[(type_value, current_group)] = [value]
+                else:
+                    current_group = i
+                    group[(type_value, current_group)] = [value]
+
+                self._current_data[x][y][key_type_group] = len(group) - 1
+                
+            groups[index_1] = group
+
+        return groups
+
+    def _calculate_avg_for_groups(self, groups:  dict[int, dict[(tuple[int, type], float | tuple[str, int])]]) -> dict[int, dict[int, float | int | Type]]:
+        avg_group: dict[int, dict[str, int | Type | tuple]] = {}
+        for number_line, group in groups.items():
+            for (tp, number_group), value in group.items():
+                avg_value = []
+                if tp in (float, int):
+                    avg_value = self._calculate_avg_float(value)
+                elif tp == str:
+                    avg_value = self._calculate_avg_str(value)
+                
+                vv = {'type': tp, 'avg': avg_value, 'data': value}
+                if not number_line in avg_group:
+                    avg_group[number_line] = [vv]
+                else:
+                    avg_group[number_line].append(vv)
+        return avg_group
+
+    def auto_fill_value(self, top: int, left: int, bottom: int, rigth: int):
+        ...
+    
+    def _separating_number_to_str(self, value: str) -> None | tuple[str, int]:
+        """
+        Отделение от строкового значения цифры в конце строки, если она есть
+        """
+        if not value or not value[-1].isdigit():
+            return (value, None)
+        
+        list_digit: list[str] = []
+        for i, s in enumerate(value[::-1]):
+            if s.isdigit():
+                list_digit.append(s)
+            else:
+                break
+        digit = int(''.join(list_digit[::-1]))
+        
+        return (value[0:-i], digit)
+
+    def _calculate_avg_float(self, values: list[float]) -> float:
+        """
+        Расчёт разницы между значениями для списка значений чисел
+        """
+        len_values = len(values)
+        if len_values == 1:
+            return 0
+        
+        set_division = {values[i + 1] - values[i] for i in range(len_values - 1)}
+        if len(set_division) == 1:
+            return set_division.pop()
+        else:
+            return sum(values) / len(values)
+
+    def _calculate_avg_str(self, values: tuple[str, int]) -> str:
+        """
+        Расчёт разницы между значениями для списка значений строк
+        """
+        if values[0][1] is not None:
+            digit_values = [v[1] for v in values]
+            avg = self._calculate_avg_float(digit_values)
+            return (values[0][0], avg)
+        return values
+    
+    def _calculate_next_value_columns(self, step: int) -> list[str | float]:
+        # TODO записывать сразу в массив, так как шаг не корректно работает, когда несколько групп
+        
+        result = []
+        len_current_row = len(self._current_data)
+        len_current_column = len(self._current_data[0])
+        columns = [[self._current_data[y][x] for y in range(len_current_row)] for x in range(len_current_column)]
+        
+        number_column = (abs(step) - 1) % len_current_row
+        if 0 <= number_column < len_current_row:
+            for real_number_column, column in zip(self.columns, columns):
+                cell = column[number_column]
+                avg_data = self._avg_groups_columns[real_number_column][cell['column_group']]
+                print(cell)
+                
+                if not isinstance(avg_data['data'][-1], tuple):
+                    next_value = avg_data['data'][-1] + avg_data['avg'] * step
+                    result.append(avg_data['type'](next_value))
+                else:
+                    last_value = avg_data['data'][-1][-1]
+                    if last_value is not None:
+                        next_value = avg_data['data'][-1][0] + str(avg_data['data'][-1][-1] + avg_data['avg'][-1] * step)
+                    else:
+                        next_value = avg_data['data'][-1][0]
+                    result.append(next_value)
+
+        return result
+
+    def clear(self) -> None:
+        self._current_data = None
+        self._rows_data = None
+        self._columns_data = None
+
+
+class HandleSelectionTable(QtWidgets.QFrame):
+    def __init__(self, parent: QtWidgets.QTableView):
+        super().__init__(parent)
+        self.table_view = parent
+        self._is_press_lbm: bool = False
+        
+        self._curent_select_index: QtCore.QModelIndex = None
+        self._current_start_index: QtCore.QModelIndex | None = None
+        self._current_end_index: QtCore.QModelIndex | None = None
+
+        self.auto_fill_data = AutoFillData()
+
+        self.setObjectName("HandleSelectionTable")
+        self.setStyleSheet("#HandleSelectionTable {background-color: rgb(0, 128, 0)}")
+        self.setFixedSize(7, 7)
+        self.setMouseTracking(True)
+        self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
+        
+        self.label_next_value = QtWidgets.QLabel(parent) 
+        self.label_next_value.setObjectName("label_next_value")
+        self.label_next_value.setStyleSheet("#label_next_value {background-color: white; border: 1px solid rgb(180, 180, 180)}")
+        self.label_next_value.hide()
+
+    def set_model(self, table_model) -> None:
+        self.auto_fill_data.set_model(table_model)
+
+    def draw(self, rect_selection: QtCore.QRect) -> None:
+        self.move(QtCore.QPoint(rect_selection.right() - self.width(), rect_selection.bottom() - self.height()))
+    
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._is_press_lbm = True
+            selection = self.table_view.selectionModel().selection()
+            if selection.count() == 1:
+                first_range = selection.takeFirst()
+                self._current_start_index = self.table_view.model().index(first_range.top(), first_range.left())
+                self._current_end_index = self.table_view.model().index(first_range.bottom(), first_range.right())
+                self.auto_fill_data.set_current_data(start_index=self._current_start_index, end_index=self._current_end_index)
+        return super().mousePressEvent(event)
+    
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._is_press_lbm = False
+            self._curent_select_index = None
+            self._current_start_index = None
+            self._current_end_index = None
+            self.label_next_value.hide()
+            self.auto_fill_data.clear()
+        return super().mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        if self._is_press_lbm:
+            viewport = self.table_view.viewport()
+            pos = viewport.mapFromGlobal(event.globalPos())
+            index = self.table_view.indexAt(pos)
+            
+            if index.isValid(): 
+                if self._curent_select_index is None:
+                    self._curent_select_index = index
+                    return
+
+                if index != self._curent_select_index:
+                    self._curent_select_index = index
+                    self._set_selection(event.globalPos(), index)
+            
+                event.accept()
+                return
+        return super().mouseMoveEvent(event)
+    
+    def _set_selection(self, pos: QtCore.QPoint, index: QtCore.QModelIndex) -> None:
+        row_number, column_number = index.row(), index.column()
+
+        diff_row = row_number - self._current_end_index.row()
+        diff_column = column_number - self._current_end_index.column()
+        count_rows_current_selection = abs(self._current_end_index.row() - self._current_start_index.row())
+        count_columns_current_selection = abs(self._current_end_index.column() - self._current_start_index.column())
+        next_value = ''
+
+        if abs(diff_row) >= abs(diff_column):
+            if diff_row >= 0 or (diff_row < 0 and abs(diff_row) < count_rows_current_selection):
+                end_index = self.table_view.model().index(row_number, self._current_end_index.column())
+                selection = QtCore.QItemSelection(self._current_start_index, end_index)
+                pos_label_next_value = self.table_view.viewport().mapToParent(self.table_view.visualRect(end_index).bottomRight())
+            elif diff_row < 0 and abs(diff_row) > count_rows_current_selection - 1:
+                start_index = self.table_view.model().index(self._current_end_index.row(), self._current_start_index.column())
+                end_index = self.table_view.model().index(row_number, self._current_end_index.column())
+                selection = QtCore.QItemSelection(start_index, end_index)
+                pos_label_next_value = self.table_view.viewport().mapToParent(self.table_view.visualRect(end_index).topRight())
+            
+            # next_value = self._calculate_next_value_columns(diff_row)
+        
+        else:
+            if diff_column > 0 or (diff_column < 0 and abs(diff_column) < count_columns_current_selection):
+                end_index = self.table_view.model().index(self._current_end_index.row(), column_number)
+                selection = QtCore.QItemSelection(self._current_start_index, end_index)
+                pos_label_next_value = self.table_view.viewport().mapToParent(self.table_view.visualRect(end_index).bottomRight())
+            elif diff_column < 0 and abs(diff_column) > count_columns_current_selection - 1:
+                start_index = self.table_view.model().index(self._current_start_index.row(), self._current_end_index.column())
+                end_index = self.table_view.model().index(self._current_end_index.row(), column_number)
+                selection = QtCore.QItemSelection(start_index, end_index)
+                pos_label_next_value = self.table_view.viewport().mapToParent(self.table_view.visualRect(end_index).bottomLeft())
+        
+        self.table_view.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
+        
+        if next_value:
+            self.label_next_value.setText(str(next_value[0]))
+            self.label_next_value.setFixedSize(self.label_next_value.sizeHint())
+            self.label_next_value.show()
+            self.label_next_value.move(pos_label_next_value.x(), pos_label_next_value.y())
+
+    
 class NoSelectionDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -129,302 +525,6 @@ class SelectionTable(QtWidgets.QFrame):
             painter.drawRect(rect)
 
 
-class HandleSelectionTable(QtWidgets.QFrame):
-    def __init__(self, parent: QtWidgets.QTableView):
-        super().__init__(parent)
-        self.table_view = parent
-        self._is_press_lbm: bool = False
-
-        self._curent_select_index: QtCore.QModelIndex = None
-        self._current_start_index: QtCore.QModelIndex | None = None
-        self._current_end_index: QtCore.QModelIndex | None = None
-        self._current_data: list[list[DATACLASSES.DATA_CELL]] = None
-        self._avg_value_rows: list[tuple[Type, float | str]] = []
-        self._avg_value_columns: list[tuple[Type, float | tuple[str | int]]] = []
-
-        self.rows: list[int] = None
-        self.columns: list[int] = None
-        self.list_next: list[str | int | float] = []
-        
-        self.setObjectName("HandleSelectionTable")
-        self.setStyleSheet("#HandleSelectionTable {background-color: rgb(0, 128, 0)}")
-        self.setFixedSize(7, 7)
-        self.setMouseTracking(True)
-        self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
-
-    def draw(self, rect_selection: QtCore.QRect) -> None:
-        self.move(QtCore.QPoint(rect_selection.right() - self.width(), rect_selection.bottom() - self.height()))
-    
-    def mousePressEvent(self, event: QtGui.QMouseEvent):
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self._is_press_lbm = True
-            first_range = self.table_view.selectionModel().selection().takeFirst()
-            self._current_start_index = self.table_view.model().index(first_range.top(), first_range.left())
-            self._current_end_index = self.table_view.model().index(first_range.bottom(), first_range.right())
-            self.calculate_avg_value()
-        return super().mousePressEvent(event)
-    
-    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self._is_press_lbm = False
-            self._curent_select_index = None
-            self._current_start_index = None
-            self._current_end_index = None
-            self._current_data = None
-            self.rows = None
-            self.columns = None
-        return super().mouseReleaseEvent(event)
-
-    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
-        if self._is_press_lbm:
-            viewport = self.table_view.viewport()
-            pos = viewport.mapFromGlobal(event.globalPos())
-            index = self.table_view.indexAt(pos)
-            
-            if index.isValid(): 
-                if self._curent_select_index is None:
-                    self._curent_select_index = index
-                    return
-
-                if index != self._curent_select_index:
-                    self._curent_select_index = index
-                    self._set_selection(index)
-            
-                event.accept()
-                return
-        return super().mouseMoveEvent(event)
-    
-    def calculate_avg_value(self) -> None:
-        model: ModelDataTable = self.table_view.model()
-        self.rows, self.columns = model.get_visible_coords(top=self._current_start_index.row(), left=self._current_start_index.column(), 
-                                                 bottom=self._current_end_index.row(), rigth=self._current_end_index.column ())
-        self._current_data = [[model._data[row][column] for column in self.columns] for row in self.rows]
-        
-        row_groups = self._set_group_row_or_columns_value(self.rows, self.columns)
-        columns_groups = self._set_group_row_or_columns_value(self.columns, self.rows)
-        print(f'{row_groups=}')
-        print(f'{columns_groups=}')
-
-    def _set_group_row_or_columns_value(self, line_1: list[int], line_2: list[int]) -> dict[int, dict[(tuple[int, type], float | tuple[str, int])]]:
-        model: ModelDataTable = self.table_view.model()
-        groups: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
-        is_swap = line_1 == self.rows
-        
-        for index_1 in line_1:
-            group: dict[int, list[int | str | float]] = {}
-            current_group: int = 0
-            for i, index_2 in enumerate(line_2):
-                row, column = (index_1, index_2) if is_swap else (index_2, index_1)
-                
-                value = model._data[row][column].value
-                
-                type_value, value = self._preprocess_value(value)
-                type_value = str if type_value == tuple else type_value
-
-                if not group:
-                    group[(type_value, current_group)] = [value]
-                    continue
-
-                if (type_value, current_group) in group:
-                    if type_value in (float, int):
-                        group[(type_value, current_group)].append(value)
-                    elif type_value == str:
-                        last_value_group = group[(type_value, current_group)][-1]
-                        if value[0] == last_value_group[0]:
-                            group[(type_value, current_group)].append(value)
-                        else:
-                            current_group = i
-                            group[(type_value, current_group)] = [value]
-                else:
-                    current_group = i
-                    group[(type_value, current_group)] = [value]
-            
-            groups[index_1] = group
-        
-        return groups
-
-    def _set_selection(self, index: QtCore.QModelIndex) -> None:
-        row_index, column_index = index.row(), index.column()
-        self._current_start_index = self.table_view.model().index(self._current_start_index.row(), self._current_start_index.column())
-
-        if abs(row_index - self._current_end_index.row()) > abs(column_index - self._current_end_index.column()):
-            end_index = self.table_view.model().index(row_index, self._current_end_index.column())
-            selection = QtCore.QItemSelection(self._current_start_index, end_index)
-            self.table_view.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
-            # -1 так как нужно расчитать среднее для выделенного диапазона, а index относится уже к выделенной ячейки 
-            # self.auto_fill_value(self._current_start_index.row(), self._current_start_index.column(), row_index - 1, column_index)
-        else:
-            end_index = self.table_view.model().index(self._current_end_index.row(), column_index)
-            selection = QtCore.QItemSelection(self._current_start_index, end_index)
-            self.table_view.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
-            # -1 так как нужно расчитать среднее для выделенного диапазона, а index относится уже к выделенной ячейки 
-            # self.auto_fill_value(self._current_start_index.row(), self._current_start_index.column(), row_index, column_index - 1)
-        
-    def auto_fill_value(self, top: int, left: int, bottom: int, rigth: int):
-        model: ModelDataTable = self.table_view.model()
-        
-        if self.rows is None or self.columns is None:
-            self.rows, self.columns = model.get_visible_coords(top=top, left=left, bottom=bottom, rigth=rigth)
-
-        columns_group: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
-        for row in self.rows:
-            column_gorup: dict[int, list[int | str | float]] = {}
-            current_group: int = 0
-            for i, col in enumerate(self.columns):
-                value = model._data[row][col].value
-                
-                type_value, value = self._preprocess_value(value)
-                type_value = str if type_value == tuple else type_value
-
-                if not column_gorup:
-                    column_gorup[(type_value, current_group)] = [value]
-                    continue
-
-                if (type_value, current_group) in column_gorup:
-                    if type_value in (float, int):
-                        column_gorup[(type_value, current_group)].append(value)
-                    elif type_value == str:
-                        last_value_group = column_gorup[(type_value, current_group)][-1]
-                        if value[0] == last_value_group[0]:
-                            column_gorup[(type_value, current_group)].append(value)
-                        else:
-                            current_group = i
-                            column_gorup[(type_value, current_group)] = [value]
-                else:
-                    current_group = i
-                    column_gorup[(type_value, current_group)] = [value]
-            
-            columns_group[row] = column_gorup
-
-        avg_columns_group: dict[int, dict[int, float | tuple[str, int]]] = {}
-        for number_row, groups in columns_group.items():
-            for (tp, number_group), value in groups.items():
-                avg_value = []
-                if tp in (float, int):
-                    avg_value = {(tp, number_group): self.calculate_avg_float(value)}
-                elif tp == str:
-                    avg_value = {(tp, number_group): self.calculate_avg_str(value)}
-                
-                if not number_row in avg_columns_group:
-                    avg_columns_group[number_row] = [avg_value]
-                else:
-                    avg_columns_group[number_row].append(avg_value)
-
-        print(avg_columns_group)
-    
-    def create_list_avg_for_rows_columns(self, line1: list[int], line2: list[int]) -> dict[int, dict[int, float | tuple[str, int]]]:
-        
-        model: ModelDataTable = self.table_view.model()
-
-        line_group: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
-        for row in line1:
-            column_gorup: dict[int, list[int | str | float]] = {}
-            current_group: int = 0
-            for i, col in enumerate(line2):
-                value = model._data[row][col].value
-                
-                type_value, value = self._preprocess_value(value)
-                type_value = str if type_value == tuple else type_value
-
-                if not column_gorup:
-                    column_gorup[(type_value, current_group)] = [value]
-                    continue
-
-                if (type_value, current_group) in column_gorup:
-                    if type_value in (float, int):
-                        column_gorup[(type_value, current_group)].append(value)
-                    elif type_value == str:
-                        last_value_group = column_gorup[(type_value, current_group)][-1]
-                        if value[0] == last_value_group[0]:
-                            column_gorup[(type_value, current_group)].append(value)
-                        else:
-                            current_group = i
-                            column_gorup[(type_value, current_group)] = [value]
-                else:
-                    current_group = i
-                    column_gorup[(type_value, current_group)] = [value]
-            
-            line_group[row] = column_gorup
-
-        avg_columns_group: dict[int, dict[int, float | tuple[str, int]]] = {}
-        for number_row, groups in line_group.items():
-            for (tp, number_group), value in groups.items():
-                avg_value = []
-                if tp in (float, int):
-                    avg_value = {(tp, number_group): self.calculate_avg_float(value)}
-                elif tp == str:
-                    avg_value = {(tp, number_group): self.calculate_avg_str(value)}
-                
-                if not number_row in avg_columns_group:
-                    avg_columns_group[number_row] = [avg_value]
-                else:
-                    avg_columns_group[number_row].append(avg_value)
-
-    def _preprocess_value(self, value: str | int | float | None) -> tuple[type, str | float | None]:
-        """
-        Первоначальня проверка данных и попытка преобразовать значнеие во float
-        """
-        if isinstance(value, int):
-            return int, float(value)
-        if isinstance(value, float):
-            return float, value
-        
-        if isinstance(value, str):
-            if value.isdigit():
-                return int, float(value)
-            else:
-                value = value.replace(',', '.')
-                try:
-                    return float, float(value)
-                except Exception:
-                    ...
-
-            return tuple, self._separating_number_to_str(value)
-        
-        return (None, value)
-
-    def _separating_number_to_str(self, value: str) -> None | tuple[str, int]:
-        """
-        Отделение от строкового значения цифры в конце строки, если она есть
-        """
-        if not value or not value[-1].isdigit():
-            return (value, 0)
-        
-        list_digit: list[str] = []
-        for i, s in enumerate(value[::-1]):
-            if s.isdigit():
-                list_digit.append(s)
-            else:
-                break
-        digit = int(''.join(list_digit[::-1]))
-        
-        return (value[0:-i], digit)
-
-    def calculate_avg_float(self, values: list[float]) -> float:
-        """
-        Расчёт СЛЕДУЮЩЕГО значения для списка значений чисел
-        """
-        len_values = len(values)
-        if len_values == 1:
-            return values[0]
-        
-        set_division = {values[i + 1] - values[i] for i in range(len_values - 1)}
-        if len(set_division) == 1:
-            return values[-1] + set_division.pop()
-        else:
-            return sum(values) / len(values)
-
-    def calculate_avg_str(self, values: tuple[str, int]) -> str:
-        """
-        Расчёт СЛЕДУЮЩЕГО значения для списка значений строк
-        """
-        
-        digit_values = [v[1] for v in values]
-        avg = self.calculate_avg_float(digit_values)
-        
-        return (values[0][0], avg)
-
-
 class ContextMenu(QtWidgets.QMenu):
     def __init__(self, parent):
         super().__init__(parent)
@@ -525,6 +625,10 @@ class TableView(QtWidgets.QTableView):
         create_action(menu=self.context_menu ,
             title='Вставить строку ниже',
             triggerd=self._insert_row_down)
+
+    def setModel(self, model):
+        self._handle_rect.set_model(model)
+        return super().setModel(model)
 
     def show_context_menu(self, position: QtCore.QPoint) -> None:
         if self._is_edited:

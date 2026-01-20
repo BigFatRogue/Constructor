@@ -779,14 +779,15 @@ class PreparedAssemblyWindow(QtWidgets.QWidget):
         self.select_item_list_box()
 
     def check_empty_image(self) -> None:
-        path_images = os.path.join(PATH_PDM_RESOURCES, r'prepared_assembly\image')
-        list_not_empty_image = tuple(f'{value["name_assembly"]}.png' for value in self.parameters.values())
-        for name_image in os.listdir(path_images):
-            if name_image not in list_not_empty_image:
-                try:
-                    os.remove(os.path.join(path_images, name_image))
-                except Exception:
-                    loging_try()    
+        if os.path.exists(PATH_PDM_RESOURCES):
+            path_images = os.path.join(PATH_PDM_RESOURCES, r'prepared_assembly\image')
+            list_not_empty_image = tuple(f'{value["name_assembly"]}.png' for value in self.parameters.values())
+            for name_image in os.listdir(path_images):
+                if name_image not in list_not_empty_image:
+                    try:
+                        os.remove(os.path.join(path_images, name_image))
+                    except Exception:
+                        loging_try()    
     
     def show(self):
         self.zoom_out_viewer()
