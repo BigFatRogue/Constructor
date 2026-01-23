@@ -22,31 +22,68 @@ class AvgGroupFloatItem:
         self.avg: float = 0
         self.type_value: Type[int] | Type[float] = type_value
         self.values: list[float] = []
+        self.count_values: int = 0
+        self.last_step: int = None
+        self.current_index: int = -1
 
     def add_value(self, value: float) -> None:
         if self.values:
             self.avg = diff if (diff := value - self.values[-1]) != self.avg else self.avg
         self.values.append(value)
+        self.count_values += 1
 
-    def get_avg(self) -> int | float:
-        return self.type_value(self.avg)
+    def calculate_next_value(self, step: int) -> float:
+        if step == 0: return self.values[self.count_values - 1]
+        
+        direction = step if self.last_step is None else step - self.last_step
+        self.last_step = step
+
+        sign = step / abs(step)
+        self.values[-1] + self.avg * sign * (self.count_values)
+        # if self.current_index <= len(self.values):
+        #     # Новое значение уже есть в списке
+        #     return self.type_value(self.values[self.current_index + direction])
+        # else:
+        #     sign = step / abs(step)
+        #     next_value = self.values[self.current_index] + self.avg * sign
+        #     self.values.append(next_value)
+        #     return self.type_value(next_value)
+
+
+        if direction > 0:
+            sign = step / abs(step)
+            next_value = self.values[self.current_index] + self.avg * sign
+            self.values.append(next_value)
+        else:
+            if len(self.values) > self.count_values:
+                self.values.pop()
+        return self.type_value(self.values[-1])
 
 
 class AvgGroupStringItem:
     def __init__(self):
         self.type_value: Type = str
-        self.avg_string_part: int
-        self.avg_int_part: int = None
-        self.values: list[tuple[str, int]] = []
+        self.string_part: str = None
+        self.int_parts: list[int] = []
+        self.avg: int = 0
+        self.values: list[tuple[str, int | None]] = []
         self._cach_value: dict[str, tuple[str, int]] = {}
+        self.last_step: int = None
 
     def add_value(self, value: str) -> None:
         separate_value = self._cach_value.get(value)
-        if separate_value is not None:
-            self.values.append(separate_value)
-        else:
-            self.values.append(self.separate_int_part(value))
+        if separate_value is None:
+            separate_value = self.separate_int_part(value)
+        
+        if separate_value[1] is not None and self.values:
+            self.avg = diff if (diff := separate_value[1] - self.values[-1][1]) != self.avg else self.avg
+        
+        self.values.append(separate_value)
 
+        if self.string_part is None:
+            self.string_part = separate_value[0]
+        self.int_parts.append(separate_value[1])
+          
     def separate_int_part(self, value: str) -> tuple[str, int]:
         """
         Отделение от строкового значения цифры в конце строки, если она есть
@@ -74,8 +111,17 @@ class AvgGroupStringItem:
         
         return False
 
-    def get_avg(self) -> str:
-        return
+    def calculate_next_value(self, step: int) -> str:
+        direction = step if self.last_step is None else step - self.last_step
+        self.last_step = step
+
+        # sign = step / abs(step)
+        if self.int_parts[-1] is not None:
+            next_value_int = int(self.avg + self.int_parts[-1])
+            self.int_parts.append(next_value_int)
+            return f'{self.string_part}{next_value_int}'
+        else:
+            return self.string_part
 
 
 class AutoFillData:
@@ -100,9 +146,6 @@ class AutoFillData:
 
         self._avg_groups_rows = self._set_group_row_or_columns_value_2(self._rows_data, self._columns_data)
         self._avg_groups_columns = self._set_group_row_or_columns_value_2(self._columns_data, self._rows_data)
-        print()
-        # self._avg_groups_rows = self._calculate_avg_for_groups(row_groups)
-        # self._avg_groups_columns = self._calculate_avg_for_groups(columns_groups)
 
     def _try_str2float(self, value: str | int | float | None) -> tuple[Type[int] | Type[float], int | float] | None:
         """
@@ -161,112 +204,22 @@ class AutoFillData:
                 self._current_data[y][x][key_type_group] = len(line_group)  - 1
             groups.append(line_group)
         return groups                          
-
     
-    def _set_group_row_or_columns_value(self, line_1: list[int], line_2: list[int]) -> dict[int, dict[(tuple[int, type], float | tuple[str, int])]]:
-        model: ModelDataTable = self.table_view.model()
-        groups: dict[int, dict[(tuple[int, type], float | tuple[str, int])]] = {}
-        is_swap = line_1 == self.rows
-        key_type_group = 'row_group' if is_swap else 'column_group'
-        
-        for j, index_1 in enumerate(line_1):
-            group: dict[int, list[int | str | float]] = {}
-            current_group: int = 0
-            for i, index_2 in enumerate(line_2):
-                row, column = (index_1, index_2) if is_swap else (index_2, index_1)
-                x, y = (j, i) if is_swap else (i, j)
-                
-                value = model._data[row][column].value
-                
-                type_value, value = self._preprocess_value(value)
-                type_value = str if type_value == tuple else type_value
+    def calculate_next_value(self, step: int) -> list[str | float]:
+        result = []
+        count_current_rows = len(self._current_data)
 
-                if not group:
-                    group[(type_value, current_group)] = [value]
-                    self._current_data[x][y][key_type_group] = current_group
-                    continue
-                
-                if (type_value, current_group) in group:
-                    if type_value in (float, int):
-                        group[(type_value, current_group)].append(value)
-                    elif type_value == str:
-                        last_value_group = group[(type_value, current_group)][-1]
-                        if value[0] == last_value_group[0]:
-                            group[(type_value, current_group)].append(value)
-                        else:
-                            current_group = i
-                            group[(type_value, current_group)] = [value]
-                else:
-                    current_group = i
-                    group[(type_value, current_group)] = [value]
-
-                self._current_data[x][y][key_type_group] = len(group) - 1
-                
-            groups[index_1] = group
-
-        return groups
-
-    def _calculate_avg_for_groups(self, groups:  dict[int, dict[(tuple[int, type], float | tuple[str, int])]]) -> dict[int, dict[int, float | int | Type]]:
-        avg_group: dict[int, dict[str, int | Type | tuple]] = {}
-        for number_line, group in groups.items():
-            for (tp, number_group), value in group.items():
-                avg_value = []
-                if tp in (float, int):
-                    avg_value = self._calculate_avg_float(value)
-                elif tp == str:
-                    avg_value = self._calculate_avg_str(value)
-                
-                vv = {'type': tp, 'avg': avg_value, 'data': value}
-                if not number_line in avg_group:
-                    avg_group[number_line] = [vv]
-                else:
-                    avg_group[number_line].append(vv)
-        return avg_group
-
-    def auto_fill_value(self, top: int, left: int, bottom: int, rigth: int):
-        ...
-    
-    def _separating_number_to_str(self, value: str) -> None | tuple[str, int]:
-        """
-        Отделение от строкового значения цифры в конце строки, если она есть
-        """
-        if not value or not value[-1].isdigit():
-            return (value, None)
-        
-        list_digit: list[str] = []
-        for i, s in enumerate(value[::-1]):
-            if s.isdigit():
-                list_digit.append(s)
-            else:
-                break
-        digit = int(''.join(list_digit[::-1]))
-        
-        return (value[0:-i], digit)
-
-    def _calculate_avg_float(self, values: list[float]) -> float:
-        """
-        Расчёт разницы между значениями для списка значений чисел
-        """
-        len_values = len(values)
-        if len_values == 1:
-            return 0
-        
-        set_division = {values[i + 1] - values[i] for i in range(len_values - 1)}
-        if len(set_division) == 1:
-            return set_division.pop()
+        if step < 0 and step + count_current_rows <= 0:
+            next_row = abs(step + count_current_rows) % count_current_rows
         else:
-            return sum(values) / len(values)
+            next_row = (abs(step) - 1) % count_current_rows
+        rows = self._current_data[next_row]
+        
+        for number_column, cell in enumerate(rows):
+            group: AvgGroupFloatItem | AvgGroupStringItem = self._avg_groups_columns[number_column][cell['column_group']]
+            next_value = group.calculate_next_value(step)
+            print(next_value)
 
-    def _calculate_avg_str(self, values: tuple[str, int]) -> str:
-        """
-        Расчёт разницы между значениями для списка значений строк
-        """
-        if values[0][1] is not None:
-            digit_values = [v[1] for v in values]
-            avg = self._calculate_avg_float(digit_values)
-            return (values[0][0], avg)
-        return values
-    
     def _calculate_next_value_columns(self, step: int) -> list[str | float]:
         # TODO записывать сразу в массив, так как шаг не корректно работает, когда несколько групп
         
@@ -280,7 +233,7 @@ class AutoFillData:
             for real_number_column, column in zip(self.columns, columns):
                 cell = column[number_column]
                 avg_data = self._avg_groups_columns[real_number_column][cell['column_group']]
-                print(cell)
+
                 
                 if not isinstance(avg_data['data'][-1], tuple):
                     next_value = avg_data['data'][-1] + avg_data['avg'] * step
@@ -390,7 +343,7 @@ class HandleSelectionTable(QtWidgets.QFrame):
                 selection = QtCore.QItemSelection(start_index, end_index)
                 pos_label_next_value = self.table_view.viewport().mapToParent(self.table_view.visualRect(end_index).topRight())
             
-            # next_value = self._calculate_next_value_columns(diff_row)
+            self.auto_fill_data.calculate_next_value(diff_row)
         
         else:
             if diff_column > 0 or (diff_column < 0 and abs(diff_column) < count_columns_current_selection):
