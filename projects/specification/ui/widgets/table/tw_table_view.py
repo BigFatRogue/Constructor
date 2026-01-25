@@ -23,8 +23,8 @@ class AvgGroupFloatItem:
         self.type_value: Type[int] | Type[float] = type_value
         self.values: list[float] = []
         self.count_values: int = 0
-        self.last_step: int = None
-        self.current_index: int = -1
+        self.prev_step: int = 0
+        self.current_group_step: int = 0
 
     def add_value(self, value: float) -> None:
         if self.values:
@@ -33,32 +33,16 @@ class AvgGroupFloatItem:
         self.count_values += 1
 
     def calculate_next_value(self, step: int) -> float:
-        if step == 0: return self.values[self.count_values - 1]
+        # print(step, self.prev_step)
+        diff_step = step - self.prev_step
+        direction = 1 if diff_step > 0 else -1
+        self.current_group_step += direction if diff_step != 0 else 0 
+        self.prev_step = step
         
-        direction = step if self.last_step is None else step - self.last_step
-        self.last_step = step
-
-        sign = step / abs(step)
-        self.values[-1] + self.avg * sign * (self.count_values)
-        # if self.current_index <= len(self.values):
-        #     # Новое значение уже есть в списке
-        #     return self.type_value(self.values[self.current_index + direction])
-        # else:
-        #     sign = step / abs(step)
-        #     next_value = self.values[self.current_index] + self.avg * sign
-        #     self.values.append(next_value)
-        #     return self.type_value(next_value)
-
-
-        if direction > 0:
-            sign = step / abs(step)
-            next_value = self.values[self.current_index] + self.avg * sign
-            self.values.append(next_value)
-        else:
-            if len(self.values) > self.count_values:
-                self.values.pop()
-        return self.type_value(self.values[-1])
-
+        if step == 0: return self.type_value(self.values[-1])
+        
+        return self.type_value(self.values[-1] + self.avg * self.current_group_step)
+        
 
 class AvgGroupStringItem:
     def __init__(self):
@@ -68,7 +52,9 @@ class AvgGroupStringItem:
         self.avg: int = 0
         self.values: list[tuple[str, int | None]] = []
         self._cach_value: dict[str, tuple[str, int]] = {}
-        self.last_step: int = None
+        self.count_values: int = 0
+        self.prev_step: int = 0
+        self.current_group_step: int = 0
 
     def add_value(self, value: str) -> None:
         separate_value = self._cach_value.get(value)
@@ -79,6 +65,7 @@ class AvgGroupStringItem:
             self.avg = diff if (diff := separate_value[1] - self.values[-1][1]) != self.avg else self.avg
         
         self.values.append(separate_value)
+        self.count_values += 1
 
         if self.string_part is None:
             self.string_part = separate_value[0]
@@ -112,13 +99,17 @@ class AvgGroupStringItem:
         return False
 
     def calculate_next_value(self, step: int) -> str:
-        direction = step if self.last_step is None else step - self.last_step
-        self.last_step = step
+        diff_step = step - self.prev_step
+        direction = 1 if diff_step > 0 else -1
+        self.current_group_step += direction if diff_step != 0 else 0 
+        self.prev_step = step 
 
-        # sign = step / abs(step)
+        if step == 0: 
+            return f'{self.string_part}{self.int_parts[-1]}'
+        
         if self.int_parts[-1] is not None:
-            next_value_int = int(self.avg + self.int_parts[-1])
-            self.int_parts.append(next_value_int)
+            next_value_int = int(self.int_parts[-1] + self.avg * self.current_group_step)
+            next_value_int *= 1 if next_value_int >= 0 else -1
             return f'{self.string_part}{next_value_int}'
         else:
             return self.string_part
@@ -205,47 +196,39 @@ class AutoFillData:
             groups.append(line_group)
         return groups                          
     
-    def calculate_next_value(self, step: int) -> list[str | float]:
+    def calculate_next_row_value(self, step: int) -> list[str | float]:
         result = []
         count_current_rows = len(self._current_data)
+        next_row = None
 
         if step < 0 and step + count_current_rows <= 0:
             next_row = abs(step + count_current_rows) % count_current_rows
-        else:
+        elif step > 0:
             next_row = (abs(step) - 1) % count_current_rows
-        rows = self._current_data[next_row]
-        
-        for number_column, cell in enumerate(rows):
-            group: AvgGroupFloatItem | AvgGroupStringItem = self._avg_groups_columns[number_column][cell['column_group']]
-            next_value = group.calculate_next_value(step)
-            print(next_value)
 
-    def _calculate_next_value_columns(self, step: int) -> list[str | float]:
-        # TODO записывать сразу в массив, так как шаг не корректно работает, когда несколько групп
-        
+        if next_row is not None:
+            rows = self._current_data[next_row]
+            
+            for number_column, cell in enumerate(rows):
+                group: AvgGroupFloatItem | AvgGroupStringItem = self._avg_groups_columns[number_column][cell['column_group']]
+                result.append(group.calculate_next_value(step))
+
+        return result
+
+    def calculate_next_column_value(self, step: int) -> list[str | float]:
         result = []
-        len_current_row = len(self._current_data)
-        len_current_column = len(self._current_data[0])
-        columns = [[self._current_data[y][x] for y in range(len_current_row)] for x in range(len_current_column)]
+        count_current_column = len(self._current_data[0])
         
-        number_column = (abs(step) - 1) % len_current_row
-        if 0 <= number_column < len_current_row:
-            for real_number_column, column in zip(self.columns, columns):
-                cell = column[number_column]
-                avg_data = self._avg_groups_columns[real_number_column][cell['column_group']]
-
-                
-                if not isinstance(avg_data['data'][-1], tuple):
-                    next_value = avg_data['data'][-1] + avg_data['avg'] * step
-                    result.append(avg_data['type'](next_value))
-                else:
-                    last_value = avg_data['data'][-1][-1]
-                    if last_value is not None:
-                        next_value = avg_data['data'][-1][0] + str(avg_data['data'][-1][-1] + avg_data['avg'][-1] * step)
-                    else:
-                        next_value = avg_data['data'][-1][0]
-                    result.append(next_value)
-
+        if step < 0 and step + count_current_column <=0:
+            next_column = abs(step + count_current_column) % count_current_column
+        else:
+            next_column = (abs(step) - 1) % count_current_column
+        column = [row[next_column] for row in self._current_data]
+        
+        for number_column, cell in enumerate(column):
+            group: AvgGroupFloatItem | AvgGroupStringItem = self._avg_groups_rows[number_column][cell['row_group']]
+            result.append(group.calculate_next_value(step))
+        
         return result
 
     def clear(self) -> None:
@@ -342,9 +325,9 @@ class HandleSelectionTable(QtWidgets.QFrame):
                 end_index = self.table_view.model().index(row_number, self._current_end_index.column())
                 selection = QtCore.QItemSelection(start_index, end_index)
                 pos_label_next_value = self.table_view.viewport().mapToParent(self.table_view.visualRect(end_index).topRight())
-            
-            self.auto_fill_data.calculate_next_value(diff_row)
-        
+                
+            next_value = self.auto_fill_data.calculate_next_row_value(diff_row)
+                    
         else:
             if diff_column > 0 or (diff_column < 0 and abs(diff_column) < count_columns_current_selection):
                 end_index = self.table_view.model().index(self._current_end_index.row(), column_number)
@@ -355,6 +338,8 @@ class HandleSelectionTable(QtWidgets.QFrame):
                 end_index = self.table_view.model().index(self._current_end_index.row(), column_number)
                 selection = QtCore.QItemSelection(start_index, end_index)
                 pos_label_next_value = self.table_view.viewport().mapToParent(self.table_view.visualRect(end_index).bottomLeft())
+
+            next_value = self.auto_fill_data.calculate_next_column_value(diff_column)
         
         self.table_view.selectionModel().select(selection, QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
         
