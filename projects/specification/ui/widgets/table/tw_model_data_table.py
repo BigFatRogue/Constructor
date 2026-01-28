@@ -26,6 +26,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         :param range_zoom: диапазон для масштабирования (мин, макс, шаг)
         """
         super().__init__(None)
+        self._is_edittable = False
         self.item_data: SpecificationDataItem = item_data
 
         self._range_zoom = range_zoom
@@ -216,14 +217,19 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         :type value: int | str | QtGui.QColor
         :param font_param: какой параметр текста (размер, шрифт и др.)
         """
-        cell = self._data[row][self._index_column_view[column]]
+
+        column_data = self._index_column_view.get(column)
+        if column_data is None:
+            return
+
+        cell = self._data[row][column_data]
         self.undo_redo.add_cell(row=row, column=column, old_value=cell.get_value_from_role(role, font_param) , new_value=value, role=role, font_param=font_param)
 
         if role == QtCore.Qt.ItemDataRole.EditRole:
             cell.value = value
 
         elif role == QtCore.Qt.ItemDataRole.FontRole and font_param:
-            font = self._styles[(row, self._index_column_view[column], role)]
+            font = self._styles[(row, column_data, role)]
             
             if font_param == ENUMS.PARAMETR_FONT.FONT_PARAM_SIZE:
                 cell.font_size = value
@@ -244,28 +250,28 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
             cell.align_h = value & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
             cell.align_v = value & QtCore.Qt.AlignmentFlag.AlignVertical_Mask
-            self._styles[(row, self._index_column_view[column], role)] = value
+            self._styles[(row, column_data, role)] = value
         
         elif role  == QtCore.Qt.ItemDataRole.BackgroundColorRole:
             if isinstance(value, (tuple, list)):
-                self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(*value)
+                self._styles[(row, column_data, role)] = QtGui.QColor(*value)
                 cell.background = tuple(value)
             if isinstance(value, QtGui.QColor):
-                self._styles[(row, self._index_column_view[column], role)] = value
+                self._styles[(row, column_data, role)] = value
                 cell.background = value.getRgb()
             if value is None:
                 cell.background = (255, 255, 255, 255) 
-                self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(255, 255, 255, 255)
+                self._styles[(row, column_data, role)] = QtGui.QColor(255, 255, 255, 255)
         
         elif role  == QtCore.Qt.ItemDataRole.ForegroundRole:
             if isinstance(value, (tuple, list)):
-                self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(*value)
+                self._styles[(row, column_data, role)] = QtGui.QColor(*value)
                 cell.color = tuple(value)
             if isinstance(value, QtGui.QColor):
-                self._styles[(row, self._index_column_view[column], role)] = value
+                self._styles[(row, column_data, role)] = value
                 cell.color = value.getRgb()
             if value is None:
-                self._styles[(row, self._index_column_view[column], role)] = QtGui.QColor(0, 0, 0, 255)
+                self._styles[(row, column_data, role)] = QtGui.QColor(0, 0, 0, 255)
                 cell.color = (0, 0, 0, 0) 
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
@@ -281,13 +287,13 @@ class ModelDataTable(QtCore.QAbstractTableModel):
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
         return self._flags
 
-    def get_flags(self) -> QtCore.Qt.ItemFlag:
+    def get_flags(self) -> QtCore.Qt.ItemFlags:
         return self._flags
 
     def set_flags(self, flag: QtCore.Qt.ItemFlag) -> None:
         self._flags = flag
 
-    def set_edited(self, value: bool) -> None:
+    def set_editable(self, value: bool) -> None:
         """
         Включение / выключение режима редактирования ячеек
         - True  - включить
@@ -295,7 +301,11 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         по умолчанию выключено
         """
         if value:
+            self._is_edittable = value
             self.set_flags(self.get_flags() | QtCore.Qt.ItemFlag.ItemIsEditable)
+
+    def editable(self) -> bool:
+        return self._is_edittable
 
     def set_zoom(self, step) -> None:
         """
@@ -371,23 +381,57 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         
         return style_ranges
 
-    def paste_value_from_model(self, source_model: Self, source_rows: list[int], source_columns: list[int], target_address: tuple[int, int]) -> None:        
+    def paste_value_from_model(self, source_model: Self, source_rows: list[int], source_columns: list[int], target_address: tuple[int, int]) -> None:
+        """
+        Если копирование произошло в модели Self и вставляется в Self
+
+        :param source_model: модель откуда скопированы данные
+        :param source_rows: список строк откуда были скопированы данные
+        :param source_columns: список столбцов откуда были скопированы данные
+        :param target_address: строка и столбец (левый верхний угол) откуда начать вставку
+        """   
         self.undo_redo.start_transaction()
         
         t_row, t_column = target_address
         
         for source_row, target_row in zip(source_rows, range(t_row, t_row + len(source_rows) + 1)):
             for source_column, target_column in zip(source_columns, range(t_column, t_column + len(source_columns) + 1)):
-                source_cell = source_model._data[source_row][source_column]
-                dict_role_value_soruce_cell = source_cell.get_dict_role_value()
-                for (role, font_param), value in dict_role_value_soruce_cell.items():
-                    self.change_cell(row=target_row, column=target_column, value=value, role=role, font_param=font_param)
+                if 0 <= target_row < self.rowCount() and 0 <= target_column < self.columnCount():
+                    source_cell = source_model._data[source_row][source_column]
+                    dict_role_value_soruce_cell = source_cell.get_dict_role_value()
+                    for (role, font_param), value in dict_role_value_soruce_cell.items():
+                        self.change_cell(row=target_row, column=target_column, value=value, role=role, font_param=font_param)
     
         self.undo_redo.end_transaction()
         self.layoutChanged.emit()
+        self.signal_change.emit()
+
+    def paste_from_auto_fill(self, data_cells: list[list[DATACLASSES.DATA_CELL]], target_address: tuple[int, int]) -> None:
+        # TODO реалзиовать
+        """
+        Вставка из массива типа list[list[DATACLASSES.DATA_CELL]]
+
+        При auto fill образуется такой массив 
+        """
+        self.undo_redo.start_transaction()
+        
+        t_row, t_column = target_address
+
+        for target_row, row in enumerate(data_cells, t_row):
+            for target_column, cell in enumerate(row, t_column):
+                dict_role_value_cell = cell.get_dict_role_value()
+                for (role, font_param), value in dict_role_value_cell.items():
+                    self.change_cell(row=target_row, column=target_column, value=value, role=role, font_param=font_param)
+        
+        self.undo_redo.end_transaction()
+        self.layoutChanged.emit()
+        self.signal_change.emit()
 
     def paste_value_from_buffer(self) -> None:
-        ...
+        # TODO реалзиовать
+        """
+        Вставка из буффера обмена
+        """
 
     def reset_style(self, selection: list[QtCore.QItemSelectionRange]) -> None:
         """

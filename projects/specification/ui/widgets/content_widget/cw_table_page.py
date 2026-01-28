@@ -73,7 +73,6 @@ class PageTable(PageContent):
         self.v_layout.addWidget(self.splitter)
         self.v_layout.addWidget(self.zoom_table)
 
-        
     def _set_property_header(self, header: HorizontalWithOverlayWidgets | VerticallWithOverlayWidgets) -> None:
         # header.sectionResized.connect(self.table_view.resize_rect)      
         header.sectionResized.connect(self.change_table)  
@@ -160,7 +159,6 @@ class PageTable(PageContent):
         """
         Настройка отображения таблицы Закупки
         """
-
         self.current_item: TableByItem
 
         horizontal_header_sorted = HorizontalWithOverlayWidgetsSorded(self.table_view, self.range_zoom)
@@ -178,7 +176,6 @@ class PageTable(PageContent):
         self.control_panel.show_font_block(True)
         self.control_panel.show_align_block(True)
         
-        self.table_model.set_edited(True)
         self.table_view.signale_change_selection.connect(self.control_panel.view_property)
 
     def _set_zoom(self, step: int) -> None:

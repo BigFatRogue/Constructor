@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
-from dataclasses import dataclass
+from copy import deepcopy
 from typing import Type
 
 if __name__ == '__main__':
@@ -32,16 +32,24 @@ class AvgGroupFloatItem:
         self.values.append(value)
         self.count_values += 1
 
-    def calculate_next_value(self, step: int) -> float:
-        # print(step, self.prev_step)
-        diff_step = step - self.prev_step
-        direction = 1 if diff_step > 0 else -1
-        self.current_group_step += direction if diff_step != 0 else 0 
-        self.prev_step = step
+    def calculate_next_value(self, step: int, direction: int, is_forward=True) -> int | float:
+        """
+        Расчёт следующего значения для группы
         
-        if step == 0: return self.type_value(self.values[-1])
+        :param step: шаг автозаполнения 
+        :type step: int
+        :param is_forward: направление автозаполненеие вверх или вниз, влево или вправо
+        :return: слебующее число
+        :rtype: int | float
+        """
+
+        self.current_group_step += direction if step - self.prev_step != 0 else 0 
+        self.prev_step = step 
         
-        return self.type_value(self.values[-1] + self.avg * self.current_group_step)
+        if step == 0: 
+            return self.type_value(self.values[-1])
+
+        return self.type_value(self.values[-1 * is_forward] + self.avg * self.current_group_step)
         
 
 class AvgGroupStringItem:
@@ -98,17 +106,17 @@ class AvgGroupStringItem:
         
         return False
 
-    def calculate_next_value(self, step: int) -> str:
-        diff_step = step - self.prev_step
-        direction = 1 if diff_step > 0 else -1
-        self.current_group_step += direction if diff_step != 0 else 0 
+    def calculate_next_value(self, step: int, direction: int, is_forward=True) -> str:
+        self.current_group_step += direction if step - self.prev_step != 0 else 0 
         self.prev_step = step 
 
-        if step == 0: 
-            return f'{self.string_part}{self.int_parts[-1]}'
+        int_part = self.int_parts[-1 * is_forward]
         
-        if self.int_parts[-1] is not None:
-            next_value_int = int(self.int_parts[-1] + self.avg * self.current_group_step)
+        if step == 0: 
+            return f'{self.string_part}{int_part}'
+        
+        if int_part is not None:
+            next_value_int = int(int_part + self.avg * self.current_group_step)
             next_value_int *= 1 if next_value_int >= 0 else -1
             return f'{self.string_part}{next_value_int}'
         else:
@@ -122,6 +130,11 @@ class AutoFillData:
         self._rows_data: list[int] = None
         self._columns_data: list[int] = None
         self._current_data: list[list[dict[str, list[DATACLASSES.DATA_CELL] | int]]] = None
+        self._count_current_rows: int = 0
+        self._count_current_column: int = 0 
+        self._new_data: list[list[dict[str, list[DATACLASSES.DATA_CELL] | int]]] = None
+        self._prev_step: int = 0
+        self._direction: int = 1
 
         self.current_group: AvgGroupFloatItem | AvgGroupStringItem = None
         self._avg_groups_rows: list[list[AvgGroupFloatItem | AvgGroupStringItem]] = []
@@ -134,14 +147,18 @@ class AutoFillData:
         self._rows_data, self._columns_data = self.table_model.get_visible_coords(top=start_index.row(), left=start_index.column(), 
                                                                                   bottom=end_index.row(), rigth=end_index.column())
         self._current_data = [[{'cell': self.table_model._data[row][column], 'row_group': None, 'column_group': None} for column in self._columns_data] for row in self._rows_data]
+        self._new_data = [[deepcopy(self.table_model._data[row][column]) for column in self._columns_data] for row in self._rows_data]
+        self._count_current_rows: int = len(self._current_data)
+        self._count_current_column: int = len(self._current_data[0]) 
 
-        self._avg_groups_rows = self._set_group_row_or_columns_value_2(self._rows_data, self._columns_data)
-        self._avg_groups_columns = self._set_group_row_or_columns_value_2(self._columns_data, self._rows_data)
+        self._avg_groups_rows = self._set_group_row_or_columns_value(self._rows_data, self._columns_data)
+        self._avg_groups_columns = self._set_group_row_or_columns_value(self._columns_data, self._rows_data)
 
     def _try_str2float(self, value: str | int | float | None) -> tuple[Type[int] | Type[float], int | float] | None:
         """
-        Первоначальня проверка данных и попытка преобразовать значнеие во float
+        Первоначальня проверка данных и попытка преобразовать значнеие в числовое значение
         """
+
         if isinstance(value, int):
             return int, float(value)
         if isinstance(value, float):
@@ -151,14 +168,32 @@ class AutoFillData:
             if value.isdigit():
                 return int, float(value)
             else:
-                value = value.replace(',', '.')
+                sign = 1
+                if value and value[0] == '-':
+                    value = value[1:]
+                    sign = -1 
+                
                 try:
-                    return float, float(value)
+                    return int, int(value) * sign
                 except Exception:
-                    ...
+                    value = value.replace(',', '.')
+                    try:
+                        return float, float(value) * sign
+                    except Exception:
+                        ...
         return
 
-    def _set_group_row_or_columns_value_2(self, line_1: list[int], line_2: list[int]) -> list[list[AvgGroupFloatItem | AvgGroupStringItem]]:
+    def _set_group_row_or_columns_value(self, line_1: list[int], line_2: list[int]) -> list[list[AvgGroupFloatItem | AvgGroupStringItem]]:
+        """
+        Обработка массива, чтобы получить группы для автозаполненеия
+        
+        :param line_1: номера строк или столбов 
+        :type line_1: list[int]
+        :param line_2: номера строк или столбцов
+        :type line_2: list[int]
+        :return: строка или столбец разбитая на группы [[1,2,3], [a1, a2], [b], ...]
+        :rtype: list[list[AvgGroupFloatItem | AvgGroupStringItem]]
+        """
         groups: list[list[AvgGroupFloatItem | AvgGroupStringItem]] = []
         is_swap = line_1 == self._rows_data
         key_type_group = 'row_group' if is_swap else 'column_group'
@@ -196,57 +231,127 @@ class AutoFillData:
             groups.append(line_group)
         return groups                          
     
-    def calculate_next_row_value(self, step: int) -> list[str | float]:
-        result = []
-        count_current_rows = len(self._current_data)
-        next_row = None
+    def calculate_next_row_value(self, step: int) -> list[int | float | str]:
+        result: list[int | float | str] = []
+        
+        if step == self._prev_step:
+            return result
 
-        if step < 0 and step + count_current_rows <= 0:
-            next_row = abs(step + count_current_rows) % count_current_rows
+        next_row = None
+        self._direction = 1 if step - self._prev_step > 0 else -1
+        is_forward = step > -self._count_current_rows + 1
+        self._prev_step = step 
+        
+        if step < 0 and step + self._count_current_rows <= 0:
+            next_row = abs(step + self._count_current_rows) % self._count_current_rows
         elif step > 0:
-            next_row = (abs(step) - 1) % count_current_rows
+            next_row = (abs(step) - 1) % self._count_current_rows
 
         if next_row is not None:
             rows = self._current_data[next_row]
-            
             for number_column, cell in enumerate(rows):
                 group: AvgGroupFloatItem | AvgGroupStringItem = self._avg_groups_columns[number_column][cell['column_group']]
-                result.append(group.calculate_next_value(step))
-
+                result.append(group.calculate_next_value(step=step, direction=self._direction, is_forward=is_forward))
+        
+        self.push_new_data_row(result=result, is_forward=is_forward)
+                    
         return result
 
-    def calculate_next_column_value(self, step: int) -> list[str | float]:
-        result = []
-        count_current_column = len(self._current_data[0])
+    def push_new_data_row(self, result: list[int | float | str], is_forward: bool = True) -> None:
+        if result or len(self._new_data) > self._count_current_rows:
+            if is_forward:
+                if self._direction > 0:
+                    self._new_data.append(result)
+                else:
+                    if self._new_data:
+                        del self._new_data[-1]
+            else:
+                if self._direction < 0:
+                    self._new_data.insert(0, result)
+                else:
+                    if self._new_data:
+                        del self._new_data[0]
+
+    def calculate_next_column_value(self, step: int) -> list[int | float | str]:
+        result: list[int | float | str] = []
+
+        if step == self._prev_step:
+            return result
+
+        next_column = None
+        self._direction = 1 if step - self._prev_step > 0 else -1
+        is_forward = step > -self._count_current_column + 1
+        self._prev_step = step 
+
+        if step < 0 and step + self._count_current_column <= 0:
+            next_column = abs(step + self._count_current_column) % self._count_current_column
+        elif step > 0:
+            next_column = (step - 1) % self._count_current_column
+
+        if next_column is not None:
+            column = [row[next_column] for row in self._current_data]
+            for number_column, cell in enumerate(column):
+                group: AvgGroupFloatItem | AvgGroupStringItem = self._avg_groups_rows[number_column][cell['row_group']]
+                result.append(group.calculate_next_value(step=step, direction=self._direction, is_forward=is_forward))
         
-        if step < 0 and step + count_current_column <=0:
-            next_column = abs(step + count_current_column) % count_current_column
-        else:
-            next_column = (abs(step) - 1) % count_current_column
-        column = [row[next_column] for row in self._current_data]
-        
-        for number_column, cell in enumerate(column):
-            group: AvgGroupFloatItem | AvgGroupStringItem = self._avg_groups_rows[number_column][cell['row_group']]
-            result.append(group.calculate_next_value(step))
-        
+        self.push_new_data_column(result=result, is_forward=is_forward)
+
         return result
+    
+    def push_new_data_column(self, result: list[int | float | str], is_forward: bool = True) -> None:
+        if result or len(self._new_data[0]) > self._count_current_column:
+            if is_forward:
+                if self._direction > 0:
+                    for row, res in zip(self._new_data, result):
+                        row.append(res)
+                else:
+                    for row in self._new_data:
+                        if row:
+                            del row[-1]
+            else:
+                if self._direction < 0:
+                    for row, res in zip(self._new_data, result):
+                        row.insert(0, res)
+                else:
+                    for row in self._new_data:
+                        if row:
+                            del row[0]
+
+    def get_new_data(self) -> list[list[int | float | str]] | None:
+        if self._new_data and \
+            (len(self._new_data) != self._count_current_rows or \
+             len(self._new_data[0]) != self._count_current_column):
+            
+            data_cells: list[list[DATACLASSES.DATA_CELL]] = []
+            for y, row in enumerate(self._new_data):
+                row_cells: list[DATACLASSES.DATA_CELL] = []
+                for x, value in enumerate(row):
+                    cell: DATACLASSES.DATA_CELL = deepcopy(self._current_data[y % self._count_current_rows][x % self._count_current_column]['cell'])
+                    cell.value = str(value)
+                    row_cells.append(cell)
+                data_cells.append(row_cells)
+
+            return data_cells
 
     def clear(self) -> None:
         self._current_data = None
+        self._new_data = None
         self._rows_data = None
         self._columns_data = None
+        self._prev_step = 0
+        self._direction = 1
 
 
 class HandleSelectionTable(QtWidgets.QFrame):
     def __init__(self, parent: QtWidgets.QTableView):
         super().__init__(parent)
         self.table_view = parent
+        self.table_model: ModelDataTable = None
         self._is_press_lbm: bool = False
         
         self._curent_select_index: QtCore.QModelIndex = None
         self._current_start_index: QtCore.QModelIndex | None = None
         self._current_end_index: QtCore.QModelIndex | None = None
-
         self.auto_fill_data = AutoFillData()
 
         self.setObjectName("HandleSelectionTable")
@@ -261,6 +366,7 @@ class HandleSelectionTable(QtWidgets.QFrame):
         self.label_next_value.hide()
 
     def set_model(self, table_model) -> None:
+        self.table_model = table_model
         self.auto_fill_data.set_model(table_model)
 
     def draw(self, rect_selection: QtCore.QRect) -> None:
@@ -279,12 +385,18 @@ class HandleSelectionTable(QtWidgets.QFrame):
     
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            new_data = self.auto_fill_data.get_new_data()
+            if new_data is not None:
+                index = self.table_view.selectionModel().selection()[0]
+                self.table_model.paste_from_auto_fill(data_cells=new_data, target_address=(index.top(), index.left()))
+
             self._is_press_lbm = False
             self._curent_select_index = None
             self._current_start_index = None
             self._current_end_index = None
             self.label_next_value.hide()
-            self.auto_fill_data.clear()
+            self.auto_fill_data.clear()   
+
         return super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
@@ -300,13 +412,13 @@ class HandleSelectionTable(QtWidgets.QFrame):
 
                 if index != self._curent_select_index:
                     self._curent_select_index = index
-                    self._set_selection(event.globalPos(), index)
+                    self._set_selection(index)
             
                 event.accept()
                 return
         return super().mouseMoveEvent(event)
     
-    def _set_selection(self, pos: QtCore.QPoint, index: QtCore.QModelIndex) -> None:
+    def _set_selection(self, index: QtCore.QModelIndex) -> None:
         row_number, column_number = index.row(), index.column()
 
         diff_row = row_number - self._current_end_index.row()
@@ -393,7 +505,6 @@ class SelectionTable(QtWidgets.QFrame):
         self.color_fill = QtGui.QColor(128, 128, 128, 35)
         self.color_border = QtGui.QColor(0, 128, 0)
         self.color_outline = QtGui.QColor(QtCore.Qt.GlobalColor.white)
-
 
         self._init_animation_copy()
 
@@ -499,7 +610,6 @@ class TableView(QtWidgets.QTableView):
         super().__init__(parent)
         self.setObjectName('TableSpecification')
         self._is_ctrl = False
-        self._is_edited = True
 
         self.setWordWrap(False)
 
@@ -564,12 +674,17 @@ class TableView(QtWidgets.QTableView):
             title='Вставить строку ниже',
             triggerd=self._insert_row_down)
 
-    def setModel(self, model):
-        self._handle_rect.set_model(model)
+    def setModel(self, model: ModelDataTable):
+        if model.editable():
+            self._handle_rect.show()
+            self._handle_rect.set_model(model)
+        else:
+            self._handle_rect.hide()
         return super().setModel(model)
 
     def show_context_menu(self, position: QtCore.QPoint) -> None:
-        if self._is_edited:
+        model: ModelDataTable = self.model()
+        if model.editable():
             self._active_select_row = self.indexAt(position)
             if self._active_select_row != -1:
                 self.context_menu.exec_(self.viewport().mapToGlobal(position))
@@ -747,6 +862,10 @@ class TableView(QtWidgets.QTableView):
                 self._copy_cells()
             event.accept()
         
+        elif event.key() == QtCore.Qt.Key.Key_X and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+            # TODO реализовать
+            ...
+
         elif event.key() == QtCore.Qt.Key.Key_V and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
             self._paste()
             self._delete_selection_copy()
@@ -769,7 +888,6 @@ class _Model(QtCore.QAbstractTableModel):
     def __init__(self, parent):
         super().__init__(parent)
         self._data = [['' for __ in range(15)] for _ in range(10)]
-
 
     def rowCount(self, parent=QtCore.QModelIndex()):
         return len(self._data)

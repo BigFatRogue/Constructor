@@ -104,6 +104,8 @@ class __Clipboard:
         return text, html_table
 
     def paste(self, target_model: ModelDataTable, row: int, column: int) -> None:
+        # TODO доработать, чтобы вставлять значения не только в ячейку но и в диапазон, если единичное значение
+
         if self.current_item_clipboard is None:
             return
         
