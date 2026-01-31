@@ -276,13 +276,13 @@ class PropertyProjectData(GeneralDataItem):
 
             data: list[list[DATACLASSES.DATA_CELL]] = []
             
-            data = [[DATACLASSES.DATA_CELL(value=cell) for cell in row] for row in self.database.execute(query).fetchall()]
+            data = [[DATACLASSES.DATA_CELL(value=value) for value in row] for row in self.database.execute(query).fetchall()]
             table['data'] = data
 
             cells_style = self._load_styles(table['id'])
             for (row, column), cell_style in cells_style.items():
                 for name_style, value in cell_style.items():
-                    setattr(data[row][column], name_style, value)
+                    data[row][column].set_style_from_dict(name_style, value)
             tables.append(table)
 
             table['header_data'] = self._load_parameter_header(table['id'])

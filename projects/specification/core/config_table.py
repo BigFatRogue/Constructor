@@ -137,7 +137,7 @@ GENERAL_ITEM_CONFIG = TableConfig(
     columns=[
         ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('number_row', 'INTEGER', is_view=False),
-        ColumnConfig('user_number', 'TEXT', '№'),
+        ColumnConfig('user_number', 'INTEGER', '№'),
         ColumnConfig('articul', 'TEXT', column_name='Артикул', column_name_inventor='Инвентарный номер', internal_name='Stock Number', is_key=True),
         ColumnConfig('description', 'TEXT', column_name='Наименование', column_name_inventor='Описание', internal_name='Description', is_key=True),
         ColumnConfig('specifications', 'TEXT', column_name='Технические характеристики', column_name_inventor='Технические характеристики', internal_name='Технические характеристики', is_key=True),

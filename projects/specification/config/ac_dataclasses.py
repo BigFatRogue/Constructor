@@ -1,6 +1,6 @@
 from PyQt5 import QtCore
-from dataclasses import dataclass
-from enum import Enum
+from dataclasses import dataclass, field
+from enum import Enum, auto
 from typing import Self
 from projects.specification.config.ac_enums import AppContextEnums
 
@@ -14,9 +14,28 @@ _DICT_QT2CSS_ALIGN: dict[QtCore.Qt.AlignmentFlag] = {
     QtCore.Qt.AlignmentFlag.AlignBottom: 'bottom'
 }
 
+
+class TypeValueCell(Enum):
+    AUTO: str = 'auto'
+    NUMBER: str = 'number' 
+    TEXT: str = 'text'
+
+
+class CellFormat(Enum):
+    AUTO: str = 'auto'
+    NUMBER: str = 'number'
+    TEXT: str = 'text'
+
+
 @dataclass
 class DataCell:
     value: int | float | str = ''
+    raw_value: str = ''
+    type_value: TypeValueCell = TypeValueCell.AUTO 
+    
+    format_value: CellFormat = CellFormat.AUTO
+    count_decimals: int | None = 2
+    
     align_h: int = 4
     align_v: int = 128
     font_family: str = 'Arial'
@@ -28,12 +47,93 @@ class DataCell:
     background: tuple[int, int, int, int] = (255, 255, 255, 255)
     span: tuple[int, int] = (1, 1)
 
+    def __post_init__(self):
+        self._validate_value(value=self.value)
+        self._set_raw_value(value=self.value)
+        
+    def _validate_value(self, value: int | float | str):
+        """
+        Привидение к типу данных. Значения value прихзодящие из таблицы от пользователя
+        """
+
+        if isinstance(value, (int, float)):                          
+            self.value = value
+            self.type_value = TypeValueCell.NUMBER
+                        
+        elif isinstance(value, str):
+            sign = 1
+            if value and value[0] == '-':
+                sign = -1
+                value = value[1:]
+
+            if value.isdigit():
+                self.value = int(value) * sign
+                self.type_value = TypeValueCell.NUMBER
+            else:
+                if ',' in value: 
+                    try:
+                        self.value = float(value.replace(',', '.')) * sign
+                        self.type_value = TypeValueCell.NUMBER
+                    except Exception:
+                        self.value = '-' if sign == -1 else '' + value
+                        self.type_value = TypeValueCell.TEXT
+                else:
+                    self.value = '-' if sign == -1 else '' + value
+                    self.type_value = TypeValueCell.TEXT
+
+
+    def _set_raw_value(self, value: int | float | str) -> None:
+        """
+        Привидение значения, которое отображается в ячейки таблицы к заданному формату
+        """
+
+        if self.format_value == CellFormat.AUTO:
+            if self.type_value == TypeValueCell.NUMBER:
+                digit = str(self.value)
+                if '.' in str(self.value):
+                    integer, fractional = str(self.value).split('.')
+                    fractional = fractional.rstrip('0')
+                    self.raw_value = integer + (f',{fractional}' if fractional else '')
+                else:
+                     self.raw_value = digit
+            else:
+                self.raw_value = value
+
+        elif self.format_value == CellFormat.TEXT:
+            if isinstance(value, float):
+                value = str(value).replace('.', ',')
+            self.raw_value = str(value)
+
+        elif self.format_value == CellFormat.NUMBER:
+            if self.type_value == TypeValueCell.NUMBER and self.count_decimals is not None:
+                self.raw_value = f'{self.value:.{self.count_decimals}f}'.replace('.', ',')
+            else:
+                self.raw_value = str(self.value)
+        else:
+            self.raw_value = str(self.value)
+
+    def set_value(self, value: int | float | str) -> None:
+        """
+        Установка значения value
+        """
+        self._validate_value(value)
+        self._set_raw_value(value)
+
+    def set_format(self, format: CellFormat) -> None:
+        """
+        Установка значения format
+        """
+        self.format_value = format
+        self._set_raw_value()
+
     def set_property_from_cell(self, cell: Self) -> None:
         for prop_name, value in cell.__dict__.items():
             self.__dict__[prop_name] = value
 
     def get_dict_style(self) -> dict[str, int | float| str | bool | tuple[int, ...]]:
         return {
+            'type_value': self.type_value.value,
+            'format_value': self.format_value.value,
             'align_h': self.align_h,
             'align_v': self.align_v,
             'font_family': self.font_family,
@@ -45,6 +145,19 @@ class DataCell:
             'background': self.background,
             'span': self.span,
         }
+
+    def set_style_from_dict(self, name: str, value: int | float | str | bool | tuple[int, ...]) -> None:
+        try:
+            if name == 'type_value':
+                self.type_value = TypeValueCell(value)
+            elif name == 'format_value':
+                self.format_value = CellFormat(value)
+            else:
+                setattr(self, name, value)
+        except Exception:
+            print('class: DataCell', 'метод: set_style_from_dict')
+            print(f'Попытка присвоить: {name}: {value}')
+            print()
 
     def get_td_html(self) -> str:
         """
@@ -148,5 +261,7 @@ class ParameterHeaders:
 @dataclass
 class AppContextDataClasses:
     DATA_CELL = DataCell
+    TYPE_VALUE_DATA_CELL = TypeValueCell
+    CELL_FORMAT = CellFormat
     DATA_HEADERS = ParameterHeaders
     PARAMETER_TABLE = ParameterTable

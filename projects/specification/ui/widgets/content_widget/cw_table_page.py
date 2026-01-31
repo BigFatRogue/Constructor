@@ -289,7 +289,7 @@ class __Window(QtWidgets.QMainWindow):
 
         browser = BrowserWidget(self)
         browser.hide()
-        browser.open_project(r'D:\Python\AlfaServis\Constructor\2.scdata')
+        browser.open_project(r'D:\Python\AlfaServis\Constructor\Proekt 1.scdata')
         item_by_tree = self.get_item_tree_from_name(browser.tree)
 
         self.page_table = PageTable(self)

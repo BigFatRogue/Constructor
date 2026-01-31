@@ -155,7 +155,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         column = self._index_column_view[index.column()]
 
         if role in (QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole):
-            return str(self._data[row][column].value)
+            return str(self._data[row][column].raw_value)
         
         elif (row, column, role) in self._styles:
             return self._styles[(row, column, role)]
@@ -169,7 +169,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         
         self.undo_redo.add_cell(row=row, column=index.column(), old_value=cell.value, new_value=value, role=role)
         
-        cell.value = str(value) if value is not None else value
+        cell.set_value(value)
         self.dataChanged.emit(index, index, [role])
         self.signal_change.emit()
         return True
@@ -226,7 +226,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self.undo_redo.add_cell(row=row, column=column, old_value=cell.get_value_from_role(role, font_param) , new_value=value, role=role, font_param=font_param)
 
         if role == QtCore.Qt.ItemDataRole.EditRole:
-            cell.value = value
+            cell.set_value(value)
 
         elif role == QtCore.Qt.ItemDataRole.FontRole and font_param:
             font = self._styles[(row, column_data, role)]
@@ -457,6 +457,29 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self.undo_redo.end_transaction()
         self.signal_change.emit()
     
+    def _try_str2number(self, value: str) -> str | int | float:
+        """
+        Первоначальня проверка данных и попытка преобразовать значнеие в числовое значение
+        """
+        
+        if isinstance(value, str):
+            if value.isdigit():
+                return int(value)
+            else:
+                sign = 1
+                if value and value[0] == '-':
+                    value = value[1:]
+                    sign = -1 
+                
+                try:
+                    return int(value) * sign
+                except Exception:
+                    try:
+                        return float(value) * sign
+                    except Exception:
+                        ...
+        return value
+
     def sorted_column(self, state_sorted: list[ENUMS.STATE_SORTED_COLUMN]) -> None:
         """
         Сортировка по нескольким столбца
@@ -468,11 +491,29 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         :type state_sorted: list[ENUMS.STATE_SORTED_COLUMN]
         """
         
+        def sort_key(cell: DATACLASSES.DATA_CELL) -> tuple[int, str | int | float]:
+            value = cell.value
+
+            if isinstance(value, (int, float)):
+                return (0, value)
+            if isinstance(value, str):
+                if value:
+                    value = self._try_str2number(value)
+                    if isinstance(value, (int, float)):
+                        return (0, value)
+                    else:
+                        return (1, value)
+                else:
+                    return (2, value)
+                
+            return (1, str(value))
+
         index_column = [*range(len(state_sorted))]
 
         for column, state in zip(index_column[::-1], state_sorted[::-1]):
             if state != ENUMS.STATE_SORTED_COLUMN.EMPTY:
-                self._data.sort(key=lambda x: x[self._index_column_view[column]].value, reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE)
+                self._data.sort(key=lambda row: sort_key(row[self._index_column_view[column]]), reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE)
+                # self._data.sort(key=sort_key  lambda x: x[self._index_column_view[column]].value, reverse=state == ENUMS.STATE_SORTED_COLUMN.REVERSE)
 
             self.item_data.horizontal_header_parameter[column].parameters[ENUMS.PARAMETERS_HEADER.STATE_SORTED.name] = state.value 
         self.dataChanged.emit(self.index(0, 0), self.index(self.rowCount(), self.columnCount()), [QtCore.Qt.ItemDataRole.DisplayRole])

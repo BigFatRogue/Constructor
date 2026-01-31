@@ -48,8 +48,8 @@ class AvgGroupFloatItem:
         
         if step == 0: 
             return self.type_value(self.values[-1])
-
-        return self.type_value(self.values[-1 * is_forward] + self.avg * self.current_group_step)
+        next_value = self.type_value(self.values[-1 * is_forward] + self.avg * self.current_group_step)
+        return round(next_value, len(str(self.values[0])))
         
 
 class AvgGroupStringItem:
@@ -132,7 +132,7 @@ class AutoFillData:
         self._current_data: list[list[dict[str, list[DATACLASSES.DATA_CELL] | int]]] = None
         self._count_current_rows: int = 0
         self._count_current_column: int = 0 
-        self._new_data: list[list[dict[str, list[DATACLASSES.DATA_CELL] | int]]] = None
+        self._new_data: list[list[str | int | float | None]] = None
         self._prev_step: int = 0
         self._direction: int = 1
 
@@ -147,7 +147,7 @@ class AutoFillData:
         self._rows_data, self._columns_data = self.table_model.get_visible_coords(top=start_index.row(), left=start_index.column(), 
                                                                                   bottom=end_index.row(), rigth=end_index.column())
         self._current_data = [[{'cell': self.table_model._data[row][column], 'row_group': None, 'column_group': None} for column in self._columns_data] for row in self._rows_data]
-        self._new_data = [[deepcopy(self.table_model._data[row][column]) for column in self._columns_data] for row in self._rows_data]
+        self._new_data = [[self.table_model._data[row][column].value for column in self._columns_data] for row in self._rows_data]
         self._count_current_rows: int = len(self._current_data)
         self._count_current_column: int = len(self._current_data[0]) 
 
@@ -205,12 +205,12 @@ class AutoFillData:
                 row, column = (index_1, index_2) if is_swap else (index_2, index_1)
                 y, x = (j, i) if is_swap else (i, j)
                 
-                value = self.table_model._data[row][column].value
+                cell = self.table_model._data[row][column]
+                value = cell.value
                 
-                if (number_value := self._try_str2float(value)):
-                    type_value, value = number_value
+                if cell.type_value == DATACLASSES.TYPE_VALUE_DATA_CELL.NUMBER:
                     if self.current_group is None or not isinstance(self.current_group, AvgGroupFloatItem):
-                        self.current_group = AvgGroupFloatItem(type_value)
+                        self.current_group = AvgGroupFloatItem(int if isinstance(value, int) else float)
                         line_group.append(self.current_group)
                         self.current_group.add_value(value)
                     else:
@@ -327,7 +327,7 @@ class AutoFillData:
                 row_cells: list[DATACLASSES.DATA_CELL] = []
                 for x, value in enumerate(row):
                     cell: DATACLASSES.DATA_CELL = deepcopy(self._current_data[y % self._count_current_rows][x % self._count_current_column]['cell'])
-                    cell.value = str(value)
+                    cell.set_value(value)
                     row_cells.append(cell)
                 data_cells.append(row_cells)
 
@@ -625,7 +625,7 @@ class TableView(QtWidgets.QTableView):
 
     def init_contex_menu(self) -> None:
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.show_context_menu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
 
         self.context_menu = ContextMenu(self)
 
@@ -673,6 +673,11 @@ class TableView(QtWidgets.QTableView):
         create_action(menu=self.context_menu ,
             title='Вставить строку ниже',
             triggerd=self._insert_row_down)
+        self.context_menu.addSeparator()
+        # ----------------------- Формат ячеек ----------------------------
+        create_action(menu=self.context_menu ,
+            title='Формат ячейки',
+            triggerd=self._show_window_format_cell)
 
     def setModel(self, model: ModelDataTable):
         if model.editable():
@@ -682,12 +687,23 @@ class TableView(QtWidgets.QTableView):
             self._handle_rect.hide()
         return super().setModel(model)
 
-    def show_context_menu(self, position: QtCore.QPoint) -> None:
+    def _show_context_menu(self, position: QtCore.QPoint) -> None:
         model: ModelDataTable = self.model()
         if model.editable():
             self._active_select_row = self.indexAt(position)
             if self._active_select_row != -1:
                 self.context_menu.exec_(self.viewport().mapToGlobal(position))
+
+    def _show_window_format_cell(self) -> None:
+        model: ModelDataTable = self.model()
+
+        selection = self.selectionModel().selection()
+        set_row: set[int] = set()
+        if not selection.isEmpty():
+            for rng in self.selectionModel().selection():
+                rng: QtCore.QItemSelectionRange
+                # for row in range(rng.top(), rng.bottom() + 1):
+                    # set_row.add(row)
 
     def selectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection):
         self.resize_rect()
@@ -847,6 +863,14 @@ class TableView(QtWidgets.QTableView):
                 self._selection_rect.is_multi_selection = False
                 self._is_ctrl = False
                 self.viewport().update()
+            
+            index = self.indexAt(event.pos())
+            if index.isValid():
+                model: ModelDataTable = self.model()
+                column = model._index_column_view[index.column()]
+                cell = model._data[index.row()][column]
+                print(cell.value, type(cell.value), cell.raw_value, type(cell.raw_value), cell.count_decimals)
+            
             return super().mousePressEvent(event)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
