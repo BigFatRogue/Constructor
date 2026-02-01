@@ -174,9 +174,8 @@ BUY_ITEM_CONFIG = TableConfig(
 PROD_ITEM_CONFG = TableConfig(
     name=ENUMS.NAME_TABLE_SQL.PROD.value,
     columns = [
-        ColumnConfig('number_prod', 'INTEGER', '№'),
+        ColumnConfig('id', 'INTEGER PRIMARY KEY AUTOINCREMENT', is_id=True, is_view=False),
         ColumnConfig('note', 'TEXT', 'Примечание'),
-        ColumnConfig('invoice', 'TEXT', 'Счёт ОМТС'),
         ColumnConfig('parent_id', 'INTEGER',is_view=False, is_foreign_id=True, parent_table_name=GENERAL_ITEM_CONFIG.name)
     ]
 )

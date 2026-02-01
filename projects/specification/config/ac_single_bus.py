@@ -20,6 +20,8 @@ class SignalBus(QObject):
     select_item_browser = pyqtSignal(object)
     change_item = pyqtSignal(object)
     data_by_from_invetor = pyqtSignal(tuple)
+    data_prod_from_inventor = pyqtSignal(tuple)
+    data_prod_from_by = pyqtSignal(tuple)
 
     _instance = None
     

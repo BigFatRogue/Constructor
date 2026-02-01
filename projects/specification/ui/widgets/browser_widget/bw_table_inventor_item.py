@@ -50,4 +50,6 @@ class TableInventorItem(TableBrowserItem):
         SIGNAL_BUS.data_by_from_invetor.emit((self, self.item_data.data_to_by()))
 
     def inventor_to_prod(self) -> None:
-        ...
+        if not self.is_save:
+            self.save()
+        SIGNAL_BUS.data_prod_from_inventor.emit((self, self.item_data.data_to_prod()))

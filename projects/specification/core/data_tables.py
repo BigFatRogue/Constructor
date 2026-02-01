@@ -766,7 +766,7 @@ class InventorSpecificationDataItem(SpecificationDataItem):
         """
         Формирование спецификации на закупуку 
         
-        :return: data Для BuySpecificationDataItem
+        :return: data для BuySpecificationDataItem
         :rtype: list[list[DATA_CELL]]
         """
 
@@ -774,14 +774,33 @@ class InventorSpecificationDataItem(SpecificationDataItem):
         for header_cell, row in zip(self.vertical_header_parameter, self.data):
             by_row = []
             if not header_cell.parameters[ENUMS.PARAMETERS_HEADER.SELECT_ROW.name]:
-                for cell, col in zip(row, self.general_config.columns):
-                    # by_cell = DATACLASSES.DATA_CELL() if col.is_id else DATACLASSES.DATA_CELL(value=cell.value)
+                for cell, _ in zip(row, self.general_config.columns):
                     by_row.append(DATACLASSES.DATA_CELL(value=cell.value))
-                by_data.append(by_row + [DATACLASSES.DATA_CELL() for _ in BUY_ITEM_CONFIG.columns] )
+                by_data.append(by_row + [DATACLASSES.DATA_CELL() for _ in BUY_ITEM_CONFIG.columns])
 
         return by_data
+    
+    def data_to_prod(self) -> tuple[list[list[DATACLASSES.DATA_CELL]], dict[int | str, list[list[DATACLASSES.DATA_CELL]]]]:
+        """
+        Формирование спецификации на производство 
         
-        
+        :return: data Для ProdSpecificationDataItem
+        :rtype: list[list[DATA_CELL]]
+        """
+
+        prod_data = []
+        for row in self.data:
+            prod_row = []
+            for cell, col in zip(row, self.general_config.columns):
+                value = cell.value
+                if col.is_id:
+                    value = f'_{value}'
+                prod_row.append(DATACLASSES.DATA_CELL(value=value))
+            prod_data.append(prod_row + [DATACLASSES.DATA_CELL() for _ in PROD_ITEM_CONFG.columns])
+
+        return prod_data
+
+
 class BuySpecificationDataItem(SpecificationDataItem):
     def __init__(self, database: DataBase, table_name: str):
         super().__init__(database, BUY_ITEM_CONFIG)
@@ -789,12 +808,12 @@ class BuySpecificationDataItem(SpecificationDataItem):
         self.table_name = table_name
 
     def set_data(self, data):
-        self._set_data_link(data)
+        self._set_data_link_from_inventor(data)
         super().set_data(data)
     
-    def _set_data_link(self, data: list[list[DATACLASSES.DATA_CELL]]) -> None:
+    def _set_data_link_from_inventor(self, data: list[list[DATACLASSES.DATA_CELL]]) -> None:
         """
-        Формирование временных id Для отображения связей
+        Формирование таблицы связей и присавивание временных id для data при формировании спецификации из спецификации inventor
         """
         if self.data is None and self.data_link is None:
             self.data_link = {}
@@ -802,6 +821,12 @@ class BuySpecificationDataItem(SpecificationDataItem):
                 tmp_id = f'_{i}'
                 self.data_link[tmp_id] = [[DATACLASSES.DATA_CELL(value=cell.value) for cell in row]]
                 row[0].value = tmp_id
+    
+    def data_to_prod(self) -> None:
+        # TODO реализовать
+        # data_link: dict[int | str, list[list[DATACLASSES.DATA_CELL]]] = {}
+        # data_link[f'_{value}'] = [[DATACLASSES.DATA_CELL(value=cell_link.value) for cell_link in row_link] for row_link in self.data_link[value]]
+        ...
 
 
 class ProdSpecificationDataItem(SpecificationDataItem):
@@ -809,6 +834,17 @@ class ProdSpecificationDataItem(SpecificationDataItem):
         super().__init__(database, PROD_ITEM_CONFG)
         self.type_spec = ENUMS.NAME_TABLE_SQL.PROD
         self.table_name = table_name
+
+    def set_link_from_data_inventor(self, data_inventor: list[list[DATACLASSES.DATA_CELL]]) -> None:
+        """
+        Формирование таблицы связей из таблицы inventor
+
+        Запускается при формировании закупочной спецификации из спецификации инвентор
+        """
+        if self.data_link is None:
+            self.data_link = {}
+            for i, row in enumerate(data_inventor):
+                self.data_link[self.data[i][0].value] = [[DATACLASSES.DATA_CELL(value=cell.value) for cell in row]]
 
 
 if __name__ == '__main__':

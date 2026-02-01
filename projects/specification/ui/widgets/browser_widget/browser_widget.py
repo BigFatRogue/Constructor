@@ -15,6 +15,7 @@ from projects.specification.ui.widgets.browser_widget.bw_project_item import Pro
 from projects.specification.ui.widgets.browser_widget.bw_specefication_item import SpecificationItem, SpecificationInventorItem
 from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
 from projects.specification.ui.widgets.browser_widget.bw_table_by_item import TableByItem
+from projects.specification.ui.widgets.browser_widget.bw_table_prod_item import TableProdItem
 
 from projects.tools.functions.decorater_qt_object import decorater_set_hand_cursor_button
 from projects.tools.custom_qwidget.messege_box_question import MessegeBoxQuestion
@@ -87,6 +88,7 @@ class BrowserWidget(QtWidgets.QWidget):
 
         SIGNAL_BUS.load_specification_from_xlsx.connect(self.load_specification_from_xlsx)
         SIGNAL_BUS.data_by_from_invetor.connect(self.inventor_table_to_by)
+        SIGNAL_BUS.data_prod_from_inventor.connect(self.inventor_table_to_prod)
 
         self.init_widgets()
         self.init_context_menu()
@@ -147,7 +149,6 @@ class BrowserWidget(QtWidgets.QWidget):
                 title='Создать новый проект', 
                 filepath_icon=os.path.join(SETTING.ICO_FOLDER, 'green_plus.png'),
                 triggerd=self.create_project)
-
 
     def show_context_menu(self, position: QtCore.QPoint) -> None:
         item: BrowserItem = self.tree.itemAt(position)
@@ -300,7 +301,13 @@ class BrowserWidget(QtWidgets.QWidget):
                 item.set_is_init(True)
                 item.set_is_save(True)
             elif tp == ENUMS.NAME_TABLE_SQL.PROD.value:
-                ...
+                parent_item = dict_type_item_tree[ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_PROD]
+                item = self.create_prod_table(parent_item=parent_item, name=name, data=data, data_link=data_link)
+                item.item_data.set_table_data(table_data)
+                item.item_data.set_header_data(header_data)
+                item.item_data.set_sid(sid)
+                item.set_is_init(True)
+                item.set_is_save(True)
 
     def load_specification_from_xlsx(self, filepath) -> None:
         """
@@ -326,7 +333,22 @@ class BrowserWidget(QtWidgets.QWidget):
         
         if parent_item:
             self.create_by_table(parent_item=parent_item, name=f'Закупочная спецификация № {parent_item.childCount() + 1}', data=data)
-            
+
+    def inventor_table_to_prod(self, value: tuple[TableInventorItem, list[list[DATACLASSES.DATA_CELL]], dict[str, list[list[DATACLASSES.DATA_CELL]]]]) -> None:
+        inv_item , data = value
+        project_item: ProjectItem = inv_item.parent_item.parent_item
+        
+        parent_item: SpecificationItem = None
+        for i in range(project_item.childCount()):
+            child_item: SpecificationItem = project_item.child(i)
+            if child_item.type_item == ENUMS.TYPE_TREE_ITEM.SPEC_FOLDER_PROD:
+                parent_item = child_item
+                break
+        
+        if parent_item:
+            prod_item = self.create_prod_table(parent_item=parent_item, name=f'Cпецификация на производство № {parent_item.childCount() + 1}', data=data)
+            prod_item.set_link_from_data_inventor(data_inventor=inv_item.item_data.data)
+
     def select_tree_item(self, item: BrowserItem) -> None:
         """
         Выбор элемента в браузере и оправка сигнала. Приниматель сигнала ContentWidget
@@ -374,3 +396,10 @@ class BrowserWidget(QtWidgets.QWidget):
         parent_item.setExpanded(True)
         SIGNAL_BUS.satus_bar.emit(f'Таблица {by_item.text()} загружена')
         return by_item
+
+    def create_prod_table(self, parent_item: SpecificationItem, name: str, data: list[list[DATACLASSES]], data_link: dict[int, list[list[DATACLASSES.DATA_CELL]]] = None) -> TableProdItem:
+        prod_item = TableProdItem(tree=self.tree, parent_item=parent_item, name=name, data=data, data_link=data_link)        
+        parent_item.addChild(prod_item)
+        parent_item.setExpanded(True)
+        SIGNAL_BUS.satus_bar.emit(f'Таблица {prod_item.text()} загружена')
+        return prod_item

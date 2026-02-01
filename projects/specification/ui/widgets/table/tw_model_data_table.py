@@ -283,10 +283,11 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         
         elif role == ENUMS.CONSTANTS.QROLE_CELL_FORMAT_VALUE:
             cell.set_format(value)
-            # cell.update_raw()
+            cell.update_raw()
 
         elif role == ENUMS.CONSTANTS.QROLE_CELL_COUNT_DECIMALS:
             cell.count_decimals = value
+            cell.update_raw()
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
@@ -616,10 +617,9 @@ class ModelDataTable(QtCore.QAbstractTableModel):
             
             for y in range(start_row, end_row):
                 for x in range(start_column, end_column):
-                    cell = self.get_data(y, x)
                     for role, value in parameters.items():
                         self.change_cell(y, x, role, value)
-                        cell.update_raw()
         
         self.undo_redo.end_transaction()
         self.layoutChanged.emit()
+        self.signal_change.emit()

@@ -30,6 +30,7 @@ from projects.specification.ui.widgets.browser_widget.bw_specefication_item impo
 from projects.specification.ui.widgets.browser_widget.bw_table_item import TableBrowserItem
 from projects.specification.ui.widgets.browser_widget.bw_table_inventor_item import TableInventorItem
 from projects.specification.ui.widgets.browser_widget.bw_table_by_item import TableByItem
+from projects.specification.ui.widgets.browser_widget.bw_table_prod_item import TableProdItem
 
 from projects.specification.core.data_tables import SpecificationDataItem, InventorSpecificationDataItem, BuySpecificationDataItem, ProdSpecificationDataItem
 
@@ -127,6 +128,8 @@ class PageTable(PageContent):
             self._set_item_invetor()
         elif isinstance(item_tree, TableByItem):
             self._set_item_by()
+        elif isinstance(item_tree, TableProdItem):
+            self._set_item_prod()
 
         self._set_parameters_table()
         
@@ -160,6 +163,29 @@ class PageTable(PageContent):
         Настройка отображения таблицы Закупки
         """
         self.current_item: TableByItem
+
+        horizontal_header_sorted = HorizontalWithOverlayWidgetsSorded(self.table_view, self.range_zoom)
+        self._set_current_header(QtCore.Qt.Orientation.Horizontal, horizontal_header_sorted)
+        
+        vertical_header = VerticallWithOverlayWidgets (self.table_view, self.range_zoom)
+        self._set_current_header(QtCore.Qt.Orientation.Vertical, vertical_header)
+
+        horizontal_header_sorted.set_widget()
+        vertical_header.hide_widget()
+        vertical_header.set_table_edited(True)
+
+        self.control_panel.set_table_model(self.table_model)
+        self.control_panel.show_all_block(False)
+        self.control_panel.show_font_block(True)
+        self.control_panel.show_align_block(True)
+        
+        self.table_view.signale_change_selection.connect(self.control_panel.view_property)
+
+    def _set_item_prod(self) -> None:
+        """
+        Настройка отображения таблицы Производства
+        """
+        self.current_item: TableProdItem
 
         horizontal_header_sorted = HorizontalWithOverlayWidgetsSorded(self.table_view, self.range_zoom)
         self._set_current_header(QtCore.Qt.Orientation.Horizontal, horizontal_header_sorted)
