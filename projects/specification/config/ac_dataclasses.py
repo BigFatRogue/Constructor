@@ -16,15 +16,15 @@ _DICT_QT2CSS_ALIGN: dict[QtCore.Qt.AlignmentFlag] = {
 
 
 class TypeValueCell(Enum):
-    AUTO: str = 'auto'
-    NUMBER: str = 'number' 
-    TEXT: str = 'text'
+    AUTO = 'auto'
+    NUMBER = 'number' 
+    TEXT = 'text'
 
 
 class CellFormat(Enum):
-    AUTO: str = 'auto'
-    NUMBER: str = 'number'
-    TEXT: str = 'text'
+    AUTO = 'auto'
+    NUMBER = 'number'
+    TEXT = 'text'
 
 
 @dataclass
@@ -81,7 +81,6 @@ class DataCell:
                     self.value = '-' if sign == -1 else '' + value
                     self.type_value = TypeValueCell.TEXT
 
-
     def _set_raw_value(self, value: int | float | str) -> None:
         """
         Привидение значения, которое отображается в ячейки таблицы к заданному формату
@@ -119,12 +118,16 @@ class DataCell:
         self._validate_value(value)
         self._set_raw_value(value)
 
-    def set_format(self, format: CellFormat) -> None:
+    def set_format(self, format: CellFormat | str) -> None:
         """
         Установка значения format
         """
-        self.format_value = format
-        self._set_raw_value()
+        if isinstance(format, CellFormat):
+            self.format_value = format
+        else:
+            self.format_value = CellFormat(format)
+        
+        self._set_raw_value(self.value)
 
     def set_property_from_cell(self, cell: Self) -> None:
         for prop_name, value in cell.__dict__.items():
@@ -134,6 +137,7 @@ class DataCell:
         return {
             'type_value': self.type_value.value,
             'format_value': self.format_value.value,
+            'count_decimals': self.count_decimals,
             'align_h': self.align_h,
             'align_v': self.align_v,
             'font_family': self.font_family,
@@ -146,7 +150,7 @@ class DataCell:
             'span': self.span,
         }
 
-    def set_style_from_dict(self, name: str, value: int | float | str | bool | tuple[int, ...]) -> None:
+    def set_style_from_name(self, name: str, value: int | float | str | bool | tuple[int, ...]) -> None:
         try:
             if name == 'type_value':
                 self.type_value = TypeValueCell(value)
@@ -154,10 +158,13 @@ class DataCell:
                 self.format_value = CellFormat(value)
             else:
                 setattr(self, name, value)
-        except Exception:
+        except Exception as error:
             print('class: DataCell', 'метод: set_style_from_dict')
             print(f'Попытка присвоить: {name}: {value}')
             print()
+
+    def update_raw(self) -> None:
+        self._set_raw_value(self.value)
 
     def get_td_html(self) -> str:
         """
@@ -202,7 +209,11 @@ class DataCell:
             (QtCore.Qt.ItemDataRole.TextAlignmentRole, None): self.align_h | self.align_v,
             (QtCore.Qt.ItemDataRole.BackgroundColorRole, None): self.background,
             (QtCore.Qt.ItemDataRole.ForegroundRole, None): self.color,
-            (QtCore.Qt.ItemDataRole.EditRole, None): self.value
+            (QtCore.Qt.ItemDataRole.EditRole, None): self.value,
+            (AppContextEnums.CONSTANTS.QROLE_CELL_TYPE_VALUE, None): self.type_value,
+            (AppContextEnums.CONSTANTS.QROLE_CELL_FORMAT_VALUE, None): self.format_value,
+            (AppContextEnums.CONSTANTS.QROLE_CELL_RAW_VAULE, None): self.raw_value,
+            (AppContextEnums.CONSTANTS.QROLE_CELL_COUNT_DECIMALS, None): self.count_decimals
             }
 
     def get_value_from_role(self, role: QtCore.Qt.ItemDataRole, font_param: AppContextEnums.PARAMETR_FONT = None) -> int | float | str | tuple:

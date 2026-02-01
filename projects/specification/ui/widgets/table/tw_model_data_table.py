@@ -1,6 +1,6 @@
 from dataclasses import fields
 from copy import deepcopy
-from typing import Self, Sequence
+from typing import Self, Sequence, Any
 
 from PyQt5 import QtCore, QtGui
 
@@ -102,6 +102,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
                 self._styles[(y, x, QtCore.Qt.ItemDataRole.FontRole)] = font
 
                 self._styles[(y, x, QtCore.Qt.ItemDataRole.TextAlignmentRole)] = cell.align_h | cell.align_v
+                cell.update_raw()
 
         role = [QtCore.Qt.ItemDataRole.FontRole, QtCore.Qt.ItemDataRole.TextAlignmentRole, QtCore.Qt.ItemDataRole.BackgroundColorRole, QtCore.Qt.ItemDataRole.ForegroundRole]
         if self._data:
@@ -273,6 +274,19 @@ class ModelDataTable(QtCore.QAbstractTableModel):
             if value is None:
                 self._styles[(row, column_data, role)] = QtGui.QColor(0, 0, 0, 255)
                 cell.color = (0, 0, 0, 0) 
+        
+        elif role == ENUMS.CONSTANTS.QROLE_CELL_RAW_VAULE:
+            cell.raw_value = value
+        
+        elif role == ENUMS.CONSTANTS.QROLE_CELL_TYPE_VALUE:
+            cell.type_value = value
+        
+        elif role == ENUMS.CONSTANTS.QROLE_CELL_FORMAT_VALUE:
+            cell.set_format(value)
+            # cell.update_raw()
+
+        elif role == ENUMS.CONSTANTS.QROLE_CELL_COUNT_DECIMALS:
+            cell.count_decimals = value
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
@@ -353,7 +367,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount()), [role])
         # self.headerDataChanged.emit(QtCore.Qt.Orientation.Vertical, row, row + 1)
 
-    def get_style_selection(self, selection: list[QtCore.QItemSelectionRange]) -> DATACLASSES.DATA_CELL:
+    def get_style_selection(self, selection: QtCore.QItemSelection) -> DATACLASSES.DATA_CELL:
         """
         Получение значения стиля диапазонов в одну переменную типа DataCell
 
@@ -407,7 +421,6 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self.signal_change.emit()
 
     def paste_from_auto_fill(self, data_cells: list[list[DATACLASSES.DATA_CELL]], target_address: tuple[int, int]) -> None:
-        # TODO реалзиовать
         """
         Вставка из массива типа list[list[DATACLASSES.DATA_CELL]]
 
@@ -433,7 +446,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         Вставка из буффера обмена
         """
 
-    def reset_style(self, selection: list[QtCore.QItemSelectionRange]) -> None:
+    def reset_style(self, selection: QtCore.QItemSelection) -> None:
         """
         Сброс стиля диапазона до стандартных значений
         
@@ -457,29 +470,6 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         self.undo_redo.end_transaction()
         self.signal_change.emit()
     
-    def _try_str2number(self, value: str) -> str | int | float:
-        """
-        Первоначальня проверка данных и попытка преобразовать значнеие в числовое значение
-        """
-        
-        if isinstance(value, str):
-            if value.isdigit():
-                return int(value)
-            else:
-                sign = 1
-                if value and value[0] == '-':
-                    value = value[1:]
-                    sign = -1 
-                
-                try:
-                    return int(value) * sign
-                except Exception:
-                    try:
-                        return float(value) * sign
-                    except Exception:
-                        ...
-        return value
-
     def sorted_column(self, state_sorted: list[ENUMS.STATE_SORTED_COLUMN]) -> None:
         """
         Сортировка по нескольким столбца
@@ -498,7 +488,6 @@ class ModelDataTable(QtCore.QAbstractTableModel):
                 return (0, value)
             if isinstance(value, str):
                 if value:
-                    value = self._try_str2number(value)
                     if isinstance(value, (int, float)):
                         return (0, value)
                     else:
@@ -604,7 +593,7 @@ class ModelDataTable(QtCore.QAbstractTableModel):
         left, rigth = (left, rigth) if left < rigth else (rigth, left)
         return tuple(y for y in range(top, bottom + 1)), tuple(self._index_column_view[x] for x in range(left, rigth + 1))
 
-    def delete_value_in_range(self, selection: list[QtCore.QItemSelectionRange]) -> None:
+    def delete_value_in_range(self, selection: QtCore.QItemSelection) -> None:
         if bool(self.get_flags() & QtCore.Qt.ItemFlag.ItemIsEditable):
             self.undo_redo.start_transaction()
             for rng in selection:
@@ -613,3 +602,24 @@ class ModelDataTable(QtCore.QAbstractTableModel):
                         self.change_cell(row=row, column=column, value=self._default_value, role=QtCore.Qt.ItemDataRole.EditRole)
             self.undo_redo.end_transaction()
             self.layoutChanged.emit()
+    
+    def set_format(self, selection: QtCore.QItemSelection, parameters: dict[ENUMS.CONSTANTS, Any]) -> None:
+        """
+        Установка формата для выделения
+        """
+        self.undo_redo.start_transaction()
+        
+        for rng in selection:
+            rng: QtCore.QItemSelectionRange
+            start_row, end_row = rng.top(), rng.bottom() + 1
+            start_column, end_column = rng.left(), rng.right() + 1
+            
+            for y in range(start_row, end_row):
+                for x in range(start_column, end_column):
+                    cell = self.get_data(y, x)
+                    for role, value in parameters.items():
+                        self.change_cell(y, x, role, value)
+                        cell.update_raw()
+        
+        self.undo_redo.end_transaction()
+        self.layoutChanged.emit()

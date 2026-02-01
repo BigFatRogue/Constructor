@@ -282,7 +282,7 @@ class PropertyProjectData(GeneralDataItem):
             cells_style = self._load_styles(table['id'])
             for (row, column), cell_style in cells_style.items():
                 for name_style, value in cell_style.items():
-                    data[row][column].set_style_from_dict(name_style, value)
+                    data[row][column].set_style_from_name(name_style, value)
             tables.append(table)
 
             table['header_data'] = self._load_parameter_header(table['id'])

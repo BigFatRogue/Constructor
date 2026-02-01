@@ -10,6 +10,8 @@ if __name__ == '__main__':
     test_path = str(Path(__file__).parent.parent.parent.parent.parent.parent)
     sys.path.append(test_path)
 
+from projects.specification.ui.widgets.table.window_format_cell import WindowFormatCell
+
 from projects.specification.config.app_context import DECORATE, DATACLASSES
 from projects.specification.ui.widgets.table.tw_model_data_table import ModelDataTable
 from projects.specification.ui.widgets.table.tw_clipboard import CLIPBOARD, TypeItemClipboard 
@@ -154,35 +156,6 @@ class AutoFillData:
         self._avg_groups_rows = self._set_group_row_or_columns_value(self._rows_data, self._columns_data)
         self._avg_groups_columns = self._set_group_row_or_columns_value(self._columns_data, self._rows_data)
 
-    def _try_str2float(self, value: str | int | float | None) -> tuple[Type[int] | Type[float], int | float] | None:
-        """
-        Первоначальня проверка данных и попытка преобразовать значнеие в числовое значение
-        """
-
-        if isinstance(value, int):
-            return int, float(value)
-        if isinstance(value, float):
-            return float, value
-        
-        if isinstance(value, str):
-            if value.isdigit():
-                return int, float(value)
-            else:
-                sign = 1
-                if value and value[0] == '-':
-                    value = value[1:]
-                    sign = -1 
-                
-                try:
-                    return int, int(value) * sign
-                except Exception:
-                    value = value.replace(',', '.')
-                    try:
-                        return float, float(value) * sign
-                    except Exception:
-                        ...
-        return
-
     def _set_group_row_or_columns_value(self, line_1: list[int], line_2: list[int]) -> list[list[AvgGroupFloatItem | AvgGroupStringItem]]:
         """
         Обработка массива, чтобы получить группы для автозаполненеия
@@ -206,9 +179,9 @@ class AutoFillData:
                 y, x = (j, i) if is_swap else (i, j)
                 
                 cell = self.table_model._data[row][column]
-                value = cell.value
                 
-                if cell.type_value == DATACLASSES.TYPE_VALUE_DATA_CELL.NUMBER:
+                if cell.format_value in (DATACLASSES.CELL_FORMAT.NUMBER, DATACLASSES.CELL_FORMAT.AUTO) and cell.type_value == DATACLASSES.TYPE_VALUE_DATA_CELL.NUMBER:
+                    value = cell.value
                     if self.current_group is None or not isinstance(self.current_group, AvgGroupFloatItem):
                         self.current_group = AvgGroupFloatItem(int if isinstance(value, int) else float)
                         line_group.append(self.current_group)
@@ -217,6 +190,7 @@ class AutoFillData:
                         self.current_group.add_value(value)
                     
                 else:
+                    value = cell.raw_value
                     if self.current_group is None \
                         or not isinstance(self.current_group, AvgGroupStringItem) \
                         or not self.current_group.check_string_part(value):
@@ -696,14 +670,15 @@ class TableView(QtWidgets.QTableView):
 
     def _show_window_format_cell(self) -> None:
         model: ModelDataTable = self.model()
-
         selection = self.selectionModel().selection()
-        set_row: set[int] = set()
+
         if not selection.isEmpty():
-            for rng in self.selectionModel().selection():
-                rng: QtCore.QItemSelectionRange
-                # for row in range(rng.top(), rng.bottom() + 1):
-                    # set_row.add(row)
+            first_index = selection.first().topLeft()
+            first_cell = model.get_data(first_index.row(), first_index.column())
+            window_format_cell = WindowFormatCell(first_cell)
+        
+            if window_format_cell.exec():
+                model.set_format(selection, window_format_cell.get_parameters())
 
     def selectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection):
         self.resize_rect()

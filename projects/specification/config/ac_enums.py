@@ -81,9 +81,10 @@ class TypeBlockPropertyControlPanel(Enum):
 class Constants(Enum):
     MY_FORMAT = 'scdata'
     QROLE_LINK_ITEM_WIDGET_TREE = QtCore.Qt.UserRole + 1
-    QROLE_DATA_X = QtCore.Qt.UserRole + 2
-    QROLE_V_TEXT_ALIGN = QtCore.Qt.UserRole + 3
-    QROLE_H_TEXT_ALIGN = QtCore.Qt.UserRole + 4
+    QROLE_CELL_FORMAT_VALUE = QtCore.Qt.UserRole + 2
+    QROLE_CELL_TYPE_VALUE = QtCore.Qt.UserRole + 3
+    QROLE_CELL_RAW_VAULE = QtCore.Qt.UserRole + 4
+    QROLE_CELL_COUNT_DECIMALS = QtCore.Qt.UserRole + 5
 
 
 @dataclass
