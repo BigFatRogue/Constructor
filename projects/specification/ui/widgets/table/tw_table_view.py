@@ -838,14 +838,7 @@ class TableView(QtWidgets.QTableView):
                 self._selection_rect.is_multi_selection = False
                 self._is_ctrl = False
                 self.viewport().update()
-            
-            index = self.indexAt(event.pos())
-            if index.isValid():
-                model: ModelDataTable = self.model()
-                column = model._index_column_view[index.column()]
-                cell = model._data[index.row()][column]
-                print(cell.value, type(cell.value), cell.raw_value, type(cell.raw_value), cell.count_decimals)
-            
+                        
             return super().mousePressEvent(event)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
