@@ -53,6 +53,16 @@ class AvgGroupFloatItem:
         next_value = self.type_value(self.values[-1 * is_forward] + self.avg * self.current_group_step)
         return round(next_value, len(str(self.values[0])))
         
+    def check_type_value(self) -> None:
+        """
+        Проверка всех значений в группе. Если элементы имеют различный тип, то все элементы будут float
+        :param self: Описание
+        """
+        for item in self.values[1:]:
+            if not isinstance(item, self.type_value):
+                self.type_value = float
+                break            
+
 
 class AvgGroupStringItem:
     def __init__(self):
@@ -124,6 +134,8 @@ class AvgGroupStringItem:
         else:
             return self.string_part
 
+    def check_type_value(self) -> None:
+        ...
 
 class AutoFillData:
     def __init__(self):
@@ -202,6 +214,7 @@ class AutoFillData:
                         self.current_group.add_value(value)
                 
                 self._current_data[y][x][key_type_group] = len(line_group)  - 1
+                self.current_group.check_type_value()
             groups.append(line_group)
         return groups                          
     
