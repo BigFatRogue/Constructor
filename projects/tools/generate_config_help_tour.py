@@ -35,7 +35,7 @@ PATH_SAVE_CONTENT_IMAGE = os.path.join(PATH_APPLICATION_RESOURCES, 'image')
 sys.path.append(PATH_PROJCETS)
 sys.path.append(PATH_APPLICATION)
 
-from specification.ui.main_window import WindowSpecification  as child_ppplication
+from specification.ui.main_window import WindowSpecification as child_ppplication
 # from copy_assembly.ca_main import WindowCopyAssembly as child_ppplication
 from projects.tools.helper_interactive import HelperInteractive
 

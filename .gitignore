@@ -1,8 +1,6 @@
-/Archiv/
-/search_db/
-/temp_const/
+search_db/
+drainage_tray/
 /venv/
-/Инструкци/
 /Инструкци/
 /notepad/
 __pycache__
@@ -19,3 +17,4 @@ setup
 DEBUG
 TODO.md
 *.scdata
+.gitignore
