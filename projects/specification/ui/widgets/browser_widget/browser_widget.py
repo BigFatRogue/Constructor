@@ -320,8 +320,8 @@ class BrowserWidget(QtWidgets.QWidget):
         parent_item: SpecificationItem = self.tree.currentItem()
         self.create_intentor_table(parent_item=parent_item, name=f'Cпецификация inventor № {parent_item.childCount() + 1}', data=data)
     
-    def inventor_table_to_by(self, value: tuple[TableInventorItem, list[list[DATACLASSES.DATA_CELL]]]) -> None:
-        inv_item , data = value
+    def inventor_table_to_by(self, value: tuple[TableInventorItem, tuple[list[list[DATACLASSES.DATA_CELL]], dict[int | str, list[list[DATACLASSES.DATA_CELL]]]]]) -> None:
+        inv_item , data, data_link = value
         project_item: ProjectItem = inv_item.parent_item.parent_item
         
         parent_item: SpecificationItem = None
@@ -332,10 +332,11 @@ class BrowserWidget(QtWidgets.QWidget):
                 break
         
         if parent_item:
-            self.create_by_table(parent_item=parent_item, name=f'Закупочная спецификация № {parent_item.childCount() + 1}', data=data)
+            by_item = self.create_by_table(parent_item=parent_item, name=f'Закупочная спецификация № {parent_item.childCount() + 1}', data=data)
+            by_item.item_data.set_data_link(data_link)
 
     def inventor_table_to_prod(self, value: tuple[TableInventorItem, list[list[DATACLASSES.DATA_CELL]], dict[str, list[list[DATACLASSES.DATA_CELL]]]]) -> None:
-        inv_item , data = value
+        inv_item , data, data_link = value
         project_item: ProjectItem = inv_item.parent_item.parent_item
         
         parent_item: SpecificationItem = None
@@ -347,7 +348,7 @@ class BrowserWidget(QtWidgets.QWidget):
         
         if parent_item:
             prod_item = self.create_prod_table(parent_item=parent_item, name=f'Cпецификация на производство № {parent_item.childCount() + 1}', data=data)
-            prod_item.set_link_from_data_inventor(data_inventor=inv_item.item_data.data)
+            prod_item.item_data.set_data_link(data_link)
 
     def select_tree_item(self, item: BrowserItem) -> None:
         """

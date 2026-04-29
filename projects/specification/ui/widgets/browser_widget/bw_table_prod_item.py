@@ -38,6 +38,4 @@ class TableProdItem(TableBrowserItem):
         super().__init__(tree=tree, parent_item=parent_item, name=name, table_data=table_data, item_data=item_data, type_item=type_item)
         self.item_data: ProdSpecificationDataItem
     
-    def set_link_from_data_inventor(self, data_inventor: list[list[DATACLASSES.DATA_CELL]]) -> None:
-        self.item_data.set_link_from_data_inventor(data_inventor)
     
