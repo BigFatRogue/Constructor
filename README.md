@@ -20,6 +20,7 @@
 #### 5. **to_exe**<br>
 - <code>projcet/to_ext/to_exe_all_project.py</code>
 - Сборка всех указанных приложений в exe. Создание для каждого проекта файл лаунчер, для запуска перед основной программой лаунчера, для проверка обновлений.
+- Все собранные **exe** приложения имеют один python интерпретатор
 
 #### 6. **Record Gif From App**<br>
 - <code>projects\tools\widget_record_gif_from_app.py</code>
